@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/sapiens_erp?sslmode=disable}
-    username: ${DB_USER:sapiens}
-    password: ${DB_PASSWORD:sapiens}
+    url: jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:sapiens_erp}?sslmode=${DB_SSLMODE:disable}
+    username: ${PGUSER:sapiens}
+    password: ${PGPASSWORD:sapiens}
     driver-class-name: org.postgresql.Driver
 
   jpa:
