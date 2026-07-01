@@ -1,0 +1,31 @@
+import axios from 'axios'
+
+// Uses a plain axios instance (not the auth client) to avoid circular interception on login/refresh
+const authAxios = axios.create({
+  baseURL: '/api/v1',
+  headers: { 'Content-Type': 'application/json' },
+})
+
+export interface LoginResponse {
+  accessToken: string
+  refreshToken: string
+  userId: string
+  name: string
+  role: string
+}
+
+export const authApi = {
+  login: async (email: string, password: string): Promise<LoginResponse> => {
+    const { data } = await authAxios.post<LoginResponse>('/auth/login', { email, password })
+    return data
+  },
+
+  refresh: async (refreshToken: string): Promise<LoginResponse> => {
+    const { data } = await authAxios.post<LoginResponse>('/auth/refresh', { refreshToken })
+    return data
+  },
+
+  logout: async (refreshToken: string): Promise<void> => {
+    await authAxios.post('/auth/logout', { refreshToken })
+  },
+}

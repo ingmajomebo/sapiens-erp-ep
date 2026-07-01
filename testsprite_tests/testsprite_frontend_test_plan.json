@@ -1,0 +1,1310 @@
+[
+  {
+    "id": "TC001",
+    "title": "Log in and open the authenticated shell",
+    "description": "Verifies a user can sign in successfully and reach the authenticated application shell.",
+    "category": "User Login",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the authenticated app shell is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC002",
+    "title": "Process a sale in POS",
+    "description": "Verifies a cashier can start a cash register transaction and complete a sale in the POS flow.",
+    "category": "Cash Register / POS",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the cash register view"
+      },
+      {
+        "type": "action",
+        "description": "Start a new transaction"
+      },
+      {
+        "type": "action",
+        "description": "Add an item to the sale"
+      },
+      {
+        "type": "action",
+        "description": "Complete the sale"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a sale confirmation is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the transaction is cleared or completed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "Process a cash sale",
+    "description": "Verifies that an authenticated user can open the cash register workspace, start a transaction, and complete a sale successfully.",
+    "category": "Cash Register",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the cash register navigation entry"
+      },
+      {
+        "type": "action",
+        "description": "Start a transaction"
+      },
+      {
+        "type": "action",
+        "description": "Process the sale"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the sale is completed successfully"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the cash register workspace remains available"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC004",
+    "title": "Search and filter inventory products",
+    "description": "Verifies a user can search and filter inventory to narrow the product list to matching items.",
+    "category": "Inventory Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the inventory view"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the product search field with a product name"
+      },
+      {
+        "type": "action",
+        "description": "Select a category filter"
+      },
+      {
+        "type": "action",
+        "description": "Select a stock status filter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the product list is filtered to matching results"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "Save company settings and branding",
+    "description": "Verifies an administrator can update company name and branding colors in settings and keep the changes saved.",
+    "category": "Settings",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the settings view"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the company name field with a new company name"
+      },
+      {
+        "type": "action",
+        "description": "Select new brand colors"
+      },
+      {
+        "type": "action",
+        "description": "Save the settings"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated company branding is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC006",
+    "title": "View the cash register workspace",
+    "description": "Verifies that an authenticated user can open the cash register module and see the POS workspace ready for use.",
+    "category": "Cash Register",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the cash register navigation entry"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the cash register workspace is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify transaction controls are available"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC007",
+    "title": "Change language and theme in settings",
+    "description": "Verifies a user can switch the app language and theme in settings and see the interface update accordingly.",
+    "category": "Settings",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the settings view"
+      },
+      {
+        "type": "action",
+        "description": "Change the language selection"
+      },
+      {
+        "type": "action",
+        "description": "Toggle the theme selection"
+      },
+      {
+        "type": "action",
+        "description": "Save the settings"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the interface language is updated"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected theme is applied"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC008",
+    "title": "Open product details and inspect lots and movements",
+    "description": "Verifies a user can open a product from inventory and review its info, lots, and movement history.",
+    "category": "Inventory Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the inventory view"
+      },
+      {
+        "type": "action",
+        "description": "Click a product row"
+      },
+      {
+        "type": "action",
+        "description": "Switch to the lots view"
+      },
+      {
+        "type": "action",
+        "description": "Switch to the movements view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify product detail information is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify lots and movement records are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC009",
+    "title": "Switch the app to dark theme",
+    "description": "Verifies that an authenticated user can change the theme setting and see the interface update to dark mode.",
+    "category": "Settings",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the settings navigation entry"
+      },
+      {
+        "type": "action",
+        "description": "Switch to the dark theme"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the dark theme is applied"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the interface updates to match the selected theme"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC010",
+    "title": "Change the interface language",
+    "description": "Verifies that an authenticated user can switch the app language between Spanish and English and see the text update.",
+    "category": "Settings",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the settings navigation entry"
+      },
+      {
+        "type": "action",
+        "description": "Switch the language to English"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the interface text is displayed in English"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the language setting is updated"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC011",
+    "title": "Import products from an Excel file",
+    "description": "Verifies a user can start an Excel import and see imported products reflected in the inventory list.",
+    "category": "Inventory Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the inventory view"
+      },
+      {
+        "type": "action",
+        "description": "Open the Excel import flow"
+      },
+      {
+        "type": "action",
+        "description": "Choose a valid spreadsheet file"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the import"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify imported products are displayed in the list"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC012",
+    "title": "Review dashboard summary and open inventory from top products",
+    "description": "Verifies the dashboard shows key business summaries and that a user can navigate from a top products summary into inventory review.",
+    "category": "Dashboard Overview",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the dashboard view"
+      },
+      {
+        "type": "action",
+        "description": "Click the top products summary link"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the inventory view is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify product listings are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC013",
+    "title": "Add a new expense",
+    "description": "Verifies that an authenticated user can create a new expense and see it added to the list.",
+    "category": "Expenses",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the expenses navigation entry"
+      },
+      {
+        "type": "action",
+        "description": "Open the new expense flow"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the expense details"
+      },
+      {
+        "type": "action",
+        "description": "Submit the expense form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new expense appears in the list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a success confirmation is visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC014",
+    "title": "Delete a product from inventory",
+    "description": "Verifies a user can remove a product from inventory after confirming the deletion action.",
+    "category": "Inventory Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the inventory view"
+      },
+      {
+        "type": "action",
+        "description": "Click a product row"
+      },
+      {
+        "type": "action",
+        "description": "Open the product deletion action"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the deletion"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the product is removed from the list"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC015",
+    "title": "Filter sales orders by status",
+    "description": "Verifies that a sales user can filter orders by status and see the list update accordingly.",
+    "category": "Sales Orders",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the sales navigation item"
+      },
+      {
+        "type": "action",
+        "description": "Select a sales order status filter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the sales orders list reflects the selected status"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC016",
+    "title": "Open sales orders from the dashboard summary",
+    "description": "Verifies a user can move from the dashboard to the sales orders view using the dashboard summary navigation.",
+    "category": "Dashboard Overview",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the dashboard view"
+      },
+      {
+        "type": "action",
+        "description": "Click the recent sales summary link"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the sales orders view is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC017",
+    "title": "Open purchase orders from the dashboard summary",
+    "description": "Verifies a user can move from the dashboard to the purchase orders view using the dashboard summary navigation.",
+    "category": "Dashboard Overview",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the dashboard view"
+      },
+      {
+        "type": "action",
+        "description": "Click the recent purchases summary link"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the purchase orders view is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC018",
+    "title": "Open new sale drawer",
+    "description": "Verifies that a sales user can open the new sale flow from the sales orders page.",
+    "category": "Sales Orders",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the sales navigation item"
+      },
+      {
+        "type": "action",
+        "description": "Open the new sale flow"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new sale drawer is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC019",
+    "title": "Review the expenses list",
+    "description": "Verifies that an authenticated user can open the expenses module and review existing expense records.",
+    "category": "Expenses",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the expenses navigation entry"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the expenses list is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify existing expense records are visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC020",
+    "title": "Open purchase orders and create a new order",
+    "description": "Verifies a user can review the purchase orders list and open the drawer for a new purchase order without losing the list context.",
+    "category": "Purchases",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the purchase orders view"
+      },
+      {
+        "type": "action",
+        "description": "Open the new purchase order drawer"
+      },
+      {
+        "type": "action",
+        "description": "Close the drawer"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the purchase orders list remains visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC021",
+    "title": "Review purchase orders list",
+    "description": "Verifies that a purchasing user can open purchase orders and view the existing list of orders.",
+    "category": "Purchase Orders",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the purchases navigation item"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the purchase orders list is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify existing purchase orders are shown"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC022",
+    "title": "Save the company name",
+    "description": "Verifies that an authenticated user can edit the company name in settings and keep the updated value visible after saving.",
+    "category": "Settings",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the settings navigation entry"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the company name field with Pescadería Sapiens"
+      },
+      {
+        "type": "action",
+        "description": "Save the settings"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated company name is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the settings change is retained on the page"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC023",
+    "title": "Open sales orders and create a new order",
+    "description": "Verifies a user can review the sales orders list and open the drawer for a new sales order without losing the list context.",
+    "category": "Sales",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the sales orders view"
+      },
+      {
+        "type": "action",
+        "description": "Open the new sales order drawer"
+      },
+      {
+        "type": "action",
+        "description": "Close the drawer"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the sales orders list remains visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC024",
+    "title": "Open new purchase order drawer",
+    "description": "Verifies that a purchasing user can start creating a new purchase order from the purchase orders page.",
+    "category": "Purchase Orders",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the purchases navigation item"
+      },
+      {
+        "type": "action",
+        "description": "Open the new purchase order flow"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new purchase order drawer is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC025",
+    "title": "View accounts payable list",
+    "description": "Verifies that finance users can open accounts payable and review outstanding supplier obligations.",
+    "category": "Accounts Payable",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the accounts payable navigation item"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the accounts payable list is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify outstanding supplier obligations are shown"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC026",
+    "title": "Update brand colors",
+    "description": "Verifies that an authenticated user can change the accent and sidebar brand colors and see the interface branding update.",
+    "category": "Settings",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the settings navigation entry"
+      },
+      {
+        "type": "action",
+        "description": "Change the accent color"
+      },
+      {
+        "type": "action",
+        "description": "Change the sidebar color"
+      },
+      {
+        "type": "action",
+        "description": "Save the settings"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated brand colors are applied"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the branding preview reflects the changes"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC027",
+    "title": "Filter accounts payable by status or supplier",
+    "description": "Verifies that finance users can narrow the accounts payable list by status or supplier.",
+    "category": "Accounts Payable",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the accounts payable navigation item"
+      },
+      {
+        "type": "action",
+        "description": "Select an accounts payable filter by status or supplier"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the accounts payable list reflects the selected criteria"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC028",
+    "title": "Collapse and expand an inventory category group",
+    "description": "Verifies a user can collapse and expand a grouped inventory category while keeping the page usable.",
+    "category": "Inventory Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the inventory view"
+      },
+      {
+        "type": "action",
+        "description": "Click a category group header"
+      },
+      {
+        "type": "action",
+        "description": "Click the same category group header again"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the category group can be collapsed and expanded"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC029",
+    "title": "Export sales orders list",
+    "description": "Verifies that a sales user can export the current sales orders list from the sales page.",
+    "category": "Sales Orders",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the sales navigation item"
+      },
+      {
+        "type": "action",
+        "description": "Export the sales orders list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the sales export action completes successfully"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC030",
+    "title": "Page through inventory results",
+    "description": "Verifies a user can move between inventory pages and see the next set of products.",
+    "category": "Inventory Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the inventory view"
+      },
+      {
+        "type": "action",
+        "description": "Move to the next inventory page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a different page of products is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC031",
+    "title": "Reject invalid login credentials",
+    "description": "Verifies that entering incorrect credentials shows an invalid credentials message and does not authenticate the user.",
+    "category": "User Login",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with invalid@example.com"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with invalid-password"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an invalid credentials message is visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC032",
+    "title": "Validate required expense details",
+    "description": "Verifies that an authenticated user cannot submit a new expense with missing required information.",
+    "category": "Expenses",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the expenses navigation entry"
+      },
+      {
+        "type": "action",
+        "description": "Open the new expense flow"
+      },
+      {
+        "type": "action",
+        "description": "Submit the expense form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify expense validation errors are visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the expense is not added to the list"
+      }
+    ],
+    "priority": "Low"
+  }
+]

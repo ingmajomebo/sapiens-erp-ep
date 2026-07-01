@@ -1,0 +1,26 @@
+# PostgreSQL data (bind mount — do not commit)
+data/
+
+# Build artifacts
+backend/build/
+backend/.gradle/
+frontend/dist/
+frontend/node_modules/
+
+# Logs
+*.log
+/tmp/sapiens-*.log
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Environment
+.env
+.env.local
+
+# Claude Code local settings
+.claude/
+
+testsprite_tests/tmp/config.json
