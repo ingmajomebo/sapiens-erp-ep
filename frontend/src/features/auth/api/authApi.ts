@@ -1,8 +1,10 @@
 import axios from 'axios'
 
+const API_BASE = import.meta.env.VITE_API_URL ?? ''
+
 // Uses a plain axios instance (not the auth client) to avoid circular interception on login/refresh
 const authAxios = axios.create({
-  baseURL: '/api/v1',
+  baseURL: `${API_BASE}/api/v1`,
   headers: { 'Content-Type': 'application/json' },
 })
 
