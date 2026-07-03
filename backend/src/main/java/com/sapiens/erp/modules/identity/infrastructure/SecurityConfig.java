@@ -46,6 +46,8 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health").permitAll()
                         // Solo lectura de la imagen de producto: las etiquetas <img> no envían JWT
                         .requestMatchers(HttpMethod.GET, "/api/v1/products/*/image").permitAll()
+                        // Canal público de pedidos: acceso por token de enlace administrado por la empresa
+                        .requestMatchers("/api/v1/public/orders/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex

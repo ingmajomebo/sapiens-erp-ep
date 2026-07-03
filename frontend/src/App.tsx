@@ -9,6 +9,7 @@ import { Dashboard } from './features/dashboard/Dashboard'
 import { Inventory } from './features/inventory/Inventory'
 import { Purchases } from './features/purchases/Purchases'
 import { Sales } from './features/sales/Sales'
+import { PublicOrderPage } from './features/sales/PublicOrderPage'
 import { CashRegister } from './features/cash/CashRegister'
 import { AccountsPayablePage } from './features/finance/AccountsPayablePage'
 import { AccountsReceivable } from './features/finance/AccountsReceivable'
@@ -71,6 +72,16 @@ function App() {
       }
     })
   }, [brandColors])
+
+  // Canal público de pedidos: accesible sin autenticación en /pedido/{token}
+  const publicOrderMatch = window.location.pathname.match(/^\/pedido\/([A-Za-z0-9-]+)$/)
+  if (publicOrderMatch) {
+    return (
+      <div data-theme={theme}>
+        <PublicOrderPage token={publicOrderMatch[1]} />
+      </div>
+    )
+  }
 
   if (!accessToken) {
     return <LoginPage />
