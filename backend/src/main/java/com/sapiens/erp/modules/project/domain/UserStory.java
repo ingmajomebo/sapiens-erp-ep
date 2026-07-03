@@ -23,8 +23,13 @@ public class UserStory extends AuditableEntity {
     @Column(name = "req_id", nullable = false, unique = true, length = 20)
     private String reqId;
 
-    @Column(length = 100)
-    private String epic;
+    /** Nombre de épica heredado (texto libre, pre-V20). Se mantiene solo por compatibilidad. */
+    @Column(name = "epic", length = 100)
+    private String legacyEpicName;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "epic_id")
+    private Epic epic;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "story_type", nullable = false, length = 20)
@@ -64,7 +69,7 @@ public class UserStory extends AuditableEntity {
     @OrderBy("sortOrder ASC")
     private List<StoryScenario> scenarios = new ArrayList<>();
 
-    public static UserStory create(String reqId, String epic, StoryType storyType,
+    public static UserStory create(String reqId, Epic epic, StoryType storyType,
                                    String persona, String actionStatement, String outcomeStatement,
                                    String description, String module, TaskPriority priority,
                                    NfrCategory nfrCategory, String nfrCriterion) {
@@ -72,6 +77,7 @@ public class UserStory extends AuditableEntity {
         s.id = UUID.randomUUID();
         s.reqId = reqId;
         s.epic = epic;
+        s.legacyEpicName = epic != null ? epic.getName() : null;
         s.storyType = storyType != null ? storyType : StoryType.FUNCTIONAL;
         s.persona = persona;
         s.actionStatement = actionStatement;

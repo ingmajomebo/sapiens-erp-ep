@@ -25,4 +25,14 @@ public interface UserStoryRepository extends JpaRepository<UserStory, UUID> {
     Optional<UserStory> findByIdAndDeletedAtIsNull(UUID id);
 
     boolean existsByReqIdAndDeletedAtIsNull(String reqId);
+
+    List<UserStory> findByEpicIdAndDeletedAtIsNull(UUID epicId);
+
+    @Query("""
+        SELECT s.epic.id, COUNT(s), SUM(CASE WHEN s.status = :doneStatus THEN 1 ELSE 0 END)
+        FROM UserStory s
+        WHERE s.deletedAt IS NULL AND s.epic IS NOT NULL
+        GROUP BY s.epic.id
+        """)
+    List<Object[]> countStoriesByEpic(@Param("doneStatus") StoryStatus doneStatus);
 }

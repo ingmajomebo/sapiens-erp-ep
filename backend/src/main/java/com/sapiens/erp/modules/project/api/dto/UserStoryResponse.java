@@ -9,7 +9,9 @@ import java.util.UUID;
 public record UserStoryResponse(
         UUID id,
         String reqId,
-        String epic,
+        UUID epicId,
+        String epicCode,
+        String epicName,
         StoryType storyType,
         String persona,
         String actionStatement,
@@ -28,8 +30,13 @@ public record UserStoryResponse(
                 .filter(sc -> sc.getDeletedAt() == null)
                 .map(StoryScenarioResponse::from)
                 .toList();
+        Epic epic = s.getEpic();
         return new UserStoryResponse(
-                s.getId(), s.getReqId(), s.getEpic(), s.getStoryType(),
+                s.getId(), s.getReqId(),
+                epic != null ? epic.getId() : null,
+                epic != null ? epic.getCode() : null,
+                epic != null ? epic.getName() : null,
+                s.getStoryType(),
                 s.getPersona(), s.getActionStatement(), s.getOutcomeStatement(),
                 s.getDescription(), s.getModule(), s.getPriority(), s.getStatus(),
                 s.getNfrCategory(), s.getNfrCriterion(),

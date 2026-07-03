@@ -1,9 +1,46 @@
 import client from '../../../api/client'
 
+// ─── Epics ───────────────────────────────────────────────────────────────────
+
+export type EpicStatus = 'PLANNED' | 'IN_PROGRESS' | 'DONE' | 'ON_HOLD'
+
+export interface EpicDto {
+  id: string
+  code: string
+  name: string
+  objective: string | null
+  successCriteria: string | null
+  module: string | null
+  priority: TaskPriority
+  status: EpicStatus
+  totalStories: number
+  doneStories: number
+  createdAt: string
+}
+
+export interface EpicRequest {
+  code?: string
+  name: string
+  objective?: string
+  successCriteria?: string
+  module?: string
+  priority?: TaskPriority
+  status?: EpicStatus
+}
+
+export const epicsApi = {
+  listAll: () => client.get<EpicDto[]>('/epics').then(r => r.data),
+  create: (req: EpicRequest) => client.post<EpicDto>('/epics', req).then(r => r.data),
+  update: (id: string, req: EpicRequest) => client.put<EpicDto>(`/epics/${id}`, req).then(r => r.data),
+  updateStatus: (id: string, status: EpicStatus) =>
+    client.patch<EpicDto>(`/epics/${id}/status`, null, { params: { status } }).then(r => r.data),
+  delete: (id: string) => client.delete(`/epics/${id}`),
+}
+
 // ─── User Stories ────────────────────────────────────────────────────────────
 
 export type StoryType = 'FUNCTIONAL' | 'NON_FUNCTIONAL'
-export type StoryStatus = 'DEFINED' | 'IN_DEV' | 'REVIEW' | 'DONE' | 'BLOCKED'
+export type StoryStatus = 'DEFINED' | 'IN_DEV' | 'REVIEW' | 'READY_FOR_QA' | 'IN_QA' | 'QA_FAILED' | 'DONE' | 'BLOCKED'
 export type NfrCategory = 'DATA_INTEGRITY' | 'CONSISTENCY' | 'BUSINESS_RULES' | 'SECURITY' | 'PERFORMANCE' | 'USABILITY' | 'COMPLIANCE'
 export type ScenarioType = 'HAPPY_PATH' | 'NEGATIVE' | 'EDGE'
 
@@ -20,7 +57,9 @@ export interface StoryScenarioDto {
 export interface UserStoryDto {
   id: string
   reqId: string
-  epic: string | null
+  epicId: string | null
+  epicCode: string | null
+  epicName: string | null
   storyType: StoryType
   persona: string | null
   actionStatement: string | null
@@ -37,7 +76,7 @@ export interface UserStoryDto {
 
 export interface UserStoryRequest {
   reqId: string
-  epic?: string
+  epicId?: string | null
   storyType?: StoryType
   persona?: string
   actionStatement?: string
@@ -101,10 +140,43 @@ export const userStoriesApi = {
   deleteScenario: (scenarioId: string) => client.delete(`/user-stories/scenarios/${scenarioId}`),
 }
 
+// ─── QA: ejecuciones de prueba ────────────────────────────────────────────────
+
+export type TestResult = 'PASS' | 'FAIL' | 'BLOCKED' | 'SKIPPED'
+
+export interface TestExecutionDto {
+  id: string
+  scenarioId: string
+  scenarioTitle: string
+  result: TestResult
+  executedBy: TaskAssignee | null
+  notes: string | null
+  defectTaskId: string | null
+  defectTaskTitle: string | null
+  executedAt: string
+  storyStatusAfter: StoryStatus
+}
+
+export interface TestExecutionRequest {
+  result: TestResult
+  executedBy?: TaskAssignee
+  notes?: string
+  createDefect?: boolean
+  defectTitle?: string
+  defectAssignee?: TaskAssignee
+}
+
+export const qaApi = {
+  listExecutions: (storyId: string) =>
+    client.get<TestExecutionDto[]>(`/user-stories/${storyId}/test-executions`).then(r => r.data),
+  recordExecution: (storyId: string, scenarioId: string, req: TestExecutionRequest) =>
+    client.post<TestExecutionDto>(`/user-stories/${storyId}/scenarios/${scenarioId}/test-executions`, req).then(r => r.data),
+}
+
 // ─── Tasks / Sprints / Prompts ────────────────────────────────────────────────
 
 export type SprintStatus = 'PLANNING' | 'ACTIVE' | 'COMPLETED'
-export type TaskType = 'DEV' | 'QA' | 'PLANNING' | 'INFRA' | 'DESIGN'
+export type TaskType = 'DEV' | 'QA' | 'BUG' | 'PLANNING' | 'INFRA' | 'DESIGN'
 export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE'
 export type TaskAssignee = 'MANUEL' | 'ISKIAN'
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
@@ -133,6 +205,7 @@ export interface ProjectTaskDto {
   sprintName: string | null
   module: string | null
   linkedRequirementId: string | null
+  userStoryId: string | null
   estimatedHours: number | null
   actualHours: number | null
   notes: string | null
@@ -172,7 +245,7 @@ export interface ProjectTaskRequest {
   priority?: TaskPriority
   sprintId?: string | null
   module?: string
-  linkedRequirementId?: string
+  userStoryId?: string | null
   estimatedHours?: number
   notes?: string
 }

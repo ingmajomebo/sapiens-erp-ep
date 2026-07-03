@@ -51,6 +51,10 @@ public class ProjectTask extends AuditableEntity {
     @Column(name = "linked_requirement_id", length = 20)
     private String linkedRequirementId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_story_id")
+    private UserStory userStory;
+
     @Column(name = "estimated_hours")
     private Integer estimatedHours;
 
@@ -66,7 +70,7 @@ public class ProjectTask extends AuditableEntity {
     public static ProjectTask create(String title, String description, TaskType taskType,
                                      TaskAssignee assignee, TaskPriority priority,
                                      Sprint sprint, String module,
-                                     String linkedRequirementId, Integer estimatedHours,
+                                     UserStory userStory, Integer estimatedHours,
                                      String notes) {
         ProjectTask t = new ProjectTask();
         t.id = UUID.randomUUID();
@@ -78,7 +82,8 @@ public class ProjectTask extends AuditableEntity {
         t.status = TaskStatus.TODO;
         t.sprint = sprint;
         t.module = module;
-        t.linkedRequirementId = linkedRequirementId;
+        t.userStory = userStory;
+        t.linkedRequirementId = userStory != null ? userStory.getReqId() : null;
         t.estimatedHours = estimatedHours;
         t.notes = notes;
         return t;

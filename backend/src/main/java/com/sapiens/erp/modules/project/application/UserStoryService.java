@@ -18,6 +18,7 @@ public class UserStoryService {
 
     private final UserStoryRepository storyRepository;
     private final StoryScenarioRepository scenarioRepository;
+    private final EpicRepository epicRepository;
 
     @Transactional(readOnly = true)
     public List<UserStoryResponse> listFiltered(String storyTypeStr, String module, String statusStr) {
@@ -31,7 +32,7 @@ public class UserStoryService {
     @Transactional
     public UserStoryResponse create(UserStoryRequest req) {
         UserStory story = UserStory.create(
-                req.reqId(), req.epic(), req.storyType(),
+                req.reqId(), resolveEpic(req.epicId()), req.storyType(),
                 req.persona(), req.actionStatement(), req.outcomeStatement(),
                 req.description(), req.module(), req.priority(),
                 req.nfrCategory(), req.nfrCriterion()
@@ -45,7 +46,9 @@ public class UserStoryService {
         UserStory story = storyRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new IllegalArgumentException("Historia no encontrada: " + id));
         story.setReqId(req.reqId());
-        story.setEpic(req.epic());
+        Epic epic = resolveEpic(req.epicId());
+        story.setEpic(epic);
+        story.setLegacyEpicName(epic != null ? epic.getName() : null);
         story.setStoryType(req.storyType() != null ? req.storyType() : story.getStoryType());
         story.setPersona(req.persona());
         story.setActionStatement(req.actionStatement());
@@ -73,6 +76,12 @@ public class UserStoryService {
                 .orElseThrow(() -> new IllegalArgumentException("Historia no encontrada: " + id));
         story.softDelete();
         storyRepository.save(story);
+    }
+
+    private Epic resolveEpic(UUID epicId) {
+        if (epicId == null) return null;
+        return epicRepository.findByIdAndDeletedAtIsNull(epicId)
+                .orElseThrow(() -> new IllegalArgumentException("Épica no encontrada: " + epicId));
     }
 
     // ── Scenarios ────────────────────────────────────────────────────────────

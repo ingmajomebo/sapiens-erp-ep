@@ -15,7 +15,7 @@ public record ProjectTaskRequest(
         TaskPriority priority,
         UUID sprintId,
         String module,
-        String linkedRequirementId,
+        UUID userStoryId,
         Integer estimatedHours,
         String notes
 ) {}

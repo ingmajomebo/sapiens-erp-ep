@@ -1,0 +1,19 @@
+package com.sapiens.erp.modules.project.domain;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
+import java.util.UUID;
+
+public interface ScenarioTestExecutionRepository extends JpaRepository<ScenarioTestExecution, UUID> {
+
+    @Query("""
+        SELECT e FROM ScenarioTestExecution e
+        WHERE e.deletedAt IS NULL
+          AND e.userStory.id = :storyId
+        ORDER BY e.executedAt DESC
+        """)
+    List<ScenarioTestExecution> findByStoryId(@Param("storyId") UUID storyId);
+}

@@ -6,9 +6,11 @@ import com.sapiens.erp.modules.project.domain.StoryType;
 import com.sapiens.erp.modules.project.domain.TaskPriority;
 import jakarta.validation.constraints.NotBlank;
 
+import java.util.UUID;
+
 public record UserStoryRequest(
         @NotBlank String reqId,
-        String epic,
+        UUID epicId,
         StoryType storyType,
         String persona,
         String actionStatement,

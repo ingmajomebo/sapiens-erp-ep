@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  sprintsApi, projectTasksApi, promptPlansApi, userStoriesApi, aiApi,
+  sprintsApi, projectTasksApi, promptPlansApi, userStoriesApi, aiApi, epicsApi, qaApi,
   type SprintDto, type ProjectTaskDto, type PromptPlanDto,
   type TaskStatus, type TaskType, type TaskAssignee, type TaskPriority,
   type PromptCategory, type PromptStatus,
   type UserStoryDto, type StoryType, type StoryStatus, type NfrCategory,
   type ScenarioType, type UserStoryRequest, type StoryScenarioRequest,
+  type EpicDto, type EpicRequest, type EpicStatus,
+  type TestResult, type TestExecutionDto, type TestExecutionRequest,
   type AiChatMessage,
   type AiContextDto,
 } from './api/projectApi'
@@ -14,7 +16,7 @@ import { toast } from '../../shared/toast'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
-type Tab = 'dashboard' | 'board' | 'tasks' | 'prompts' | 'requirements' | 'config'
+type Tab = 'dashboard' | 'board' | 'tasks' | 'prompts' | 'requirements' | 'qa' | 'config'
 
 const MODULES = ['catalog', 'inventory', 'procurement', 'finance', 'identity', 'reports', 'project']
 const MODULE_LABELS: Record<string, string> = {
@@ -23,10 +25,10 @@ const MODULE_LABELS: Record<string, string> = {
 }
 
 const TASK_TYPE_LABELS: Record<TaskType, string> = {
-  DEV: 'Desarrollo', QA: 'QA', PLANNING: 'Planificación', INFRA: 'Infraestructura', DESIGN: 'Diseño',
+  DEV: 'Desarrollo', QA: 'QA', BUG: 'Bug', PLANNING: 'Planificación', INFRA: 'Infraestructura', DESIGN: 'Diseño',
 }
 const TASK_TYPE_COLORS: Record<TaskType, string> = {
-  DEV: '#6366f1', QA: '#10b981', PLANNING: '#f59e0b', INFRA: '#64748b', DESIGN: '#ec4899',
+  DEV: '#6366f1', QA: '#10b981', BUG: '#ef4444', PLANNING: '#f59e0b', INFRA: '#64748b', DESIGN: '#ec4899',
 }
 
 const STATUS_LABELS: Record<TaskStatus, string> = {
@@ -64,10 +66,28 @@ const PROMPT_STATUS_COLORS: Record<PromptStatus, string> = {
 }
 
 const STORY_STATUS_LABELS: Record<StoryStatus, string> = {
-  DEFINED: 'Definida', IN_DEV: 'En desarrollo', REVIEW: 'En revisión', DONE: 'Completada', BLOCKED: 'Bloqueada',
+  DEFINED: 'Definida', IN_DEV: 'En desarrollo', REVIEW: 'En revisión',
+  READY_FOR_QA: 'Lista para QA', IN_QA: 'En QA', QA_FAILED: 'QA fallido',
+  DONE: 'Completada', BLOCKED: 'Bloqueada',
 }
 const STORY_STATUS_COLORS: Record<StoryStatus, string> = {
-  DEFINED: '#64748b', IN_DEV: '#f59e0b', REVIEW: '#8b5cf6', DONE: '#10b981', BLOCKED: '#ef4444',
+  DEFINED: '#64748b', IN_DEV: '#f59e0b', REVIEW: '#8b5cf6',
+  READY_FOR_QA: '#06b6d4', IN_QA: '#0ea5e9', QA_FAILED: '#f43f5e',
+  DONE: '#10b981', BLOCKED: '#ef4444',
+}
+
+const EPIC_STATUS_LABELS: Record<EpicStatus, string> = {
+  PLANNED: 'Planificada', IN_PROGRESS: 'En progreso', DONE: 'Completada', ON_HOLD: 'En pausa',
+}
+const EPIC_STATUS_COLORS: Record<EpicStatus, string> = {
+  PLANNED: '#64748b', IN_PROGRESS: '#f59e0b', DONE: '#10b981', ON_HOLD: '#8b5cf6',
+}
+
+const TEST_RESULT_LABELS: Record<TestResult, string> = {
+  PASS: 'Aprobado', FAIL: 'Fallido', BLOCKED: 'Bloqueado', SKIPPED: 'Omitido',
+}
+const TEST_RESULT_COLORS: Record<TestResult, string> = {
+  PASS: '#10b981', FAIL: '#ef4444', BLOCKED: '#f59e0b', SKIPPED: '#94a3b8',
 }
 
 const NFR_CAT_LABELS: Record<NfrCategory, string> = {
@@ -138,13 +158,14 @@ function KpiCard({ label, value, color }: { label: string; value: number; color?
 // ─── Task Modal ──────────────────────────────────────────────────────────────
 
 function TaskModal({
-  task, sprints, onClose, onSave, prefill,
+  task, sprints, stories, onClose, onSave, prefill,
 }: {
   task: ProjectTaskDto | null
   sprints: SprintDto[]
+  stories: UserStoryDto[]
   onClose: () => void
   onSave: (data: Record<string, unknown>) => void
-  prefill?: { linkedReq: string; module: string; title?: string }
+  prefill?: { storyId?: string; module: string; title?: string }
 }) {
   const [title, setTitle] = useState(task?.title ?? prefill?.title ?? '')
   const [description, setDescription] = useState(task?.description ?? '')
@@ -153,7 +174,7 @@ function TaskModal({
   const [priority, setPriority] = useState<TaskPriority>(task?.priority ?? 'MEDIUM')
   const [sprintId, setSprintId] = useState(task?.sprintId ?? '')
   const [module, setModule] = useState(task?.module ?? prefill?.module ?? '')
-  const [linkedReq, setLinkedReq] = useState(task?.linkedRequirementId ?? prefill?.linkedReq ?? '')
+  const [userStoryId, setUserStoryId] = useState(task?.userStoryId ?? prefill?.storyId ?? '')
   const [estimatedHours, setEstimatedHours] = useState(task?.estimatedHours?.toString() ?? '')
   const [notes, setNotes] = useState(task?.notes ?? '')
 
@@ -165,7 +186,7 @@ function TaskModal({
       priority,
       sprintId: sprintId || null,
       module: module || null,
-      linkedRequirementId: linkedReq || null,
+      userStoryId: userStoryId || null,
       estimatedHours: estimatedHours ? parseInt(estimatedHours) : null,
       notes: notes || null,
     })
@@ -194,7 +215,7 @@ function TaskModal({
             <div>
               <label style={labelStyle}>Tipo</label>
               <select style={inputStyle} value={taskType} onChange={e => setTaskType(e.target.value as TaskType)}>
-                {(['DEV', 'QA', 'PLANNING', 'INFRA', 'DESIGN'] as TaskType[]).map(t => (
+                {(['DEV', 'QA', 'BUG', 'PLANNING', 'INFRA', 'DESIGN'] as TaskType[]).map(t => (
                   <option key={t} value={t}>{TASK_TYPE_LABELS[t]}</option>
                 ))}
               </select>
@@ -230,9 +251,15 @@ function TaskModal({
               </select>
             </div>
             <div>
-              <label style={labelStyle}>RF / CP vinculado</label>
-              <input style={inputStyle} placeholder="ej: RF-014" value={linkedReq}
-                onChange={e => setLinkedReq(e.target.value)} />
+              <label style={labelStyle}>Historia vinculada</label>
+              <select style={inputStyle} value={userStoryId} onChange={e => setUserStoryId(e.target.value)}>
+                <option value="">Sin historia</option>
+                {stories.map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.reqId} — {(s.actionStatement ?? s.description ?? '').slice(0, 50)}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label style={labelStyle}>Horas estimadas</label>
@@ -584,7 +611,7 @@ Módulo: ${moduleLabel}`)
       } else if (selectedStory.description) {
         storySection += selectedStory.description
       }
-      if (selectedStory.epic) storySection += `\nÉpica: ${selectedStory.epic}`
+      if (selectedStory.epicName) storySection += `\nÉpica: ${selectedStory.epicCode} — ${selectedStory.epicName}`
       parts.push(storySection)
     }
 
@@ -1419,7 +1446,7 @@ function TasksTab({
         </select>
         <select style={{ ...inputStyle, width: 150 }} value={filterType} onChange={e => setFilterType(e.target.value)}>
           <option value="">Todos los tipos</option>
-          {(['DEV', 'QA', 'PLANNING', 'INFRA', 'DESIGN'] as TaskType[]).map(t => (
+          {(['DEV', 'QA', 'BUG', 'PLANNING', 'INFRA', 'DESIGN'] as TaskType[]).map(t => (
             <option key={t} value={t}>{TASK_TYPE_LABELS[t]}</option>
           ))}
         </select>
@@ -1635,16 +1662,119 @@ function PromptsTab({
 
 // ─── User Story Modal ────────────────────────────────────────────────────────
 
+function EpicModal({
+  epic, onClose, onSave, isPending,
+}: {
+  epic: EpicDto | null
+  onClose: () => void
+  onSave: (d: EpicRequest) => void
+  isPending?: boolean
+}) {
+  const [code, setCode] = useState(epic?.code ?? '')
+  const [name, setName] = useState(epic?.name ?? '')
+  const [objective, setObjective] = useState(epic?.objective ?? '')
+  const [successCriteria, setSuccessCriteria] = useState(epic?.successCriteria ?? '')
+  const [module, setModule] = useState(epic?.module ?? '')
+  const [priority, setPriority] = useState<TaskPriority>(epic?.priority ?? 'MEDIUM')
+  const [status, setStatus] = useState<EpicStatus>(epic?.status ?? 'PLANNED')
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    onSave({
+      code: code.trim() || undefined,
+      name: name.trim(),
+      objective: objective || undefined,
+      successCriteria: successCriteria || undefined,
+      module: module || undefined,
+      priority,
+      status,
+    })
+  }
+
+  return (
+    <div style={overlayStyle} onClick={onClose}>
+      <div style={{ ...modalStyle, maxWidth: 580 }} onClick={e => e.stopPropagation()}>
+        <div style={modalHeaderStyle}>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
+            {epic ? 'Editar épica' : 'Nueva épica'}
+          </h3>
+          <button style={closeBtnStyle} onClick={onClose}>×</button>
+        </div>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 12 }}>
+            <div>
+              <label style={labelStyle}>Código</label>
+              <input style={inputStyle} placeholder="EP-01 (auto)" value={code}
+                onChange={e => setCode(e.target.value)} />
+            </div>
+            <div>
+              <label style={labelStyle}>Nombre *</label>
+              <input style={inputStyle} placeholder="Gestión de Proveedores" value={name}
+                onChange={e => setName(e.target.value)} required />
+            </div>
+          </div>
+          <div>
+            <label style={labelStyle}>Objetivo</label>
+            <textarea style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }}
+              placeholder="Qué valor de negocio entrega esta épica"
+              value={objective} onChange={e => setObjective(e.target.value)} />
+          </div>
+          <div>
+            <label style={labelStyle}>Criterios de éxito</label>
+            <textarea style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }}
+              placeholder="Condiciones medibles para considerar la épica completada"
+              value={successCriteria} onChange={e => setSuccessCriteria(e.target.value)} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={labelStyle}>Módulo</label>
+              <select style={inputStyle} value={module} onChange={e => setModule(e.target.value)}>
+                <option value="">Sin módulo</option>
+                {MODULES.map(m => <option key={m} value={m}>{MODULE_LABELS[m]}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>Prioridad</label>
+              <select style={inputStyle} value={priority} onChange={e => setPriority(e.target.value as TaskPriority)}>
+                {(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as TaskPriority[]).map(p => (
+                  <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>Estado</label>
+              <select style={inputStyle} value={status} onChange={e => setStatus(e.target.value as EpicStatus)}>
+                {(Object.keys(EPIC_STATUS_LABELS) as EpicStatus[]).map(s => (
+                  <option key={s} value={s}>{EPIC_STATUS_LABELS[s]}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button type="button" style={btnSecondaryStyle} onClick={onClose} disabled={isPending}>Cancelar</button>
+            <button type="submit" style={{ ...btnPrimaryStyle, opacity: isPending ? 0.7 : 1 }} disabled={isPending}>
+              {isPending ? 'Guardando...' : epic ? 'Guardar cambios' : 'Crear épica'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ─── User Story Modal ─────────────────────────────────────────────────────────
+
 function UserStoryModal({
-  story, onClose, onSave, isPending,
+  story, epics, onClose, onSave, isPending,
 }: {
   story: UserStoryDto | null
+  epics: EpicDto[]
   onClose: () => void
   onSave: (d: UserStoryRequest) => void
   isPending?: boolean
 }) {
   const [reqId, setReqId] = useState(story?.reqId ?? '')
-  const [epic, setEpic] = useState(story?.epic ?? '')
+  const [epicId, setEpicId] = useState(story?.epicId ?? '')
   const [storyType, setStoryType] = useState<StoryType>(story?.storyType ?? 'FUNCTIONAL')
   const [persona, setPersona] = useState(story?.persona ?? '')
   const [action, setAction] = useState(story?.actionStatement ?? '')
@@ -1659,7 +1789,7 @@ function UserStoryModal({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     onSave({
-      reqId, epic: epic || undefined, storyType,
+      reqId, epicId: epicId || null, storyType,
       persona: persona || undefined,
       actionStatement: action || undefined,
       outcomeStatement: outcome || undefined,
@@ -1698,9 +1828,11 @@ function UserStoryModal({
               </select>
             </div>
             <div>
-              <label style={labelStyle}>Épica / Agrupación</label>
-              <input style={inputStyle} placeholder="Gestión de Proveedores" value={epic}
-                onChange={e => setEpic(e.target.value)} />
+              <label style={labelStyle}>Épica</label>
+              <select style={inputStyle} value={epicId} onChange={e => setEpicId(e.target.value)}>
+                <option value="">Sin épica</option>
+                {epics.map(ep => <option key={ep.id} value={ep.id}>{ep.code} — {ep.name}</option>)}
+              </select>
             </div>
             <div>
               <label style={labelStyle}>Módulo</label>
@@ -1878,7 +2010,17 @@ function StoryDetailModal({
   onCreateTask: () => void
 }) {
   const isNfr = story.storyType === 'NON_FUNCTIONAL'
-  const linkedTasks = tasks.filter(t => t.linkedRequirementId === story.reqId)
+  const linkedTasks = tasks.filter(t => t.userStoryId === story.id || t.linkedRequirementId === story.reqId)
+
+  const { data: executions = [] } = useQuery({
+    queryKey: ['test-executions', story.id],
+    queryFn: () => qaApi.listExecutions(story.id),
+    enabled: !isNfr,
+  })
+  const latestByScenario = new Map<string, TestExecutionDto>()
+  for (const ex of executions) {
+    if (!latestByScenario.has(ex.scenarioId)) latestByScenario.set(ex.scenarioId, ex)
+  }
 
   return (
     <div style={overlayStyle} onClick={onClose}>
@@ -1889,7 +2031,11 @@ function StoryDetailModal({
               <span style={{ fontSize: 13, fontWeight: 700, color: '#6366f1', background: '#eef2ff', padding: '2px 8px', borderRadius: 20 }}>
                 {story.reqId}
               </span>
-              {story.epic && <span style={{ fontSize: 12, color: 'var(--muted)' }}>{story.epic}</span>}
+              {story.epicName && (
+                <span style={{ fontSize: 12, color: 'var(--muted)' }}>
+                  {story.epicCode} · {story.epicName}
+                </span>
+              )}
             </div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               <Badge label={isNfr ? 'No Funcional' : 'Funcional'} color={isNfr ? '#8b5cf6' : '#6366f1'} />
@@ -1974,9 +2120,15 @@ function StoryDetailModal({
               {story.scenarios.map(sc => (
                 <div key={sc.id} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px', marginBottom: 10, background: 'var(--bg)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                       <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>{sc.scenarioTitle}</span>
                       <Badge label={SCENARIO_TYPE_LABELS[sc.scenarioType]} color={SCENARIO_TYPE_COLORS[sc.scenarioType]} />
+                      {latestByScenario.has(sc.id) && (
+                        <Badge
+                          label={`QA: ${TEST_RESULT_LABELS[latestByScenario.get(sc.id)!.result]}`}
+                          color={TEST_RESULT_COLORS[latestByScenario.get(sc.id)!.result]}
+                        />
+                      )}
                     </div>
                     <div style={{ display: 'flex', gap: 4 }}>
                       <button type="button" style={iconBtnStyle} onClick={() => onEditScenario(sc)}>✏️</button>
@@ -1990,6 +2142,38 @@ function StoryDetailModal({
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Historial de QA */}
+          {!isNfr && executions.length > 0 && (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+                Historial de pruebas QA ({executions.length})
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 220, overflowY: 'auto' }}>
+                {executions.map(ex => (
+                  <div key={ex.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between',
+                    background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 12px',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                      <Badge label={TEST_RESULT_LABELS[ex.result]} color={TEST_RESULT_COLORS[ex.result]} />
+                      <span style={{ fontSize: 12.5, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {ex.scenarioTitle}
+                      </span>
+                      {ex.notes && <span style={{ fontSize: 11.5, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>— {ex.notes}</span>}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                      {ex.defectTaskTitle && <Badge label="🐞 BUG creado" color="#ef4444" />}
+                      <Avatar assignee={ex.executedBy} />
+                      <span style={{ fontSize: 11, color: 'var(--muted)' }}>
+                        {new Date(ex.executedAt).toLocaleDateString('es', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -2064,6 +2248,16 @@ function StoryDetailModal({
                   onClick={() => onStatusChange('REVIEW')}
                 >
                   Poner en revisión
+                </button>
+              )}
+              {!isNfr && (story.status === 'IN_DEV' || story.status === 'REVIEW' || story.status === 'QA_FAILED') && (
+                <button
+                  type="button"
+                  style={{ ...btnSecondaryStyle, color: '#06b6d4', borderColor: '#06b6d4', opacity: isUpdating ? 0.7 : 1 }}
+                  disabled={isUpdating}
+                  onClick={() => onStatusChange('READY_FOR_QA')}
+                >
+                  🧪 Enviar a QA
                 </button>
               )}
             </div>
@@ -2201,11 +2395,13 @@ function AiChatModal({ onClose, onUseAsPrompt }: {
 // ─── Requirements Tab ─────────────────────────────────────────────────────────
 
 function RequirementsTab({
-  stories, tasks, onCreateStory, onEditStory, onStatusChange, onDeleteStory,
+  stories, tasks, epics, onCreateStory, onEditStory, onStatusChange, onDeleteStory,
   onAddScenario, onEditScenario, onDeleteScenario, isUpdatingStatus, onCreateTask,
+  onCreateEpic, onEditEpic, onDeleteEpic,
 }: {
   stories: UserStoryDto[]
   tasks: ProjectTaskDto[]
+  epics: EpicDto[]
   onCreateStory: () => void
   onEditStory: (s: UserStoryDto) => void
   onStatusChange: (id: string, status: StoryStatus) => void
@@ -2215,6 +2411,9 @@ function RequirementsTab({
   onDeleteScenario: (storyId: string, scenarioId: string) => void
   isUpdatingStatus?: boolean
   onCreateTask: (s: UserStoryDto) => void
+  onCreateEpic: () => void
+  onEditEpic: (e: EpicDto) => void
+  onDeleteEpic: (id: string) => void
 }) {
   const [filterType, setFilterType] = useState<string>('')
   const [filterModule, setFilterModule] = useState('')
@@ -2230,13 +2429,14 @@ function RequirementsTab({
   const functional = filtered.filter(s => s.storyType === 'FUNCTIONAL')
   const nfr = filtered.filter(s => s.storyType === 'NON_FUNCTIONAL')
 
-  // Group functional stories by epic
-  const byEpic = functional.reduce<Record<string, UserStoryDto[]>>((acc, s) => {
-    const key = s.epic ?? 'Sin épica'
+  // Historias funcionales agrupadas por épica (entidad)
+  const byEpicId = functional.reduce<Record<string, UserStoryDto[]>>((acc, s) => {
+    const key = s.epicId ?? '__none__'
     if (!acc[key]) acc[key] = []
     acc[key].push(s)
     return acc
   }, {})
+  const orphanStories = byEpicId['__none__'] ?? []
 
   const hasFilters = filterType || filterModule || filterStatus
 
@@ -2259,6 +2459,7 @@ function RequirementsTab({
 
       {/* Controls */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, alignItems: 'center', flexWrap: 'wrap' }}>
+        <button style={{ ...btnPrimaryStyle, background: '#6366f1' }} onClick={onCreateEpic}>+ Nueva épica</button>
         <button style={btnPrimaryStyle} onClick={onCreateStory}>+ Nueva historia</button>
         <select style={{ ...inputStyle, width: 180 }} value={filterType} onChange={e => setFilterType(e.target.value)}>
           <option value="">Todos los tipos</option>
@@ -2286,8 +2487,8 @@ function RequirementsTab({
       </div>
 
       {/* KPI strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 24 }}>
-        {(['DEFINED', 'IN_DEV', 'REVIEW', 'DONE', 'BLOCKED'] as StoryStatus[]).map(s => (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 10, marginBottom: 24 }}>
+        {(['DEFINED', 'IN_DEV', 'REVIEW', 'READY_FOR_QA', 'IN_QA', 'QA_FAILED', 'DONE', 'BLOCKED'] as StoryStatus[]).map(s => (
           <div key={s} style={{
             background: 'var(--surface)', border: `1px solid ${STORY_STATUS_COLORS[s]}33`,
             borderRadius: 10, padding: '12px 14px', textAlign: 'center',
@@ -2303,17 +2504,59 @@ function RequirementsTab({
       </div>
 
       {/* Functional stories grouped by epic */}
-      {(filterType === '' || filterType === 'FUNCTIONAL') && functional.length > 0 && (
+      {(filterType === '' || filterType === 'FUNCTIONAL') && (epics.length > 0 || functional.length > 0) && (
         <div style={{ marginBottom: 28 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ width: 4, height: 16, background: '#6366f1', borderRadius: 2, display: 'inline-block' }} />
-            Historias de Usuario — Requisitos Funcionales
+            Épicas e Historias de Usuario — Requisitos Funcionales
           </div>
-          {Object.entries(byEpic).sort(([a], [b]) => a.localeCompare(b)).map(([epic, epicStories]) => (
-            <div key={epic} style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, paddingLeft: 2 }}>
-                {epic}
-              </div>
+          {[...epics.map(ep => ({ epic: ep as EpicDto | null, stories: byEpicId[ep.id] ?? [] })),
+            ...(orphanStories.length > 0 ? [{ epic: null as EpicDto | null, stories: orphanStories }] : [])]
+            .filter(g => g.epic !== null || g.stories.length > 0)
+            .filter(g => !hasFilters || g.stories.length > 0)
+            .map(({ epic, stories: epicStories }) => (
+            <div key={epic?.id ?? '__none__'} style={{ marginBottom: 20 }}>
+              {epic ? (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+                  background: 'var(--surface)', border: '1px solid var(--border)',
+                  borderLeft: `4px solid ${EPIC_STATUS_COLORS[epic.status]}`,
+                  borderRadius: 10, padding: '12px 16px', marginBottom: 10,
+                }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#6366f1', background: '#eef2ff', padding: '2px 8px', borderRadius: 20 }}>{epic.code}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{epic.name}</span>
+                  <Badge label={EPIC_STATUS_LABELS[epic.status]} color={EPIC_STATUS_COLORS[epic.status]} />
+                  <Badge label={PRIORITY_LABELS[epic.priority]} color={PRIORITY_COLORS[epic.priority]} />
+                  {epic.module && <Badge label={MODULE_LABELS[epic.module] ?? epic.module} color="#64748b" />}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+                    <div style={{ width: 120, height: 6, background: 'var(--border)', borderRadius: 4, overflow: 'hidden' }}>
+                      <div style={{
+                        width: `${epic.totalStories > 0 ? Math.round((epic.doneStories / epic.totalStories) * 100) : 0}%`,
+                        height: '100%', background: '#10b981', transition: 'width 0.3s',
+                      }} />
+                    </div>
+                    <span style={{ fontSize: 11.5, color: 'var(--muted)', whiteSpace: 'nowrap' }}>
+                      {epic.doneStories}/{epic.totalStories} historias
+                    </span>
+                    <button style={iconBtnStyle} title="Editar épica" onClick={() => onEditEpic(epic)}>✏️</button>
+                    <button style={iconBtnStyle} title="Eliminar épica" onClick={() => onDeleteEpic(epic.id)}>🗑️</button>
+                  </div>
+                  {epic.objective && (
+                    <div style={{ width: '100%', fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.5 }}>
+                      🎯 {epic.objective}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, paddingLeft: 2 }}>
+                  Sin épica
+                </div>
+              )}
+              {epic && epicStories.length === 0 && (
+                <div style={{ border: '2px dashed var(--border)', borderRadius: 8, padding: '12px', textAlign: 'center', color: 'var(--muted)', fontSize: 12.5 }}>
+                  Sin historias en esta épica todavía
+                </div>
+              )}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
                 {epicStories.map(s => (
                   <div key={s.id}
@@ -2421,6 +2664,244 @@ function RequirementsTab({
           <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>Sin requisitos</div>
           <div style={{ fontSize: 13 }}>Crea el primero con el botón "+ Nueva historia"</div>
         </div>
+      )}
+    </div>
+  )
+}
+
+// ─── QA Tab ───────────────────────────────────────────────────────────────────
+
+function QaScenarioRow({ story, scenario, latest, onRecord, isPending }: {
+  story: UserStoryDto
+  scenario: UserStoryDto['scenarios'][0]
+  latest: TestExecutionDto | undefined
+  onRecord: (scenarioId: string, req: TestExecutionRequest) => void
+  isPending: boolean
+}) {
+  const [notes, setNotes] = useState('')
+  const [createDefect, setCreateDefect] = useState(true)
+
+  function record(result: TestResult) {
+    onRecord(scenario.id, {
+      result,
+      executedBy: 'ISKIAN',
+      notes: notes || undefined,
+      createDefect: result === 'FAIL' ? createDefect : false,
+      defectTitle: result === 'FAIL' && createDefect
+        ? `BUG ${story.reqId} — ${scenario.scenarioTitle}`
+        : undefined,
+      defectAssignee: result === 'FAIL' && createDefect ? 'MANUEL' : undefined,
+    })
+    setNotes('')
+  }
+
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', background: 'var(--bg)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>{scenario.scenarioTitle}</span>
+          <Badge label={SCENARIO_TYPE_LABELS[scenario.scenarioType]} color={SCENARIO_TYPE_COLORS[scenario.scenarioType]} />
+          {latest
+            ? <Badge label={`Último: ${TEST_RESULT_LABELS[latest.result]}`} color={TEST_RESULT_COLORS[latest.result]} />
+            : <Badge label="Sin ejecutar" color="#94a3b8" />}
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 12.5, color: 'var(--text)', lineHeight: 1.6, marginBottom: 10 }}>
+        <div><span style={{ fontWeight: 700, color: '#6366f1' }}>Dado que</span> {scenario.givenConditions}</div>
+        <div><span style={{ fontWeight: 700, color: '#f59e0b' }}>Cuando</span> {scenario.whenEvent}</div>
+        <div><span style={{ fontWeight: 700, color: '#10b981' }}>Entonces</span> {scenario.thenOutcome}</div>
+      </div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <input
+          style={{ ...inputStyle, flex: 1, minWidth: 180 }}
+          placeholder="Notas / evidencia de la ejecución"
+          value={notes}
+          onChange={e => setNotes(e.target.value)}
+        />
+        <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11.5, color: 'var(--muted)', whiteSpace: 'nowrap', cursor: 'pointer' }}>
+          <input type="checkbox" checked={createDefect} onChange={e => setCreateDefect(e.target.checked)} />
+          Crear BUG si falla
+        </label>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button disabled={isPending} onClick={() => record('PASS')}
+            style={{ ...btnSecondaryStyle, padding: '6px 12px', fontSize: 12, color: '#10b981', borderColor: '#10b981', opacity: isPending ? 0.6 : 1 }}>
+            ✓ Pasa
+          </button>
+          <button disabled={isPending} onClick={() => record('FAIL')}
+            style={{ ...btnSecondaryStyle, padding: '6px 12px', fontSize: 12, color: '#ef4444', borderColor: '#ef4444', opacity: isPending ? 0.6 : 1 }}>
+            ✗ Falla
+          </button>
+          <button disabled={isPending} onClick={() => record('BLOCKED')}
+            style={{ ...btnSecondaryStyle, padding: '6px 12px', fontSize: 12, color: '#f59e0b', borderColor: '#f59e0b', opacity: isPending ? 0.6 : 1 }}>
+            ⊘ Bloqueado
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function QaStoryPanel({ story }: { story: UserStoryDto }) {
+  const qc = useQueryClient()
+  const { data: executions = [] } = useQuery({
+    queryKey: ['test-executions', story.id],
+    queryFn: () => qaApi.listExecutions(story.id),
+  })
+  const latestByScenario = new Map<string, TestExecutionDto>()
+  for (const ex of executions) {
+    if (!latestByScenario.has(ex.scenarioId)) latestByScenario.set(ex.scenarioId, ex)
+  }
+
+  const recordMut = useMutation({
+    mutationFn: ({ scenarioId, req }: { scenarioId: string; req: TestExecutionRequest }) =>
+      qaApi.recordExecution(story.id, scenarioId, req),
+    onSuccess: res => {
+      qc.invalidateQueries({ queryKey: ['test-executions', story.id] })
+      qc.invalidateQueries({ queryKey: ['user-stories'] })
+      qc.invalidateQueries({ queryKey: ['project-tasks'] })
+      const statusLabel = STORY_STATUS_LABELS[res.storyStatusAfter]
+      toast({
+        type: res.result === 'PASS' ? 'success' : 'info',
+        message: `Resultado registrado: ${TEST_RESULT_LABELS[res.result]} · Historia → ${statusLabel}${res.defectTaskId ? ' · BUG creado' : ''}`,
+      })
+    },
+    onError: () => toast({ type: 'error', message: 'Error al registrar la ejecución' }),
+  })
+
+  const passed = story.scenarios.filter(sc => latestByScenario.get(sc.id)?.result === 'PASS').length
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 12 }}>
+      {story.scenarios.length === 0 ? (
+        <div style={{ border: '2px dashed var(--border)', borderRadius: 8, padding: '16px', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
+          Esta historia no tiene criterios de aceptación (escenarios Gherkin).
+          Agrégalos en la pestaña Requisitos antes de probar.
+        </div>
+      ) : (
+        <>
+          <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>
+            Criterios de aceptación: {passed}/{story.scenarios.length} aprobados
+          </div>
+          {story.scenarios.map(sc => (
+            <QaScenarioRow
+              key={sc.id}
+              story={story}
+              scenario={sc}
+              latest={latestByScenario.get(sc.id)}
+              onRecord={(scenarioId, req) => recordMut.mutate({ scenarioId, req })}
+              isPending={recordMut.isPending}
+            />
+          ))}
+        </>
+      )}
+    </div>
+  )
+}
+
+function QaTab({ stories, onSendToQa, isUpdating }: {
+  stories: UserStoryDto[]
+  onSendToQa: (id: string) => void
+  isUpdating?: boolean
+}) {
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+
+  const functional = stories.filter(s => s.storyType === 'FUNCTIONAL')
+  const inQaCycle = functional.filter(s => ['READY_FOR_QA', 'IN_QA', 'QA_FAILED'].includes(s.status))
+  const pendingDev = functional.filter(s => ['IN_DEV', 'REVIEW'].includes(s.status))
+  const doneCount = functional.filter(s => s.status === 'DONE').length
+
+  return (
+    <div>
+      {/* KPI strip */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 24 }}>
+        {([['READY_FOR_QA', 'Listas para QA'], ['IN_QA', 'En QA'], ['QA_FAILED', 'QA fallido']] as [StoryStatus, string][]).map(([st, label]) => (
+          <div key={st} style={{
+            background: 'var(--surface)', border: `1px solid ${STORY_STATUS_COLORS[st]}33`,
+            borderRadius: 10, padding: '12px 14px', textAlign: 'center',
+          }}>
+            <div style={{ fontSize: 22, fontWeight: 800, color: STORY_STATUS_COLORS[st] }}>
+              {functional.filter(s => s.status === st).length}
+            </div>
+            <div style={{ fontSize: 11, color: STORY_STATUS_COLORS[st], fontWeight: 600, marginTop: 2 }}>{label}</div>
+          </div>
+        ))}
+        <div style={{
+          background: 'var(--surface)', border: '1px solid #10b98133',
+          borderRadius: 10, padding: '12px 14px', textAlign: 'center',
+        }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#10b981' }}>{doneCount}</div>
+          <div style={{ fontSize: 11, color: '#10b981', fontWeight: 600, marginTop: 2 }}>Completadas</div>
+        </div>
+      </div>
+
+      {/* Ciclo de QA */}
+      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ width: 4, height: 16, background: '#06b6d4', borderRadius: 2, display: 'inline-block' }} />
+        Historias en ciclo de QA
+      </div>
+      {inQaCycle.length === 0 && (
+        <div style={{ border: '2px dashed var(--border)', borderRadius: 10, padding: '28px', textAlign: 'center', color: 'var(--muted)', fontSize: 13, marginBottom: 28 }}>
+          🧪 No hay historias en QA. Envía una historia a QA desde Requisitos o desde la lista de abajo.
+        </div>
+      )}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 32 }}>
+        {inQaCycle.map(s => (
+          <div key={s.id} style={{
+            background: 'var(--surface)', border: '1px solid var(--border)',
+            borderLeft: `4px solid ${STORY_STATUS_COLORS[s.status]}`,
+            borderRadius: 12, padding: '14px 18px',
+          }}>
+            <div
+              style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', flexWrap: 'wrap' }}
+              onClick={() => setExpandedId(expandedId === s.id ? null : s.id)}
+            >
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#6366f1', background: '#eef2ff', padding: '2px 8px', borderRadius: 20 }}>{s.reqId}</span>
+              <Badge label={STORY_STATUS_LABELS[s.status]} color={STORY_STATUS_COLORS[s.status]} />
+              {s.epicCode && <span style={{ fontSize: 11.5, color: 'var(--muted)' }}>{s.epicCode}</span>}
+              <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)', flex: 1, minWidth: 200 }}>
+                {s.actionStatement ?? s.description ?? s.reqId}
+              </span>
+              <span style={{ fontSize: 11.5, color: 'var(--muted)' }}>
+                {s.scenarios.length} escenario{s.scenarios.length !== 1 ? 's' : ''}
+              </span>
+              <span style={{ fontSize: 13, color: 'var(--muted)' }}>{expandedId === s.id ? '▲' : '▼'}</span>
+            </div>
+            {expandedId === s.id && <QaStoryPanel story={s} />}
+          </div>
+        ))}
+      </div>
+
+      {/* Pendientes de enviar a QA */}
+      {pendingDev.length > 0 && (
+        <>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ width: 4, height: 16, background: '#f59e0b', borderRadius: 2, display: 'inline-block' }} />
+            En desarrollo / revisión — aún no enviadas a QA
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {pendingDev.map(s => (
+              <div key={s.id} style={{
+                display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'space-between',
+                background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 16px', flexWrap: 'wrap',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#6366f1', background: '#eef2ff', padding: '2px 8px', borderRadius: 20 }}>{s.reqId}</span>
+                  <Badge label={STORY_STATUS_LABELS[s.status]} color={STORY_STATUS_COLORS[s.status]} />
+                  <span style={{ fontSize: 13, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {s.actionStatement ?? s.description ?? ''}
+                  </span>
+                </div>
+                <button
+                  style={{ ...btnSecondaryStyle, color: '#06b6d4', borderColor: '#06b6d4', padding: '6px 12px', fontSize: 12, opacity: isUpdating ? 0.6 : 1 }}
+                  disabled={isUpdating}
+                  onClick={() => onSendToQa(s.id)}
+                >
+                  🧪 Enviar a QA
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   )
@@ -2609,7 +3090,8 @@ export function ProjectPage() {
   const qc = useQueryClient()
   const [tab, setTab] = useState<Tab>('dashboard')
   const [showSprintModal, setShowSprintModal] = useState(false)
-  const [taskModal, setTaskModal] = useState<{ open: boolean; task: ProjectTaskDto | null; prefill?: { linkedReq: string; module: string; title?: string } }>({ open: false, task: null })
+  const [taskModal, setTaskModal] = useState<{ open: boolean; task: ProjectTaskDto | null; prefill?: { storyId?: string; module: string; title?: string } }>({ open: false, task: null })
+  const [epicModal, setEpicModal] = useState<{ open: boolean; epic: EpicDto | null }>({ open: false, epic: null })
   const [taskDetail, setTaskDetail] = useState<ProjectTaskDto | null>(null)
   const [promptModal, setPromptModal] = useState<{ open: boolean; prompt: PromptPlanDto | null; prefill?: { linkedTaskId: string }; prefillTask?: ProjectTaskDto; prefillStory?: UserStoryDto }>({ open: false, prompt: null })
   const [storyModal, setStoryModal] = useState<{ open: boolean; story: UserStoryDto | null }>({ open: false, story: null })
@@ -2620,6 +3102,32 @@ export function ProjectPage() {
   const { data: tasks = [] } = useQuery({ queryKey: ['project-tasks'], queryFn: () => projectTasksApi.listFiltered() })
   const { data: prompts = [] } = useQuery({ queryKey: ['prompt-plans'], queryFn: promptPlansApi.listAll })
   const { data: stories = [] } = useQuery({ queryKey: ['user-stories'], queryFn: () => userStoriesApi.listFiltered() })
+  const { data: epics = [] } = useQuery({ queryKey: ['epics'], queryFn: epicsApi.listAll })
+
+  const createEpicMut = useMutation({
+    mutationFn: (d: EpicRequest) => epicsApi.create(d),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['epics'] }); setEpicModal({ open: false, epic: null }); toast({ type: 'success', message: 'Épica creada' }) },
+    onError: () => toast({ type: 'error', message: 'Error al crear épica' }),
+  })
+  const updateEpicMut = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: EpicRequest }) => epicsApi.update(id, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['epics'] })
+      qc.invalidateQueries({ queryKey: ['user-stories'] })
+      setEpicModal({ open: false, epic: null })
+      toast({ type: 'success', message: 'Épica actualizada' })
+    },
+    onError: () => toast({ type: 'error', message: 'Error al actualizar épica' }),
+  })
+  const deleteEpicMut = useMutation({
+    mutationFn: (id: string) => epicsApi.delete(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['epics'] })
+      qc.invalidateQueries({ queryKey: ['user-stories'] })
+      toast({ type: 'success', message: 'Épica eliminada (las historias quedan sin épica)' })
+    },
+    onError: () => toast({ type: 'error', message: 'Error al eliminar épica' }),
+  })
 
   const createSprintMut = useMutation({
     mutationFn: (d: Record<string, unknown>) => sprintsApi.create(d as never),
@@ -2729,6 +3237,14 @@ export function ProjectPage() {
     }
   }
 
+  function handleEpicSave(data: EpicRequest) {
+    if (epicModal.epic) {
+      updateEpicMut.mutate({ id: epicModal.epic.id, data })
+    } else {
+      createEpicMut.mutate(data)
+    }
+  }
+
   function handleTaskSave(data: Record<string, unknown>) {
     if (taskModal.task) {
       updateTaskMut.mutate({ id: taskModal.task.id, data })
@@ -2750,6 +3266,7 @@ export function ProjectPage() {
     { key: 'board', label: 'Tablero', icon: '🗂️' },
     { key: 'tasks', label: 'Tareas', icon: '✅' },
     { key: 'requirements', label: 'Requisitos', icon: '📋' },
+    { key: 'qa', label: 'QA', icon: '🧪' },
     { key: 'prompts', label: 'Prompts', icon: '💬' },
     { key: 'config', label: 'Configuración IA', icon: '⚙️' },
   ]
@@ -2766,9 +3283,18 @@ export function ProjectPage() {
         <TaskModal
           task={taskModal.task}
           sprints={sprints}
+          stories={stories}
           prefill={taskModal.prefill}
           onClose={() => setTaskModal({ open: false, task: null })}
           onSave={handleTaskSave}
+        />
+      )}
+      {epicModal.open && (
+        <EpicModal
+          epic={epicModal.epic}
+          onClose={() => setEpicModal({ open: false, epic: null })}
+          onSave={handleEpicSave}
+          isPending={createEpicMut.isPending || updateEpicMut.isPending}
         />
       )}
       {taskDetail && (
@@ -2789,6 +3315,7 @@ export function ProjectPage() {
       {storyModal.open && (
         <UserStoryModal
           story={storyModal.story}
+          epics={epics}
           onClose={() => setStoryModal({ open: false, story: null })}
           onSave={handleStorySave}
           isPending={createStoryMut.isPending || updateStoryMut.isPending}
@@ -2903,6 +3430,7 @@ export function ProjectPage() {
         <RequirementsTab
           stories={stories}
           tasks={tasks}
+          epics={epics}
           isUpdatingStatus={storyStatusMut.isPending}
           onCreateStory={() => setStoryModal({ open: true, story: null })}
           onEditStory={s => setStoryModal({ open: true, story: s })}
@@ -2913,8 +3441,18 @@ export function ProjectPage() {
           onDeleteScenario={(_storyId, scenarioId) => deleteScenarioMut.mutate(scenarioId)}
           onCreateTask={s => setTaskModal({
             open: true, task: null,
-            prefill: { linkedReq: s.reqId, module: s.module ?? '', title: `[${s.reqId}] Implementar` },
+            prefill: { storyId: s.id, module: s.module ?? '', title: `[${s.reqId}] Implementar` },
           })}
+          onCreateEpic={() => setEpicModal({ open: true, epic: null })}
+          onEditEpic={e => setEpicModal({ open: true, epic: e })}
+          onDeleteEpic={id => deleteEpicMut.mutate(id)}
+        />
+      )}
+      {tab === 'qa' && (
+        <QaTab
+          stories={stories}
+          isUpdating={storyStatusMut.isPending}
+          onSendToQa={id => storyStatusMut.mutate({ id, status: 'READY_FOR_QA' })}
         />
       )}
       {tab === 'config' && <ConfigTab />}

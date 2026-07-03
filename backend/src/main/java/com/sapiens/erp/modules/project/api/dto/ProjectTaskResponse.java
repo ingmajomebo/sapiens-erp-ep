@@ -17,6 +17,7 @@ public record ProjectTaskResponse(
         String sprintName,
         String module,
         String linkedRequirementId,
+        UUID userStoryId,
         Integer estimatedHours,
         Integer actualHours,
         String notes,
@@ -31,6 +32,7 @@ public record ProjectTaskResponse(
                 t.getSprint() != null ? t.getSprint().getId() : null,
                 t.getSprint() != null ? t.getSprint().getName() : null,
                 t.getModule(), t.getLinkedRequirementId(),
+                t.getUserStory() != null ? t.getUserStory().getId() : null,
                 t.getEstimatedHours(), t.getActualHours(),
                 t.getNotes(), t.getCompletedAt(),
                 t.getCreatedAt(), t.getUpdatedAt()

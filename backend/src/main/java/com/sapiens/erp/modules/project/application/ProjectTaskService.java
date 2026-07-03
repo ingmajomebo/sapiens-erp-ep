@@ -17,6 +17,7 @@ public class ProjectTaskService {
 
     private final ProjectTaskRepository taskRepository;
     private final SprintRepository sprintRepository;
+    private final UserStoryRepository storyRepository;
 
     @Transactional(readOnly = true)
     public List<ProjectTaskResponse> listFiltered(UUID sprintId, String assigneeStr, String statusStr) {
@@ -37,7 +38,7 @@ public class ProjectTaskService {
         ProjectTask task = ProjectTask.create(
                 req.title(), req.description(), req.taskType(),
                 req.assignee(), req.priority(), sprint,
-                req.module(), req.linkedRequirementId(),
+                req.module(), resolveStory(req.userStoryId()),
                 req.estimatedHours(), req.notes()
         );
         return ProjectTaskResponse.from(taskRepository.save(task));
@@ -61,7 +62,9 @@ public class ProjectTaskService {
         task.setPriority(req.priority() != null ? req.priority() : task.getPriority());
         task.setSprint(sprint);
         task.setModule(req.module());
-        task.setLinkedRequirementId(req.linkedRequirementId());
+        UserStory story = resolveStory(req.userStoryId());
+        task.setUserStory(story);
+        task.setLinkedRequirementId(story != null ? story.getReqId() : null);
         task.setEstimatedHours(req.estimatedHours());
         task.setNotes(req.notes());
 
@@ -90,5 +93,11 @@ public class ProjectTaskService {
                 .orElseThrow(() -> new IllegalArgumentException("Tarea no encontrada: " + id));
         task.softDelete();
         taskRepository.save(task);
+    }
+
+    private UserStory resolveStory(UUID storyId) {
+        if (storyId == null) return null;
+        return storyRepository.findByIdAndDeletedAtIsNull(storyId)
+                .orElseThrow(() -> new IllegalArgumentException("Historia no encontrada: " + storyId));
     }
 }

@@ -43,6 +43,7 @@
 | **Finance** | Caja, gastos, facturación, contabilidad | [[modules/finance/module]] |
 | **Reports** | Reportes transversales | [[modules/reports/module]] |
 | **Identity** | Usuarios, roles, permisos | [[modules/identity/module]] |
+| **Project** | Épicas, historias, tasks, QA, sprints, prompts (meta-módulo de desarrollo) | [[modules/project/module]] |
 
 ### Entidades por módulo
 

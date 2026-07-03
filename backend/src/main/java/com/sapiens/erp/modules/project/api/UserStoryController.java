@@ -2,8 +2,11 @@ package com.sapiens.erp.modules.project.api;
 
 import com.sapiens.erp.modules.project.api.dto.StoryScenarioRequest;
 import com.sapiens.erp.modules.project.api.dto.StoryScenarioResponse;
+import com.sapiens.erp.modules.project.api.dto.TestExecutionRequest;
+import com.sapiens.erp.modules.project.api.dto.TestExecutionResponse;
 import com.sapiens.erp.modules.project.api.dto.UserStoryRequest;
 import com.sapiens.erp.modules.project.api.dto.UserStoryResponse;
+import com.sapiens.erp.modules.project.application.QaExecutionService;
 import com.sapiens.erp.modules.project.application.UserStoryService;
 import com.sapiens.erp.modules.project.domain.StoryStatus;
 import jakarta.validation.Valid;
@@ -20,6 +23,7 @@ import java.util.UUID;
 public class UserStoryController {
 
     private final UserStoryService service;
+    private final QaExecutionService qaService;
 
     @GetMapping
     public List<UserStoryResponse> list(
@@ -70,5 +74,20 @@ public class UserStoryController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteScenario(@PathVariable UUID scenarioId) {
         service.deleteScenario(scenarioId);
+    }
+
+    // ── QA: ejecuciones de prueba ────────────────────────────────────────────
+
+    @GetMapping("/{storyId}/test-executions")
+    public List<TestExecutionResponse> listExecutions(@PathVariable UUID storyId) {
+        return qaService.listByStory(storyId);
+    }
+
+    @PostMapping("/{storyId}/scenarios/{scenarioId}/test-executions")
+    @ResponseStatus(HttpStatus.CREATED)
+    public TestExecutionResponse recordExecution(@PathVariable UUID storyId,
+                                                 @PathVariable UUID scenarioId,
+                                                 @Valid @RequestBody TestExecutionRequest req) {
+        return qaService.recordExecution(storyId, scenarioId, req);
     }
 }

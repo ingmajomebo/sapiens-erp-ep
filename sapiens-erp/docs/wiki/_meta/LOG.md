@@ -6,6 +6,26 @@
 
 ---
 
+## [2026-07-03] update | Documentación completa del módulo Project + fix V21
+
+- Creada página [[modules/project/module]] con el detalle completo del módulo de seguimiento de proyecto: modelo de datos (V14–V21), reglas de negocio de QA, API, pestañas del frontend, flujo del equipo y deuda técnica conocida
+- INDEX.md actualizado con la fila del módulo Project
+- Migración **V21**: la unicidad de `epics.code` pasa a índice parcial (solo épicas activas) — el UNIQUE global chocaba con soft delete y rompía la autogeneración de códigos EP-NN
+
+## [2026-07-02] ingest | Módulo Project: Épicas como entidad + proceso de QA (migración V20)
+
+- **Épicas** promovidas de texto libre (`user_stories.epic`) a entidad de primera clase: tabla `epics` con `code` (EP-NN autogenerado), `name`, `objective`, `success_criteria`, `module`, `priority`, `status` (PLANNED/IN_PROGRESS/DONE/ON_HOLD)
+- Migración V20 convierte las épicas existentes automáticamente y vincula `user_stories.epic_id` (FK)
+- **Tasks ↔ Historias**: nuevo FK `project_tasks.user_story_id` (antes solo texto `linked_requirement_id`, que se mantiene sincronizado por compatibilidad)
+- **Proceso de QA** sobre los escenarios Gherkin (criterios de aceptación de cada historia):
+  - Tabla `scenario_test_executions`: historial inmutable (solo INSERT) de ejecuciones PASS/FAIL/BLOCKED/SKIPPED con notas, ejecutor y task BUG opcional
+  - `StoryStatus` extendido: `READY_FOR_QA`, `IN_QA`, `QA_FAILED` (además de los existentes)
+  - Derivación automática de estado: FAIL → `QA_FAILED` (+ task BUG opcional asignada a dev); todos los escenarios con último resultado PASS → `DONE`; parcial → `IN_QA`
+  - `TaskType` extendido con `BUG`
+- API: `/api/v1/epics` (CRUD + PATCH status), `/api/v1/user-stories/{id}/test-executions` (GET historial, POST por escenario)
+- Frontend: pestaña **QA** nueva en Project Tracker (KPIs, panel de ejecución por escenario, envío a QA); pestaña Requisitos reorganizada con tarjetas de épica (progreso historias done/total); modal de tarea ahora vincula historias por select
+- Flujo del equipo: Manuel (DEV) desarrolla → "Enviar a QA" → Iskian (QA) ejecuta escenarios → FAIL crea BUG para Manuel → re-test → DONE automático
+
 ## [2026-06-24] update | HU-001 validado y corregido contra código real (flujo completo)
 
 - Leídos `ProductRequest.java` y `GlobalExceptionHandler.java` para verificar comportamiento exacto
