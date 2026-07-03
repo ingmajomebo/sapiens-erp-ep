@@ -107,6 +107,7 @@ function ProductForm() {
   // Section 1: General
   const [name, setName] = useState('')
   const [imageUrl, setImageUrl] = useState('')
+  const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [barcode, setBarcode] = useState('')
   const [productType, setProductType] = useState<ProductType | ''>('')
@@ -150,13 +151,22 @@ function ProductForm() {
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    const url = URL.createObjectURL(file)
-    setImagePreview(url)
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast('Formato no permitido: solo JPG, JPEG, PNG o WEBP', 'error')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast('La imagen supera el máximo de 5MB', 'error')
+      return
+    }
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
     setImageUrl('')
   }
 
   function handleImageUrlChange(url: string) {
     setImageUrl(url)
+    setImageFile(null)
     setImagePreview(url || null)
   }
 
@@ -192,7 +202,7 @@ function ProductForm() {
     }
 
     setFormErrors({})
-    await createProduct.mutateAsync({
+    const created = await createProduct.mutateAsync({
       name: name.trim(),
       categoryId,
       unitOfMeasure,
@@ -207,6 +217,17 @@ function ProductForm() {
       status,
       imageUrl: imageUrl.trim() || null,
     })
+
+    // La carga de imagen es posterior e independiente: si falla, el producto queda
+    // guardado sin imagen (regla de consistencia de REQ-INV-08)
+    if (imageFile) {
+      try {
+        await productApi.uploadImage(created.id, imageFile)
+        qc.invalidateQueries({ queryKey: ['products'] })
+      } catch {
+        toast('El producto se guardó, pero la imagen no pudo subirse. Inténtalo de nuevo desde el producto.', 'error')
+      }
+    }
   }
 
   return (
@@ -258,9 +279,9 @@ function ProductForm() {
                   onClick={() => fileInputRef.current?.click()}
                   style={{ fontSize: 11.5, color: 'var(--accent-text)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', textDecoration: 'underline' }}
                 >
-                  seleccionar archivo (solo vista previa)
+                  seleccionar archivo (JPG, PNG o WEBP · máx 5MB)
                 </button>
-                <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />
+                <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={handleFileChange} />
               </div>
             </div>
             {imagePreview && (

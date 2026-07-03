@@ -29,6 +29,7 @@ spring:
 app:
   uploads:
     dir: ${UPLOADS_DIR:uploads/qa}
+    products-dir: ${UPLOADS_PRODUCTS_DIR:uploads/products}
   jwt:
     secret: ${JWT_SECRET:sapiens-erp-secret-key-change-in-production-min32}
     access-token-expiration: 900000      # 15 min en ms

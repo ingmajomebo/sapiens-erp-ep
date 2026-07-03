@@ -8,7 +8,7 @@ import {
   PrimaryBtn, GhostBtn, FilterSelect,
   tableStyle, thStyle, tdStyle,
 } from '../../shared/helpers'
-import { productApi, categoryApi } from '../catalog/api/productApi'
+import { productApi, categoryApi, productImageSrc } from '../catalog/api/productApi'
 import { inventoryApi } from './api/inventoryApi'
 import { formatCOP } from '../../shared/currency'
 import { toast } from '../../shared/toast'
@@ -221,7 +221,7 @@ function ProductDetailModal({ product, currentStock, onClose, onDeleted }: {
         <div style={{ padding: '18px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
             {product.imageUrl ? (
-              <img src={product.imageUrl} alt={product.name}
+              <img src={productImageSrc(product.imageUrl) ?? undefined} alt={product.name}
                 style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--border)' }} />
             ) : (
               <Tile initial={product.name.slice(0, 2).toUpperCase()} tile={tileColorForName(product.name)} size={44} />
@@ -892,6 +892,7 @@ export function Inventory() {
                     </tr>
                     {!isCollapsed && group.items.map((p) => {
                       const chipStatus = stockStatusToChipStatus(p.stockStatus)
+                      const rowImage = productImageSrc(allProducts.find((ap) => ap.id === p.id)?.imageUrl ?? null)
                       return (
                         <tr
                           key={p.id}
@@ -905,7 +906,12 @@ export function Inventory() {
                         >
                           <td style={tdStyle}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                              <Tile initial={p.name.slice(0, 2).toUpperCase()} tile={tileColorForName(p.name)} size={28} />
+                              {rowImage ? (
+                                <img src={rowImage} alt={p.name}
+                                  style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover', border: '1px solid var(--border)', flexShrink: 0 }} />
+                              ) : (
+                                <Tile initial={p.name.slice(0, 2).toUpperCase()} tile={tileColorForName(p.name)} size={28} />
+                              )}
                               <span style={{ fontWeight: 600, color: 'var(--text)' }}>{p.name}</span>
                             </div>
                           </td>

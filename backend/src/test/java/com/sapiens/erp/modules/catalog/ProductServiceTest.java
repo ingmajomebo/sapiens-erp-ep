@@ -31,6 +31,7 @@ class ProductServiceTest {
 
     @Mock ProductRepository productRepository;
     @Mock CategoryRepository categoryRepository;
+    @Mock com.sapiens.erp.modules.catalog.application.ProductImageService productImageService;
     @InjectMocks ProductService service;
 
     private UUID productId;

@@ -1,5 +1,15 @@
-import client from '../../../api/client'
+import client, { API_BASE } from '../../../api/client'
 import type { PaginatedResponse, UnitOfMeasure, ProductType, ProductStatus } from '../../../shared/types'
+
+/**
+ * Resuelve la URL de imagen para usarla en <img src>: las imágenes subidas se
+ * guardan como ruta relativa (/api/v1/products/{id}/image) y en producción el
+ * backend vive en otro dominio, así que hay que anteponer API_BASE.
+ */
+export function productImageSrc(imageUrl: string | null): string | null {
+  if (!imageUrl) return null
+  return imageUrl.startsWith('/') ? `${API_BASE}${imageUrl}` : imageUrl
+}
 
 export interface CategoryDto {
   id: string
@@ -76,6 +86,20 @@ export const productApi = {
 
   importBulk: async (requests: CreateProductDto[]): Promise<ProductDto[]> => {
     const { data } = await client.post('/products/import', requests)
+    return data
+  },
+
+  uploadImage: async (id: string, file: File): Promise<ProductDto> => {
+    const fd = new FormData()
+    fd.append('file', file)
+    const { data } = await client.post(`/products/${id}/image`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return data
+  },
+
+  deleteImage: async (id: string): Promise<ProductDto> => {
+    const { data } = await client.delete(`/products/${id}/image`)
     return data
   },
 }

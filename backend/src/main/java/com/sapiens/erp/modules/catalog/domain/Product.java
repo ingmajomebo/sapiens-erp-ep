@@ -75,6 +75,10 @@ public class Product extends AuditableEntity {
     @Column(name = "image_url", columnDefinition = "TEXT")
     private String imageUrl;
 
+    /** Ruta local del archivo de imagen subido (null si la imagen es una URL externa o no hay imagen). */
+    @Column(name = "image_path", length = 500)
+    private String imagePath;
+
     public static Product create(String name, Category category, UnitOfMeasure unitOfMeasure,
                                   BigDecimal minimumStock, String description) {
         Product p = new Product();

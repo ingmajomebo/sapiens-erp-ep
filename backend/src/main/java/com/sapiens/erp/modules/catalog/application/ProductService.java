@@ -20,6 +20,7 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
+    private final ProductImageService productImageService;
 
     @Transactional(readOnly = true)
     public Page<ProductResponse> listAll(Pageable pageable) {
@@ -128,7 +129,12 @@ public class ProductService {
         if (request.salePrice() != null) product.setSalePrice(request.salePrice());
         if (request.inventoryTrackingEnabled() != null) product.setInventoryTrackingEnabled(request.inventoryTrackingEnabled());
         if (request.defaultWarehouse() != null) product.setDefaultWarehouse(request.defaultWarehouse().isBlank() ? null : request.defaultWarehouse().trim());
-        if (request.imageUrl() != null) product.setImageUrl(request.imageUrl().isBlank() ? null : request.imageUrl().trim());
+        if (request.imageUrl() != null) {
+            String newUrl = request.imageUrl().isBlank() ? null : request.imageUrl().trim();
+            // Sin huérfanos: si deja de apuntar al archivo gestionado, se elimina del disco
+            productImageService.releaseManagedFileIfExternalUrl(product, newUrl);
+            product.setImageUrl(newUrl);
+        }
 
         if (request.status() != null) {
             product.setStatus(request.status());
