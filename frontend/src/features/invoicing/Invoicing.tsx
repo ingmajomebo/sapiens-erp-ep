@@ -7,6 +7,7 @@ import {
 } from '../../shared/helpers'
 import { toast } from '../../shared/toast'
 import { formatCOP } from '../../shared/currency'
+import { useAppStore } from '../../store/useAppStore'
 import {
   salesInvoiceApi,
   type SalesInvoiceDto, type SalesInvoiceStatus,
@@ -227,10 +228,16 @@ function InvoiceDetail({ invoiceId, onBack, onEmit, onPay, onCancel }: {
   onPay: (inv: SalesInvoiceDto) => void
   onCancel: (inv: SalesInvoiceDto) => void
 }) {
+  const setPage = useAppStore(s => s.setPage)
   const { data: d } = useQuery({
     queryKey: ['sales-invoice-detail', invoiceId],
     queryFn: () => salesInvoiceApi.detail(invoiceId),
   })
+
+  const openCustomer = (customerId: string) => {
+    window.history.replaceState(null, '', `?customer=${customerId}`)
+    setPage('customers')
+  }
 
   if (!d) return <div style={{ padding: 40, color: 'var(--muted)' }}>Cargando factura…</div>
   const inv = d.header
@@ -278,7 +285,14 @@ function InvoiceDetail({ invoiceId, onBack, onEmit, onPay, onCancel }: {
         </div>
         <div style={box}>
           <div style={labelSm}>CLIENTE</div>
-          <div style={{ fontSize: 14, fontWeight: 700 }}>{inv.customerName}</div>
+          {inv.customerId ? (
+            <button onClick={() => openCustomer(inv.customerId!)} title="Ver ficha del cliente"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 700, color: 'var(--accent-text)', fontFamily: 'inherit', textDecoration: 'underline', padding: 0 }}>
+              {inv.customerName}
+            </button>
+          ) : (
+            <div style={{ fontSize: 14, fontWeight: 700 }}>{inv.customerName}</div>
+          )}
           <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.7 }}>
             {d.customerPhone ?? 'Sin teléfono'} · {d.customerEmail ?? 'Sin email'}
           </div>

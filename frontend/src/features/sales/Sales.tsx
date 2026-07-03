@@ -10,6 +10,7 @@ import {
 import { toast } from '../../shared/toast'
 import { formatCOP } from '../../shared/currency'
 import { productApi } from '../catalog/api/productApi'
+import { CustomerFormModal } from '../customers/Customers'
 import {
   salesOrderApi, customerApi, salesLinkApi,
   type SalesOrderDto, type SalesOrderStatus, type DeliveryMethod,
@@ -199,6 +200,7 @@ function OrderDetailModal({ order, onClose }: { order: SalesOrderDto; onClose: (
 function NewOrderModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient()
   const [customerId, setCustomerId] = useState('')
+  const [creatingCustomer, setCreatingCustomer] = useState(false)
   const [contactName, setContactName] = useState('')
   const [notes, setNotes] = useState('')
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>('PICKUP')
@@ -249,7 +251,13 @@ function NewOrderModal({ onClose }: { onClose: () => void }) {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
           <div>
-            <label style={labelSm}>CLIENTE</label>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <label style={labelSm}>CLIENTE</label>
+              <button type="button" onClick={() => setCreatingCustomer(true)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-text)', fontSize: 11.5, fontWeight: 600, fontFamily: 'inherit', padding: 0 }}>
+                + Nuevo
+              </button>
+            </div>
             <select style={inputStyle} value={customerId} onChange={e => setCustomerId(e.target.value)}>
               <option value="">Cliente anónimo</option>
               {customers.filter(c => !c.anonymous).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -322,6 +330,12 @@ function NewOrderModal({ onClose }: { onClose: () => void }) {
           </PrimaryBtn>
         </div>
       </div>
+      {creatingCustomer && (
+        <CustomerFormModal
+          onClose={() => setCreatingCustomer(false)}
+          onSaved={c => setCustomerId(c.id)}
+        />
+      )}
     </div>
   )
 }
