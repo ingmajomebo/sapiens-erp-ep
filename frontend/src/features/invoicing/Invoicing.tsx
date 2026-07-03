@@ -13,6 +13,10 @@ import {
   type PaymentForm, type InvoicePaymentMethod,
 } from '../sales/api/salesApi'
 
+const fmtDate = (v: string | null | undefined, withTime = false) =>
+  v ? new Date(v.length === 10 ? v + 'T00:00:00' : v).toLocaleDateString('es-CO',
+      withTime ? { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' } : { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
+
 const STATUS_LABELS: Record<SalesInvoiceStatus, string> = {
   DRAFT: 'Borrador', ISSUED: 'Emitida', PARTIALLY_PAID: 'Pago parcial', PAID: 'Pagada', CANCELLED: 'Cancelada',
 }
@@ -214,6 +218,179 @@ function PaymentModal({ invoice, onClose }: { invoice: SalesInvoiceDto; onClose:
   )
 }
 
+// ─── Detalle de factura ───────────────────────────────────────────────────────
+
+function InvoiceDetail({ invoiceId, onBack, onEmit, onPay, onCancel }: {
+  invoiceId: string
+  onBack: () => void
+  onEmit: (inv: SalesInvoiceDto) => void
+  onPay: (inv: SalesInvoiceDto) => void
+  onCancel: (inv: SalesInvoiceDto) => void
+}) {
+  const { data: d } = useQuery({
+    queryKey: ['sales-invoice-detail', invoiceId],
+    queryFn: () => salesInvoiceApi.detail(invoiceId),
+  })
+
+  if (!d) return <div style={{ padding: 40, color: 'var(--muted)' }}>Cargando factura…</div>
+  const inv = d.header
+
+  const box: React.CSSProperties = {
+    background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 20px',
+  }
+
+  return (
+    <div style={{ padding: '24px 26px 40px', display: 'flex', flexDirection: 'column', gap: 16, animation: 'fadeUp 0.25s ease' }}>
+      {/* Cabecera */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
+        <GhostBtn style={{ fontSize: 12.5, padding: '6px 12px' }} onClick={onBack}>← Facturas</GhostBtn>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 20, fontWeight: 800, color: 'var(--accent-text)' }}>{inv.invoiceNumber}</span>
+            <StatusChip status={STATUS_TO_CHIP[inv.status]} label={STATUS_LABELS[inv.status]} />
+            {inv.overdue && <StatusChip status="overdue" label="Vencida" />}
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>
+            Pedido <b>{inv.orderNumber}</b> · Emitida: {fmtDate(inv.issuedAt)} · Vence: {fmtDate(inv.dueDate)}
+            {inv.paidAt && <> · Pagada: {fmtDate(inv.paidAt)}</>}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {inv.status === 'DRAFT' && <PrimaryBtn onClick={() => onEmit(inv)}>📤 Emitir</PrimaryBtn>}
+          {(inv.status === 'ISSUED' || inv.status === 'PARTIALLY_PAID') && (
+            <PrimaryBtn onClick={() => onPay(inv)}>+ Registrar pago</PrimaryBtn>
+          )}
+          {inv.status !== 'CANCELLED' && (
+            <GhostBtn style={{ color: 'var(--neg)' }} onClick={() => onCancel(inv)}>✕ Cancelar</GhostBtn>
+          )}
+        </div>
+      </div>
+
+      {/* Emisor y cliente */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+        <div style={box}>
+          <div style={labelSm}>EMISOR</div>
+          <div style={{ fontSize: 14, fontWeight: 700 }}>La Pescadería</div>
+          <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.7 }}>
+            NIT 000.000.000-0 · Calle del Puerto 12<br />Documento no validado ante DIAN
+          </div>
+        </div>
+        <div style={box}>
+          <div style={labelSm}>CLIENTE</div>
+          <div style={{ fontSize: 14, fontWeight: 700 }}>{inv.customerName}</div>
+          <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.7 }}>
+            {d.customerPhone ?? 'Sin teléfono'} · {d.customerEmail ?? 'Sin email'}
+          </div>
+        </div>
+      </div>
+
+      {/* Líneas */}
+      <div style={{ ...box, padding: 0, overflow: 'hidden' }}>
+        <table style={tableStyle}>
+          <thead>
+            <tr>
+              <th style={thStyle}>Descripción</th>
+              <th style={thStyle}>Cant.</th>
+              <th style={thStyle}>Precio unit.</th>
+              <th style={thStyle}>Desc. %</th>
+              <th style={thStyle}>IVA %</th>
+              <th style={thStyle}>IVA</th>
+              <th style={thStyle}>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {d.lines.map((l, i) => (
+              <tr key={i}>
+                <td style={{ ...tdStyle, fontWeight: 500, color: 'var(--text)' }}>{l.description}</td>
+                <td style={tdStyle}>{l.quantity}</td>
+                <td style={tdStyle}>{formatCOP(l.unitPrice)}</td>
+                <td style={tdStyle}>{l.discountPct}%</td>
+                <td style={tdStyle}>{l.taxRate}%</td>
+                <td style={tdStyle}>{formatCOP(l.taxAmount)}</td>
+                <td style={{ ...tdStyle, fontWeight: 600, color: 'var(--text)' }}>{formatCOP(l.lineTotal)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {/* Totales */}
+        <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ minWidth: 300, fontSize: 13.5, display: 'flex', flexDirection: 'column', gap: 5 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--muted)' }}>Subtotal</span><span>{formatCOP(d.subtotal)}</span></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--muted)' }}>Descuentos</span><span>−{formatCOP(d.totalDiscounts)}</span></div>
+            {Object.entries(d.taxesByRate).map(([rate, amount]) => (
+              <div key={rate} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--muted)' }}>IVA {rate}</span><span>{formatCOP(amount)}</span>
+              </div>
+            ))}
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: 15, borderTop: '2px solid var(--text)', paddingTop: 7, marginTop: 3 }}>
+              <span>Total</span><span>{formatCOP(inv.total)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--pos)' }}>
+              <span>Pagado</span><span>{formatCOP(inv.paidAmount)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, color: inv.balance > 0 ? 'var(--neg)' : 'var(--muted)' }}>
+              <span>Saldo pendiente</span><span>{formatCOP(inv.balance)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, alignItems: 'start' }}>
+        {/* Pagos */}
+        <div style={box}>
+          <div style={{ ...labelSm, marginBottom: 10 }}>PAGOS ({d.payments.length})</div>
+          {d.payments.length === 0 && <div style={{ fontSize: 13, color: 'var(--muted)' }}>Sin pagos registrados.</div>}
+          {d.payments.map(pm => (
+            <div key={pm.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+              <span>{fmtDate(pm.paidOn)} · {METHOD_LABELS[pm.paymentMethod]}{pm.reference ? ` · ${pm.reference}` : ''}</span>
+              <b>{formatCOP(pm.amount)}</b>
+            </div>
+          ))}
+          {/* Notas crédito */}
+          {d.creditNotes.length > 0 && (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ ...labelSm, marginBottom: 8 }}>NOTAS CRÉDITO</div>
+              {d.creditNotes.map(nc => (
+                <div key={nc.id} style={{ background: 'var(--neg-bg)', borderRadius: 8, padding: '9px 12px', fontSize: 12.5 }}>
+                  <b style={{ color: 'var(--neg)' }}>{nc.noteNumber}</b> · {formatCOP(nc.total)} · {fmtDate(nc.issuedAt)}
+                  <div style={{ color: 'var(--muted)', marginTop: 2 }}>{nc.reason}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Historial */}
+        <div style={box}>
+          <div style={{ ...labelSm, marginBottom: 10 }}>HISTORIAL</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {d.history.map((h, i) => (
+              <div key={i} style={{ display: 'flex', gap: 10, paddingBottom: i < d.history.length - 1 ? 12 : 0 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <div style={{ width: 9, height: 9, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0, marginTop: 4 }} />
+                  {i < d.history.length - 1 && <div style={{ width: 1.5, flex: 1, background: 'var(--border)' }} />}
+                </div>
+                <div style={{ fontSize: 12.5, paddingBottom: 4 }}>
+                  <b>{h.fromStatus ? `${STATUS_LABELS[h.fromStatus]} → ` : ''}{STATUS_LABELS[h.toStatus]}</b>
+                  <span style={{ color: 'var(--muted)' }}> · {fmtDate(h.changedAt, true)}{h.changedBy ? ` · ${h.changedBy}` : ''}</span>
+                  {h.reason && <div style={{ color: 'var(--muted)', marginTop: 2 }}>{h.reason}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {d.notes && (
+        <div style={box}>
+          <div style={labelSm}>NOTAS</div>
+          <div style={{ fontSize: 13.5 }}>{d.notes}</div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Página de Facturación ────────────────────────────────────────────────────
 
 const STATUS_OPTIONS: SalesInvoiceStatus[] = ['DRAFT', 'ISSUED', 'PARTIALLY_PAID', 'PAID', 'CANCELLED']
@@ -282,6 +459,8 @@ export function Invoicing() {
   const [cancelling, setCancelling] = useState<SalesInvoiceDto | null>(null)
   const [emitting, setEmitting] = useState<SalesInvoiceDto | null>(null)
   const [paying, setPaying] = useState<SalesInvoiceDto | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(
+    new URLSearchParams(window.location.search).get('invoice'))
 
   const { data: customers = [] } = useQuery({
     queryKey: ['customers'],
@@ -359,6 +538,23 @@ export function Invoicing() {
   if (filters.overdueOnly) activeChips.push({ label: 'Solo vencidas', clear: () => setFilters(f => ({ ...f, overdueOnly: false })) })
 
   const sortIndicator = (field: string) => sortField === field ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''
+
+  if (selectedId) {
+    return (
+      <>
+        {cancelling && <CancelInvoiceModal invoice={cancelling} onClose={() => setCancelling(null)} />}
+        {emitting && <EmitModal invoice={emitting} onClose={() => setEmitting(null)} />}
+        {paying && <PaymentModal invoice={paying} onClose={() => setPaying(null)} />}
+        <InvoiceDetail
+          invoiceId={selectedId}
+          onBack={() => { setSelectedId(null); window.history.replaceState(null, '', window.location.pathname) }}
+          onEmit={setEmitting}
+          onPay={setPaying}
+          onCancel={setCancelling}
+        />
+      </>
+    )
+  }
 
   return (
     <div style={{ padding: '24px 26px 40px', display: 'flex', flexDirection: 'column', gap: 20, animation: 'fadeUp 0.25s ease' }}>
@@ -470,7 +666,13 @@ export function Invoicing() {
                   onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-2)')}
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
-                  <td style={tdStyle}><span style={{ fontWeight: 600, color: 'var(--accent-text)', fontSize: 12.5 }}>{inv.invoiceNumber}</span></td>
+                  <td style={tdStyle}>
+                    <button
+                      onClick={() => { setSelectedId(inv.id); window.history.replaceState(null, '', `?invoice=${inv.id}`) }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, color: 'var(--accent-text)', fontSize: 12.5, fontFamily: 'inherit', textDecoration: 'underline', padding: 0 }}>
+                      {inv.invoiceNumber}
+                    </button>
+                  </td>
                   <td style={tdStyle}>{inv.orderNumber}</td>
                   <td style={{ ...tdStyle, fontWeight: 500, color: 'var(--text)' }}>{inv.customerName}</td>
                   <td style={tdStyle}>{inv.issuedAt ? new Date(inv.issuedAt).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' }) : '—'}</td>
