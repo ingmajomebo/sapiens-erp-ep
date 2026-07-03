@@ -1,6 +1,7 @@
 package com.sapiens.erp.modules.project.application;
 
 import com.sapiens.erp.modules.identity.domain.UserRepository;
+import com.sapiens.erp.modules.project.api.dto.QaAttachmentResponse;
 import com.sapiens.erp.modules.project.api.dto.TestExecutionRequest;
 import com.sapiens.erp.modules.project.api.dto.TestExecutionResponse;
 import com.sapiens.erp.modules.project.domain.*;
@@ -35,12 +36,26 @@ public class QaExecutionService {
     private final QaTestRunRepository runRepository;
     private final QaTestRunItemRepository runItemRepository;
     private final UserRepository userRepository;
+    private final QaExecutionAttachmentRepository attachmentRepository;
 
     @Transactional(readOnly = true)
     public List<TestExecutionResponse> listByStory(UUID storyId) {
-        return executionRepository.findByStoryId(storyId).stream()
-                .map(TestExecutionResponse::from)
+        List<ScenarioTestExecution> executions = executionRepository.findByStoryId(storyId);
+        Map<UUID, List<QaAttachmentResponse>> attachments = attachmentsFor(executions);
+        return executions.stream()
+                .map(e -> TestExecutionResponse.from(e, attachments.getOrDefault(e.getId(), List.of())))
                 .toList();
+    }
+
+    /** Adjuntos agrupados por ejecución en una sola consulta (sin N+1). */
+    private Map<UUID, List<QaAttachmentResponse>> attachmentsFor(List<ScenarioTestExecution> executions) {
+        if (executions.isEmpty()) return Map.of();
+        List<UUID> ids = executions.stream().map(ScenarioTestExecution::getId).toList();
+        return attachmentRepository.findByExecutionIds(ids).stream()
+                .collect(java.util.stream.Collectors.groupingBy(
+                        a -> a.getExecution().getId(),
+                        java.util.stream.Collectors.mapping(QaAttachmentResponse::from,
+                                java.util.stream.Collectors.toList())));
     }
 
     @Transactional

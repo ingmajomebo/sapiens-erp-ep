@@ -20,5 +20,6 @@ public record UserStoryRequest(
         TaskPriority priority,
         StoryStatus status,
         NfrCategory nfrCategory,
-        String nfrCriterion
+        String nfrCriterion,
+        Boolean generateNfrScenario
 ) {}

@@ -13,7 +13,7 @@ import {
   type AiContextDto,
 } from './api/projectApi'
 import { toast } from '../../shared/toast'
-import { QaTab } from './components/QaTab'
+import { QaTab, AttachmentThumb } from './components/QaTab'
 import {
   MODULES, MODULE_LABELS,
   TASK_TYPE_LABELS, TASK_TYPE_COLORS,
@@ -1666,6 +1666,7 @@ function UserStoryModal({
   const [status, setStatus] = useState<StoryStatus>(story?.status ?? 'DEFINED')
   const [nfrCat, setNfrCat] = useState<string>(story?.nfrCategory ?? '')
   const [nfrCriterion, setNfrCriterion] = useState(story?.nfrCriterion ?? '')
+  const [genNfrScenario, setGenNfrScenario] = useState(true)
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -1680,6 +1681,7 @@ function UserStoryModal({
       status,
       nfrCategory: nfrCat ? nfrCat as NfrCategory : undefined,
       nfrCriterion: nfrCriterion || undefined,
+      generateNfrScenario: !story && storyType === 'NON_FUNCTIONAL' ? genNfrScenario : undefined,
     })
   }
 
@@ -1779,6 +1781,12 @@ function UserStoryModal({
                   placeholder="No existe endpoint PUT/DELETE sobre movimientos. HTTP 405 si se intenta."
                   value={nfrCriterion} onChange={e => setNfrCriterion(e.target.value)} />
               </div>
+              {!story && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--text)', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={genNfrScenario} onChange={e => setGenNfrScenario(e.target.checked)} />
+                  Generar automáticamente el escenario de verificación (entra al ciclo de QA)
+                </label>
+              )}
             </>
           )}
 
@@ -1896,12 +1904,10 @@ function StoryDetailModal({
   const { data: executions = [] } = useQuery({
     queryKey: ['test-executions', story.id],
     queryFn: () => qaApi.listExecutions(story.id),
-    enabled: !isNfr,
   })
   const { data: qaHistory = [] } = useQuery({
     queryKey: ['qa-history', story.id],
     queryFn: () => qaApi.storyHistory(story.id),
-    enabled: !isNfr,
   })
   const latestByScenario = new Map<string, TestExecutionDto>()
   for (const ex of executions) {
@@ -1987,8 +1993,8 @@ function StoryDetailModal({
             </div>
           )}
 
-          {/* Gherkin scenarios */}
-          {!isNfr && (
+          {/* Gherkin scenarios (los RNF usan escenarios NFR_CHECK) */}
+          {(
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
@@ -2032,7 +2038,7 @@ function StoryDetailModal({
           )}
 
           {/* Historial de QA */}
-          {!isNfr && executions.length > 0 && (
+          {executions.length > 0 && (
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
                 Historial de pruebas QA ({executions.length})
@@ -2051,6 +2057,7 @@ function StoryDetailModal({
                       {ex.notes && <span style={{ fontSize: 11.5, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>— {ex.notes}</span>}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                      {ex.attachments.map(a => <AttachmentThumb key={a.id} att={a} />)}
                       {ex.defectTaskTitle && <Badge label="🐞 BUG creado" color="#ef4444" />}
                       <Avatar assignee={ex.executedBy} />
                       <span style={{ fontSize: 11, color: 'var(--muted)' }}>
@@ -2064,7 +2071,7 @@ function StoryDetailModal({
           )}
 
           {/* Participación en ciclos de prueba (trazabilidad inversa) */}
-          {!isNfr && qaHistory.length > 0 && (
+          {qaHistory.length > 0 && (
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
                 Ciclos de prueba en los que participó ({qaHistory.length})
@@ -2164,16 +2171,14 @@ function StoryDetailModal({
               )}
               {(story.status === 'REVIEW' || story.status === 'QA_FAILED') && (
                 <>
-                  {!isNfr && (
-                    <button
-                      type="button"
-                      style={{ ...btnSecondaryStyle, color: '#06b6d4', borderColor: '#06b6d4', opacity: isUpdating ? 0.7 : 1 }}
-                      disabled={isUpdating}
-                      onClick={() => onStatusChange('READY_FOR_QA')}
-                    >
-                      🧪 {story.status === 'QA_FAILED' ? 'Re-enviar a QA' : 'Enviar a QA'}
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    style={{ ...btnSecondaryStyle, color: '#06b6d4', borderColor: '#06b6d4', opacity: isUpdating ? 0.7 : 1 }}
+                    disabled={isUpdating}
+                    onClick={() => onStatusChange('READY_FOR_QA')}
+                  >
+                    🧪 {story.status === 'QA_FAILED' ? 'Re-enviar a QA' : 'Enviar a QA'}
+                  </button>
                   <button
                     type="button"
                     style={{ ...btnSecondaryStyle, color: '#f59e0b', borderColor: '#f59e0b', opacity: isUpdating ? 0.7 : 1 }}

@@ -19,7 +19,16 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
 
+  # Límite del contenedor por encima del límite de negocio (5MB en QaAttachmentService)
+  # para que el rechazo llegue como 409 con mensaje y no como conexión cortada
+  servlet:
+    multipart:
+      max-file-size: 6MB
+      max-request-size: 7MB
+
 app:
+  uploads:
+    dir: ${UPLOADS_DIR:uploads/qa}
   jwt:
     secret: ${JWT_SECRET:sapiens-erp-secret-key-change-in-production-min32}
     access-token-expiration: 900000      # 15 min en ms

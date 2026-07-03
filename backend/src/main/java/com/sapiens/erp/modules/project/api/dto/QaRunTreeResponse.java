@@ -52,6 +52,7 @@ public record QaRunTreeResponse(
             String buildVersion,
             RunEnvironment environment,
             UUID defectTaskId,
-            String defectTaskTitle
+            String defectTaskTitle,
+            List<QaAttachmentResponse> attachments
     ) {}
 }

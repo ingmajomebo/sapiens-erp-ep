@@ -1,5 +1,6 @@
 package com.sapiens.erp.modules.project.application;
 
+import com.sapiens.erp.modules.project.api.dto.QaAttachmentResponse;
 import com.sapiens.erp.modules.project.api.dto.QaCoverageResponse;
 import com.sapiens.erp.modules.project.api.dto.QaRunTreeResponse;
 import com.sapiens.erp.modules.project.api.dto.QaTestRunResponse;
@@ -21,6 +22,7 @@ public class QaReportService {
     private final QaTestRunItemRepository itemRepository;
     private final ScenarioTestExecutionRepository executionRepository;
     private final UserStoryRepository storyRepository;
+    private final QaExecutionAttachmentRepository attachmentRepository;
 
     // ── Árbol del run: Run → Épica → Historia → Escenario → Ejecuciones ──────
 
@@ -31,12 +33,18 @@ public class QaReportService {
 
         List<QaTestRunItem> items = itemRepository.findByRunIdWithEpic(runId);
 
-        Map<UUID, List<ScenarioTestExecution>> execsByScenario = executionRepository
-                .findByRunIdWithDefects(runId).stream()
+        List<ScenarioTestExecution> runExecutions = executionRepository.findByRunIdWithDefects(runId);
+        Map<UUID, List<ScenarioTestExecution>> execsByScenario = runExecutions.stream()
                 .collect(Collectors.groupingBy(e -> e.getScenario().getId()));
 
+        Map<UUID, List<QaAttachmentResponse>> attachmentsByExecution = runExecutions.isEmpty()
+                ? Map.of()
+                : attachmentRepository.findByExecutionIds(
+                        runExecutions.stream().map(ScenarioTestExecution::getId).toList()).stream()
+                        .collect(Collectors.groupingBy(a -> a.getExecution().getId(),
+                                Collectors.mapping(QaAttachmentResponse::from, Collectors.toList())));
+
         // Agrupar items por épica (null = sin épica) y por historia preservando orden
-        Map<UUID, QaRunTreeResponse.EpicNode> epicNodes = new LinkedHashMap<>();
         Map<UUID, List<QaTestRunItem>> itemsByStory = items.stream()
                 .collect(Collectors.groupingBy(i -> i.getStory().getId(), LinkedHashMap::new, Collectors.toList()));
 
@@ -50,7 +58,8 @@ public class QaReportService {
             if (epic != null) epicById.put(epic.getId(), epic);
 
             List<QaRunTreeResponse.ScenarioNode> scenarioNodes = entry.getValue().stream()
-                    .map(i -> toScenarioNode(i.getScenario(), execsByScenario.get(i.getScenario().getId())))
+                    .map(i -> toScenarioNode(i.getScenario(),
+                            execsByScenario.get(i.getScenario().getId()), attachmentsByExecution))
                     .toList();
 
             String title = story.getActionStatement() != null
@@ -76,13 +85,15 @@ public class QaReportService {
         return new QaRunTreeResponse(QaTestRunResponse.from(run, total), epics);
     }
 
-    private QaRunTreeResponse.ScenarioNode toScenarioNode(StoryScenario sc, List<ScenarioTestExecution> execs) {
+    private QaRunTreeResponse.ScenarioNode toScenarioNode(StoryScenario sc, List<ScenarioTestExecution> execs,
+                                                          Map<UUID, List<QaAttachmentResponse>> attachmentsByExecution) {
         List<QaRunTreeResponse.ExecutionNode> execNodes = execs == null ? List.of() : execs.stream()
                 .map(e -> new QaRunTreeResponse.ExecutionNode(
                         e.getId(), e.getResult(), e.getExecutedBy(), e.getExecutedAt(), e.getNotes(),
                         snapshotVersion(e), e.getBuildVersion(), e.getEnvironment(),
                         e.getDefectTask() != null ? e.getDefectTask().getId() : null,
-                        e.getDefectTask() != null ? e.getDefectTask().getTitle() : null))
+                        e.getDefectTask() != null ? e.getDefectTask().getTitle() : null,
+                        attachmentsByExecution.getOrDefault(e.getId(), List.of())))
                 .toList();
         return new QaRunTreeResponse.ScenarioNode(
                 sc.getId(), sc.getScenarioTitle(), sc.getVersion(), sc.getScenarioType().name(),

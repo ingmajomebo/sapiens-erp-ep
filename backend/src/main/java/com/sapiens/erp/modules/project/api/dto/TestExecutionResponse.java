@@ -7,6 +7,7 @@ import com.sapiens.erp.modules.project.domain.TaskAssignee;
 import com.sapiens.erp.modules.project.domain.TestResult;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -26,9 +27,14 @@ public record TestExecutionResponse(
         String testRunCode,
         Map<String, Object> scenarioSnapshot,
         String buildVersion,
-        RunEnvironment environment
+        RunEnvironment environment,
+        List<QaAttachmentResponse> attachments
 ) {
     public static TestExecutionResponse from(ScenarioTestExecution e) {
+        return from(e, List.of());
+    }
+
+    public static TestExecutionResponse from(ScenarioTestExecution e, List<QaAttachmentResponse> attachments) {
         return new TestExecutionResponse(
                 e.getId(),
                 e.getScenario().getId(),
@@ -45,7 +51,8 @@ public record TestExecutionResponse(
                 e.getTestRun() != null ? e.getTestRun().getCode() : null,
                 e.getScenarioSnapshot(),
                 e.getBuildVersion(),
-                e.getEnvironment()
+                e.getEnvironment(),
+                attachments
         );
     }
 }

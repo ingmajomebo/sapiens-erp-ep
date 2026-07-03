@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   qaApi, qaRunsApi,
   type UserStoryDto, type EpicDto, type TestResult, type TestExecutionDto,
   type TestExecutionRequest, type QaTestRunDto, type QaRunTreeScenario,
-  type RunType, type RunEnvironment, type StoryStatus,
+  type RunType, type RunEnvironment, type StoryStatus, type QaAttachmentDto,
 } from '../api/projectApi'
 import { toast } from '../../../shared/toast'
 import {
@@ -17,15 +17,44 @@ import {
   btnPrimaryStyle, btnSecondaryStyle,
 } from './shared'
 
-// ─── Barra de ejecución (notas + crear BUG + botones de resultado) ───────────
+// ─── Evidencia adjunta ────────────────────────────────────────────────────────
+
+export function AttachmentThumb({ att }: { att: QaAttachmentDto }) {
+  const { data: blob } = useQuery({
+    queryKey: ['qa-attachment', att.id],
+    queryFn: () => qaApi.getAttachmentBlob(att.id),
+    staleTime: Infinity,
+  })
+  const url = blob ? URL.createObjectURL(blob) : null
+  const isImage = att.contentType.startsWith('image/')
+
+  if (isImage && url) {
+    return (
+      <a href={url} target="_blank" rel="noreferrer" title={att.fileName}>
+        <img src={url} alt={att.fileName}
+          style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />
+      </a>
+    )
+  }
+  return (
+    <a href={url ?? '#'} target="_blank" rel="noreferrer" title={att.fileName}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5, color: '#6366f1', textDecoration: 'none' }}>
+      📄 {att.fileName}
+    </a>
+  )
+}
+
+// ─── Barra de ejecución (notas + evidencia + crear BUG + botones) ─────────────
 
 function ExecuteBar({ onRecord, isPending, defectTitle }: {
-  onRecord: (req: TestExecutionRequest) => void
+  onRecord: (req: TestExecutionRequest, file: File | null) => void
   isPending: boolean
   defectTitle: string
 }) {
   const [notes, setNotes] = useState('')
   const [createDefect, setCreateDefect] = useState(true)
+  const [file, setFile] = useState<File | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   function record(result: TestResult) {
     onRecord({
@@ -35,8 +64,10 @@ function ExecuteBar({ onRecord, isPending, defectTitle }: {
       createDefect: result === 'FAIL' ? createDefect : false,
       defectTitle: result === 'FAIL' && createDefect ? defectTitle : undefined,
       defectAssignee: result === 'FAIL' && createDefect ? 'MANUEL' : undefined,
-    })
+    }, file)
     setNotes('')
+    setFile(null)
+    if (fileRef.current) fileRef.current.value = ''
   }
 
   return (
@@ -47,6 +78,13 @@ function ExecuteBar({ onRecord, isPending, defectTitle }: {
         value={notes}
         onChange={e => setNotes(e.target.value)}
       />
+      <input ref={fileRef} type="file" accept="image/png,image/jpeg,application/pdf" style={{ display: 'none' }}
+        onChange={e => setFile(e.target.files?.[0] ?? null)} />
+      <button type="button" title="Adjuntar captura o PDF (máx 5MB)"
+        onClick={() => fileRef.current?.click()}
+        style={{ ...btnSecondaryStyle, padding: '6px 10px', fontSize: 12, color: file ? '#10b981' : 'var(--muted)' }}>
+        {file ? `📎 ${file.name.slice(0, 18)}${file.name.length > 18 ? '…' : ''}` : '📎 Evidencia'}
+      </button>
       <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11.5, color: 'var(--muted)', whiteSpace: 'nowrap', cursor: 'pointer' }}>
         <input type="checkbox" checked={createDefect} onChange={e => setCreateDefect(e.target.checked)} />
         Crear BUG si falla
@@ -85,7 +123,7 @@ function QaScenarioRow({ story, scenario, latest, onRecord, isPending }: {
   story: UserStoryDto
   scenario: UserStoryDto['scenarios'][0]
   latest: TestExecutionDto | undefined
-  onRecord: (scenarioId: string, req: TestExecutionRequest) => void
+  onRecord: (scenarioId: string, req: TestExecutionRequest, file: File | null) => void
   isPending: boolean
 }) {
   return (
@@ -102,10 +140,16 @@ function QaScenarioRow({ story, scenario, latest, onRecord, isPending }: {
         </div>
       </div>
       <GherkinLines given={scenario.givenConditions} when={scenario.whenEvent} then={scenario.thenOutcome} />
+      {latest && latest.attachments.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>Evidencia:</span>
+          {latest.attachments.map(a => <AttachmentThumb key={a.id} att={a} />)}
+        </div>
+      )}
       <ExecuteBar
         isPending={isPending}
         defectTitle={`BUG ${story.reqId} — ${scenario.scenarioTitle}`}
-        onRecord={req => onRecord(scenario.id, req)}
+        onRecord={(req, file) => onRecord(scenario.id, req, file)}
       />
     </div>
   )
@@ -123,8 +167,11 @@ function QaStoryPanel({ story }: { story: UserStoryDto }) {
   }
 
   const recordMut = useMutation({
-    mutationFn: ({ scenarioId, req }: { scenarioId: string; req: TestExecutionRequest }) =>
-      qaApi.recordExecution(story.id, scenarioId, req),
+    mutationFn: async ({ scenarioId, req, file }: { scenarioId: string; req: TestExecutionRequest; file: File | null }) => {
+      const res = await qaApi.recordExecution(story.id, scenarioId, req)
+      if (file) await qaApi.uploadAttachment(res.id, file)
+      return res
+    },
     onSuccess: res => {
       qc.invalidateQueries({ queryKey: ['test-executions', story.id] })
       qc.invalidateQueries({ queryKey: ['user-stories'] })
@@ -160,7 +207,7 @@ function QaStoryPanel({ story }: { story: UserStoryDto }) {
               story={story}
               scenario={sc}
               latest={latestByScenario.get(sc.id)}
-              onRecord={(scenarioId, req) => recordMut.mutate({ scenarioId, req })}
+              onRecord={(scenarioId, req, file) => recordMut.mutate({ scenarioId, req, file })}
               isPending={recordMut.isPending}
             />
           ))}
@@ -249,7 +296,7 @@ function NewRunModal({ epics, stories, onClose, onSave, isPending }: {
   const [epicId, setEpicId] = useState('')
   const [storyIds, setStoryIds] = useState<string[]>([])
 
-  const functional = stories.filter(s => s.storyType === 'FUNCTIONAL' && s.scenarios.some(sc => sc.isActive))
+  const candidates = stories.filter(s => s.scenarios.some(sc => sc.isActive))
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -333,14 +380,14 @@ function NewRunModal({ epics, stories, onClose, onSave, isPending }: {
             )}
             {scopeType === 'STORIES' && (
               <div style={{ maxHeight: 180, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {functional.map(s => (
+                {candidates.map(s => (
                   <label key={s.id} style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12.5, cursor: 'pointer', color: 'var(--text)' }}>
                     <input type="checkbox" checked={storyIds.includes(s.id)}
                       onChange={e => setStoryIds(prev => e.target.checked ? [...prev, s.id] : prev.filter(x => x !== s.id))} />
                     <b style={{ color: '#6366f1' }}>{s.reqId}</b> {(s.actionStatement ?? '').slice(0, 60)}
                   </label>
                 ))}
-                {functional.length === 0 && <span style={{ fontSize: 12, color: 'var(--muted)' }}>No hay historias funcionales con escenarios activos</span>}
+                {candidates.length === 0 && <span style={{ fontSize: 12, color: 'var(--muted)' }}>No hay historias con escenarios activos</span>}
               </div>
             )}
           </div>
@@ -372,8 +419,11 @@ function RunScenarioNode({ runId, runOpen, storyId, reqId, scenario }: {
   const last = scenario.executions[0]
 
   const recordMut = useMutation({
-    mutationFn: (req: TestExecutionRequest) =>
-      qaApi.recordExecution(storyId, scenario.scenarioId, { ...req, testRunId: runId }),
+    mutationFn: async ({ req, file }: { req: TestExecutionRequest; file: File | null }) => {
+      const res = await qaApi.recordExecution(storyId, scenario.scenarioId, { ...req, testRunId: runId })
+      if (file) await qaApi.uploadAttachment(res.id, file)
+      return res
+    },
     onSuccess: res => {
       qc.invalidateQueries({ queryKey: ['qa-run-tree', runId] })
       qc.invalidateQueries({ queryKey: ['qa-runs'] })
@@ -426,12 +476,17 @@ function RunScenarioNode({ runId, runOpen, storyId, reqId, scenario }: {
           <ExecuteBar
             isPending={recordMut.isPending}
             defectTitle={`BUG ${reqId} — ${scenario.title}`}
-            onRecord={req => recordMut.mutate(req)}
+            onRecord={(req, file) => recordMut.mutate({ req, file })}
           />
         </div>
       )}
       {last?.notes && !showExecute && (
         <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 4, paddingLeft: 22 }}>— {last.notes}</div>
+      )}
+      {last && last.attachments.length > 0 && !showExecute && (
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 6, paddingLeft: 22, flexWrap: 'wrap' }}>
+          {last.attachments.map(a => <AttachmentThumb key={a.id} att={a} />)}
+        </div>
       )}
     </div>
   )
@@ -567,10 +622,10 @@ export function QaTab({ stories, epics, onStatusChange, isUpdating }: {
     },
   })
 
-  const functional = stories.filter(s => s.storyType === 'FUNCTIONAL')
-  const inQaCycle = functional.filter(s => ['READY_FOR_QA', 'IN_QA', 'QA_FAILED'].includes(s.status))
-  const pendingDev = functional.filter(s => ['IN_DEV', 'REVIEW'].includes(s.status))
-  const doneCount = functional.filter(s => s.status === 'DONE').length
+  // RNF incluidas: con escenarios NFR_CHECK recorren el mismo ciclo de QA
+  const inQaCycle = stories.filter(s => ['READY_FOR_QA', 'IN_QA', 'QA_FAILED'].includes(s.status))
+  const pendingDev = stories.filter(s => ['IN_DEV', 'REVIEW'].includes(s.status))
+  const doneCount = stories.filter(s => s.status === 'DONE').length
 
   return (
     <div>
@@ -594,7 +649,7 @@ export function QaTab({ stories, epics, onStatusChange, isUpdating }: {
             borderRadius: 10, padding: '12px 14px', textAlign: 'center',
           }}>
             <div style={{ fontSize: 22, fontWeight: 800, color: STORY_STATUS_COLORS[st] }}>
-              {functional.filter(s => s.status === st).length}
+              {stories.filter(s => s.status === st).length}
             </div>
             <div style={{ fontSize: 11, color: STORY_STATUS_COLORS[st], fontWeight: 600, marginTop: 2 }}>{label}</div>
           </div>

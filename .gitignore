@@ -4,6 +4,9 @@
 # Build artifacts
 backend/build/
 backend/.gradle/
+
+# Evidencia QA subida en local
+backend/uploads/
 frontend/dist/
 frontend/node_modules/
 

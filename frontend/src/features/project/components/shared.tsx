@@ -106,10 +106,10 @@ export const NFR_CAT_COLORS: Record<NfrCategory, string> = {
 }
 
 export const SCENARIO_TYPE_LABELS: Record<ScenarioType, string> = {
-  HAPPY_PATH: 'Camino feliz', NEGATIVE: 'Negativo', EDGE: 'Caso límite',
+  HAPPY_PATH: 'Camino feliz', NEGATIVE: 'Negativo', EDGE: 'Caso límite', NFR_CHECK: 'Verificación RNF',
 }
 export const SCENARIO_TYPE_COLORS: Record<ScenarioType, string> = {
-  HAPPY_PATH: '#10b981', NEGATIVE: '#ef4444', EDGE: '#f59e0b',
+  HAPPY_PATH: '#10b981', NEGATIVE: '#ef4444', EDGE: '#f59e0b', NFR_CHECK: '#8b5cf6',
 }
 
 export const NEXT_STATUS: Partial<Record<TaskStatus, TaskStatus>> = {

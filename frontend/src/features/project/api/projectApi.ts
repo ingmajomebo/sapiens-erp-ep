@@ -42,7 +42,7 @@ export const epicsApi = {
 export type StoryType = 'FUNCTIONAL' | 'NON_FUNCTIONAL'
 export type StoryStatus = 'DEFINED' | 'IN_DEV' | 'REVIEW' | 'READY_FOR_QA' | 'IN_QA' | 'QA_FAILED' | 'DONE' | 'BLOCKED'
 export type NfrCategory = 'DATA_INTEGRITY' | 'CONSISTENCY' | 'BUSINESS_RULES' | 'SECURITY' | 'PERFORMANCE' | 'USABILITY' | 'COMPLIANCE'
-export type ScenarioType = 'HAPPY_PATH' | 'NEGATIVE' | 'EDGE'
+export type ScenarioType = 'HAPPY_PATH' | 'NEGATIVE' | 'EDGE' | 'NFR_CHECK'
 
 export interface StoryScenarioDto {
   id: string
@@ -91,6 +91,7 @@ export interface UserStoryRequest {
   status?: StoryStatus
   nfrCategory?: NfrCategory
   nfrCriterion?: string
+  generateNfrScenario?: boolean
 }
 
 export interface StoryScenarioRequest {
@@ -150,6 +151,13 @@ export const userStoriesApi = {
 
 export type TestResult = 'PASS' | 'FAIL' | 'BLOCKED' | 'SKIPPED'
 
+export interface QaAttachmentDto {
+  id: string
+  fileName: string
+  contentType: string
+  sizeBytes: number
+}
+
 export interface ScenarioSnapshot {
   name: string
   givenConditions: string
@@ -176,6 +184,7 @@ export interface TestExecutionDto {
   scenarioSnapshot: ScenarioSnapshot
   buildVersion: string | null
   environment: RunEnvironment | null
+  attachments: QaAttachmentDto[]
 }
 
 export interface TestExecutionRequest {
@@ -199,6 +208,15 @@ export const qaApi = {
     client.patch<StoryScenarioDto>(`/user-stories/scenarios/${scenarioId}/tags`, { tags }).then(r => r.data),
   storyHistory: (storyId: string) =>
     client.get<StoryQaHistoryDto[]>(`/user-stories/${storyId}/qa-history`).then(r => r.data),
+  uploadAttachment: (executionId: string, file: File) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return client.post<QaAttachmentDto>(`/qa/executions/${executionId}/attachments`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then(r => r.data)
+  },
+  getAttachmentBlob: (id: string) =>
+    client.get<Blob>(`/qa/attachments/${id}`, { responseType: 'blob' }).then(r => r.data),
 }
 
 // ─── QA: ciclos de prueba (test runs) ────────────────────────────────────────
@@ -270,6 +288,7 @@ export interface QaRunTreeExecution {
   environment: RunEnvironment | null
   defectTaskId: string | null
   defectTaskTitle: string | null
+  attachments: QaAttachmentDto[]
 }
 
 export interface QaRunTreeScenario {

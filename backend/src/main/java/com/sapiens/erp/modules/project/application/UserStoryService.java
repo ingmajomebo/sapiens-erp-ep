@@ -50,7 +50,23 @@ public class UserStoryService {
             }
             story.setStatus(req.status());
         }
-        return UserStoryResponse.from(storyRepository.save(story));
+        storyRepository.save(story);
+
+        // RNF: generar automáticamente su escenario de verificación desde el criterio medible
+        if (story.getStoryType() == StoryType.NON_FUNCTIONAL
+                && Boolean.TRUE.equals(req.generateNfrScenario())
+                && req.nfrCriterion() != null && !req.nfrCriterion().isBlank()) {
+            StoryScenario check = StoryScenario.create(
+                    story,
+                    "Verificación del criterio no funcional",
+                    "el sistema opera en condiciones normales",
+                    "se verifica el criterio no funcional definido",
+                    req.nfrCriterion().trim(),
+                    ScenarioType.NFR_CHECK, 0);
+            scenarioRepository.save(check);
+            story.getScenarios().add(check);
+        }
+        return UserStoryResponse.from(story);
     }
 
     @Transactional
