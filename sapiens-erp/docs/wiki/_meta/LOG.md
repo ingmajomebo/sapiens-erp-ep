@@ -6,6 +6,26 @@
 
 ---
 
+## [2026-07-03] ingest | Facturación completa (V29) + Módulo Clientes (V30)
+
+- **Facturación** (`sales_invoices` extendida): ciclo BORRADOR→EMITIDA→PAGO_PARCIAL→PAGADA,
+  CANCELADA con nota crédito (NC-NNNNNN, `credit_notes` + secuencia); VENCIDA derivada
+  (`dueDate` + estado abierto), nunca persistida. Líneas con descuento e IVA por tarifa
+  (0/5/19%, default 0% pescado exento), pagos parciales (`sales_invoice_payments`),
+  historial auditable (`sales_invoice_history`). Factura desde pedido nace en BORRADOR
+  (decisión del usuario 2026-07-02); correo pospuesto.
+- Filtros combinables server-side (`GET /sales-invoices/search` + `/summary` con KPIs
+  filtrados), detalle completo, PDF con OpenPDF (`/{id}/pdf`, NC incluida) con pie
+  "Documento no validado ante DIAN" mientras no haya CUFE.
+- **Clientes** (`customers` extendida V30): documento fiscal único parcial
+  (NIT/CC/CE/PASSPORT), razón social, ciudad, plazo de pago por defecto. Métricas al
+  vuelo (compras, facturado, ticket, frecuencia, saldo) y segmentación
+  NUEVO/RECURRENTE/EN_RIESGO/INACTIVO con umbrales en `app.customers.segmentation.*`.
+- Frontend: página Facturación reescrita (filtros con chips/URL, detalle, pagos, PDF),
+  nueva página Clientes (KPIs por segmento, ficha con gráfica 12 meses — Recharts),
+  integraciones cruzadas factura↔cliente↔pedido con alta inline.
+- Tests: ciclo de factura (totales/estados) y reglas de segmentación.
+
 ## [2026-07-03] ingest | Módulo Sales MVP: pedidos por canal público y administrativo (V27)
 
 - Primer backend real del módulo Sales (REQ-VEN-001), patrón espejo de procurement:
