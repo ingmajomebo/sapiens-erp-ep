@@ -11,6 +11,7 @@ import { Purchases } from './features/purchases/Purchases'
 import { Sales } from './features/sales/Sales'
 import { PublicOrderPage } from './features/sales/PublicOrderPage'
 import { Invoicing } from './features/invoicing/Invoicing'
+import { Customers } from './features/customers/Customers'
 import { CashRegister } from './features/cash/CashRegister'
 import { AccountsPayablePage } from './features/finance/AccountsPayablePage'
 import { AccountsReceivable } from './features/finance/AccountsReceivable'
@@ -38,6 +39,7 @@ function PageContent() {
     case 'inventory':   return <Inventory />
     case 'purchases':   return <Purchases />
     case 'sales':       return <Sales />
+    case 'customers':   return <Customers />
     case 'cash':                return <CashRegister />
     case 'accountsPayable':     return <AccountsPayablePage />
     case 'accountsReceivable':  return <AccountsReceivable />

@@ -92,6 +92,15 @@ const ProjectIcon = () => (
   </svg>
 )
 
+const UsersIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+    <circle cx="6" cy="5" r="2.5" stroke="currentColor" strokeWidth="1.4"/>
+    <path d="M1.5 13.5c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+    <path d="M11 7.5a2.5 2.5 0 100-5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+    <path d="M12.5 9.8c1.3.5 2 1.6 2 3.2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+  </svg>
+)
+
 const navGroups: { labelKey: keyof typeof translations.en; items: NavDef[] }[] = [
   {
     labelKey: 'nav_general',
@@ -105,6 +114,7 @@ const navGroups: { labelKey: keyof typeof translations.en; items: NavDef[] }[] =
       { key: 'inventory', icon: <BoxIcon />, badge: '4' },
       { key: 'purchases', icon: <ShoppingCartIcon /> },
       { key: 'sales', icon: <TagIcon /> },
+      { key: 'customers', icon: <UsersIcon /> },
       { key: 'cash', icon: <CashIcon /> },
     ],
   },
@@ -132,6 +142,7 @@ const navLabelKeys: Record<Page, keyof typeof translations.en> = {
   inventory:           'nav_inventory',
   purchases:           'nav_purchases',
   sales:               'nav_sales',
+  customers:           'nav_customers',
   cash:                'nav_cash',
   accountsPayable:     'nav_accounts_payable',
   accountsReceivable:  'nav_accounts_receivable',
