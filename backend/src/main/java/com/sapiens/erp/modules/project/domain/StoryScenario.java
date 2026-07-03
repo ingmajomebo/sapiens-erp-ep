@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.util.UUID;
 
@@ -41,6 +43,23 @@ public class StoryScenario extends AuditableEntity {
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder;
 
+    /** Se incrementa en cada edición del texto Gherkin; las ejecuciones guardan la versión probada. */
+    @Column(nullable = false)
+    private Integer version = 1;
+
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(columnDefinition = "text[]", nullable = false)
+    private String[] tags = new String[0];
+
+    /** Los escenarios inactivos no cuentan para derivar el estado DONE de la historia. */
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = Boolean.TRUE;
+
+    /** Marca una nueva versión del escenario tras editar su contenido Gherkin. */
+    public void bumpVersion() {
+        this.version = this.version + 1;
+    }
+
     public static StoryScenario create(UserStory story, String title,
                                        String given, String when, String then,
                                        ScenarioType type, int order) {
@@ -53,6 +72,9 @@ public class StoryScenario extends AuditableEntity {
         s.thenOutcome = then;
         s.scenarioType = type != null ? type : ScenarioType.HAPPY_PATH;
         s.sortOrder = order;
+        s.version = 1;
+        s.tags = new String[0];
+        s.isActive = Boolean.TRUE;
         return s;
     }
 }

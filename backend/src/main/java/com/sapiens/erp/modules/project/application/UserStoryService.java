@@ -102,12 +102,31 @@ public class UserStoryService {
     public StoryScenarioResponse updateScenario(UUID scenarioId, StoryScenarioRequest req) {
         StoryScenario sc = scenarioRepository.findByIdAndDeletedAtIsNull(scenarioId)
                 .orElseThrow(() -> new IllegalArgumentException("Escenario no encontrado: " + scenarioId));
+
+        // Editar el Gherkin crea una nueva versión: las ejecuciones pasadas conservan su snapshot
+        boolean gherkinChanged = !sc.getScenarioTitle().equals(req.scenarioTitle())
+                || !sc.getGivenConditions().equals(req.givenConditions())
+                || !sc.getWhenEvent().equals(req.whenEvent())
+                || !sc.getThenOutcome().equals(req.thenOutcome());
+
         sc.setScenarioTitle(req.scenarioTitle());
         sc.setGivenConditions(req.givenConditions());
         sc.setWhenEvent(req.whenEvent());
         sc.setThenOutcome(req.thenOutcome());
         if (req.scenarioType() != null) sc.setScenarioType(req.scenarioType());
         if (req.sortOrder() != null) sc.setSortOrder(req.sortOrder());
+        if (req.isActive() != null) sc.setIsActive(req.isActive());
+        if (gherkinChanged) sc.bumpVersion();
+        return StoryScenarioResponse.from(scenarioRepository.save(sc));
+    }
+
+    @Transactional
+    public StoryScenarioResponse updateScenarioTags(UUID scenarioId, List<String> tags) {
+        StoryScenario sc = scenarioRepository.findByIdAndDeletedAtIsNull(scenarioId)
+                .orElseThrow(() -> new IllegalArgumentException("Escenario no encontrado: " + scenarioId));
+        sc.setTags(tags != null
+                ? tags.stream().map(String::trim).filter(t -> !t.isEmpty()).distinct().toArray(String[]::new)
+                : new String[0]);
         return StoryScenarioResponse.from(scenarioRepository.save(sc));
     }
 

@@ -5,8 +5,12 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -49,6 +53,22 @@ public class ScenarioTestExecution extends AuditableEntity {
     @Column(name = "executed_at", nullable = false)
     private Instant executedAt;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "test_run_id")
+    private QaTestRun testRun;
+
+    /** Copia del Gherkin tal como estaba al ejecutar — el historial nunca cambia aunque el escenario se edite. */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "scenario_snapshot", columnDefinition = "jsonb", nullable = false)
+    private Map<String, Object> scenarioSnapshot;
+
+    @Column(name = "build_version", length = 50)
+    private String buildVersion;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private RunEnvironment environment;
+
     public static ScenarioTestExecution create(UserStory story, StoryScenario scenario,
                                                TestResult result, TaskAssignee executedBy,
                                                String notes) {
@@ -60,6 +80,18 @@ public class ScenarioTestExecution extends AuditableEntity {
         e.executedBy = executedBy;
         e.notes = notes;
         e.executedAt = Instant.now();
+        e.scenarioSnapshot = snapshotOf(scenario);
         return e;
+    }
+
+    private static Map<String, Object> snapshotOf(StoryScenario sc) {
+        Map<String, Object> snap = new LinkedHashMap<>();
+        snap.put("name", sc.getScenarioTitle());
+        snap.put("givenConditions", sc.getGivenConditions());
+        snap.put("whenEvent", sc.getWhenEvent());
+        snap.put("thenOutcome", sc.getThenOutcome());
+        snap.put("scenarioType", sc.getScenarioType().name());
+        snap.put("version", sc.getVersion());
+        return snap;
     }
 }

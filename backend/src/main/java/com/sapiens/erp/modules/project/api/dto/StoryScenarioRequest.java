@@ -9,5 +9,6 @@ public record StoryScenarioRequest(
         @NotBlank String whenEvent,
         @NotBlank String thenOutcome,
         ScenarioType scenarioType,
-        Integer sortOrder
+        Integer sortOrder,
+        Boolean isActive
 ) {}

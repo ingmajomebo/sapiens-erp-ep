@@ -30,6 +30,8 @@ public class QaExecutionService {
     private final StoryScenarioRepository scenarioRepository;
     private final ScenarioTestExecutionRepository executionRepository;
     private final ProjectTaskRepository taskRepository;
+    private final QaTestRunRepository runRepository;
+    private final QaTestRunItemRepository runItemRepository;
 
     @Transactional(readOnly = true)
     public List<TestExecutionResponse> listByStory(UUID storyId) {
@@ -50,6 +52,23 @@ public class QaExecutionService {
 
         ScenarioTestExecution execution = ScenarioTestExecution.create(
                 story, scenario, req.result(), req.executedBy(), req.notes());
+
+        if (req.testRunId() != null) {
+            QaTestRun run = runRepository.findByIdAndDeletedAtIsNull(req.testRunId())
+                    .orElseThrow(() -> new IllegalArgumentException("Run no encontrado: " + req.testRunId()));
+            if (run.getStatus() == RunStatus.CLOSED) {
+                throw new IllegalArgumentException("El run " + run.getCode() + " está cerrado; no admite ejecuciones");
+            }
+            if (!runItemRepository.existsByRunIdAndScenarioIdAndDeletedAtIsNull(run.getId(), scenarioId)) {
+                throw new IllegalArgumentException("El escenario no está en el alcance del run " + run.getCode());
+            }
+            execution.setTestRun(run);
+            execution.setBuildVersion(run.getBuildVersion());
+            execution.setEnvironment(run.getEnvironment());
+        } else {
+            execution.setBuildVersion(req.buildVersion());
+            execution.setEnvironment(req.environment());
+        }
 
         if (req.result() == TestResult.FAIL && Boolean.TRUE.equals(req.createDefect())) {
             String title = (req.defectTitle() != null && !req.defectTitle().isBlank())
@@ -80,7 +99,7 @@ public class QaExecutionService {
         }
 
         List<StoryScenario> activeScenarios = story.getScenarios().stream()
-                .filter(sc -> sc.getDeletedAt() == null)
+                .filter(sc -> sc.getDeletedAt() == null && Boolean.TRUE.equals(sc.getIsActive()))
                 .toList();
 
         boolean allPass = !activeScenarios.isEmpty() && activeScenarios.stream()

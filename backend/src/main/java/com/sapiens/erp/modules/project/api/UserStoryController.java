@@ -76,6 +76,14 @@ public class UserStoryController {
         service.deleteScenario(scenarioId);
     }
 
+    @PatchMapping("/scenarios/{scenarioId}/tags")
+    public StoryScenarioResponse updateScenarioTags(@PathVariable UUID scenarioId,
+                                                    @RequestBody TagsRequest req) {
+        return service.updateScenarioTags(scenarioId, req.tags());
+    }
+
+    public record TagsRequest(List<String> tags) {}
+
     // ── QA: ejecuciones de prueba ────────────────────────────────────────────
 
     @GetMapping("/{storyId}/test-executions")
