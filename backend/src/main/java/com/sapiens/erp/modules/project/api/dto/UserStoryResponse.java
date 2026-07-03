@@ -20,6 +20,7 @@ public record UserStoryResponse(
         String module,
         TaskPriority priority,
         StoryStatus status,
+        StoryStatus previousStatus,
         NfrCategory nfrCategory,
         String nfrCriterion,
         List<StoryScenarioResponse> scenarios,
@@ -39,6 +40,7 @@ public record UserStoryResponse(
                 s.getStoryType(),
                 s.getPersona(), s.getActionStatement(), s.getOutcomeStatement(),
                 s.getDescription(), s.getModule(), s.getPriority(), s.getStatus(),
+                s.getPreviousStatus(),
                 s.getNfrCategory(), s.getNfrCriterion(),
                 scenarioDtos, s.getCreatedAt()
         );

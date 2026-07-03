@@ -71,6 +71,14 @@ public class EpicService {
     public EpicResponse updateStatus(UUID id, EpicStatus status) {
         Epic epic = epicRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new IllegalArgumentException("Épica no encontrada: " + id));
+        // Regla laxa: DONE solo se alcanza desde IN_PROGRESS y solo se reabre a IN_PROGRESS
+        EpicStatus current = epic.getStatus();
+        if (status == EpicStatus.DONE && current != EpicStatus.IN_PROGRESS && current != EpicStatus.DONE) {
+            throw new IllegalArgumentException("Transición no permitida: " + current + " → DONE");
+        }
+        if (current == EpicStatus.DONE && status != EpicStatus.IN_PROGRESS && status != EpicStatus.DONE) {
+            throw new IllegalArgumentException("Transición no permitida: DONE → " + status);
+        }
         epic.setStatus(status);
         Epic saved = epicRepository.save(epic);
         long[] c = countFor(id);

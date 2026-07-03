@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -31,13 +33,23 @@ public class UserStoryService {
 
     @Transactional
     public UserStoryResponse create(UserStoryRequest req) {
+        if (storyRepository.existsByReqIdAndDeletedAtIsNull(req.reqId())) {
+            throw new IllegalArgumentException("Ya existe una historia activa con el ID " + req.reqId());
+        }
         UserStory story = UserStory.create(
                 req.reqId(), resolveEpic(req.epicId()), req.storyType(),
                 req.persona(), req.actionStatement(), req.outcomeStatement(),
                 req.description(), req.module(), req.priority(),
                 req.nfrCategory(), req.nfrCriterion()
         );
-        if (req.status() != null) story.setStatus(req.status());
+        if (req.status() != null) {
+            // Los estados derivados por QA no son válidos como estado inicial
+            if (Set.of(StoryStatus.DONE, StoryStatus.IN_QA, StoryStatus.QA_FAILED).contains(req.status())) {
+                throw new IllegalArgumentException(
+                        "Una historia no puede crearse en estado " + req.status() + " (se deriva del ciclo de QA)");
+            }
+            story.setStatus(req.status());
+        }
         return UserStoryResponse.from(storyRepository.save(story));
     }
 
@@ -56,18 +68,79 @@ public class UserStoryService {
         story.setDescription(req.description());
         story.setModule(req.module());
         story.setPriority(req.priority() != null ? req.priority() : story.getPriority());
-        if (req.status() != null) story.setStatus(req.status());
+        if (req.status() != null && req.status() != story.getStatus()) {
+            // El PUT respeta la misma máquina de estados que el PATCH
+            validateTransition(story, story.getStatus(), req.status());
+            if (req.status() == StoryStatus.BLOCKED) story.setPreviousStatus(story.getStatus());
+            if (story.getStatus() == StoryStatus.BLOCKED) story.setPreviousStatus(null);
+            story.setStatus(req.status());
+        }
         story.setNfrCategory(req.nfrCategory());
         story.setNfrCriterion(req.nfrCriterion());
         return UserStoryResponse.from(storyRepository.save(story));
     }
 
+    /**
+     * Transiciones válidas por PATCH. IN_QA→QA_FAILED/DONE queda fuera a propósito:
+     * esos estados solo los deriva QaExecutionService al registrar resultados.
+     * Las historias RNF pueden además REVIEW→DONE (verificación documental).
+     */
+    private static final Map<StoryStatus, Set<StoryStatus>> ALLOWED_TRANSITIONS = Map.of(
+            StoryStatus.DEFINED,      Set.of(StoryStatus.IN_DEV),
+            StoryStatus.IN_DEV,       Set.of(StoryStatus.REVIEW),
+            StoryStatus.REVIEW,       Set.of(StoryStatus.READY_FOR_QA, StoryStatus.IN_DEV),
+            StoryStatus.READY_FOR_QA, Set.of(StoryStatus.IN_QA),
+            StoryStatus.IN_QA,        Set.of(),
+            StoryStatus.QA_FAILED,    Set.of(StoryStatus.IN_DEV, StoryStatus.READY_FOR_QA),
+            StoryStatus.DONE,         Set.of(),
+            StoryStatus.BLOCKED,      Set.of()
+    );
+
     @Transactional
-    public UserStoryResponse updateStatus(UUID id, StoryStatus status) {
+    public UserStoryResponse updateStatus(UUID id, StoryStatus status, boolean force) {
         UserStory story = storyRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new IllegalArgumentException("Historia no encontrada: " + id));
+
+        StoryStatus current = story.getStatus();
+        if (!force && status != current) {
+            validateTransition(story, current, status);
+        }
+
+        if (status == StoryStatus.BLOCKED && current != StoryStatus.BLOCKED) {
+            story.setPreviousStatus(current);
+        }
+        if (current == StoryStatus.BLOCKED && status != StoryStatus.BLOCKED) {
+            story.setPreviousStatus(null);
+        }
         story.setStatus(status);
         return UserStoryResponse.from(storyRepository.save(story));
+    }
+
+    private void validateTransition(UserStory story, StoryStatus current, StoryStatus target) {
+        // Cualquier estado (salvo DONE) puede bloquearse
+        if (target == StoryStatus.BLOCKED) {
+            if (current == StoryStatus.DONE) {
+                throw new IllegalArgumentException("Transición no permitida: DONE → BLOCKED");
+            }
+            return;
+        }
+        // BLOCKED solo vuelve al estado desde el que se bloqueó
+        if (current == StoryStatus.BLOCKED) {
+            StoryStatus prev = story.getPreviousStatus() != null ? story.getPreviousStatus() : StoryStatus.IN_DEV;
+            if (target != prev) {
+                throw new IllegalArgumentException(
+                        "Transición no permitida: BLOCKED → " + target + " (solo puede volver a " + prev + ")");
+            }
+            return;
+        }
+        // Las RNF se verifican documentalmente: pueden completarse desde revisión
+        if (story.getStoryType() == StoryType.NON_FUNCTIONAL
+                && current == StoryStatus.REVIEW && target == StoryStatus.DONE) {
+            return;
+        }
+        if (!ALLOWED_TRANSITIONS.getOrDefault(current, Set.of()).contains(target)) {
+            throw new IllegalArgumentException("Transición no permitida: " + current + " → " + target);
+        }
     }
 
     @Transactional

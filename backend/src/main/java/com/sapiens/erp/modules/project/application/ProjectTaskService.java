@@ -75,7 +75,16 @@ public class ProjectTaskService {
     public ProjectTaskResponse updateStatus(UUID id, TaskStatusUpdateRequest req) {
         ProjectTask task = taskRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new IllegalArgumentException("Tarea no encontrada: " + id));
-        task.updateStatus(req.status());
+        // Regla laxa: no saltar directo TODO → DONE ni salir de DONE salvo para reabrir en revisión
+        TaskStatus current = task.getStatus();
+        TaskStatus target = req.status();
+        if (target == TaskStatus.DONE && current == TaskStatus.TODO) {
+            throw new IllegalArgumentException("Transición no permitida: TODO → DONE (pasa antes por En curso)");
+        }
+        if (current == TaskStatus.DONE && target != TaskStatus.DONE && target != TaskStatus.REVIEW) {
+            throw new IllegalArgumentException("Transición no permitida: DONE → " + target + " (reabre en REVIEW)");
+        }
+        task.updateStatus(target);
         return ProjectTaskResponse.from(taskRepository.save(task));
     }
 

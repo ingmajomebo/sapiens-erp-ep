@@ -58,6 +58,11 @@ public class UserStory extends AuditableEntity {
     @Column(nullable = false, length = 20)
     private StoryStatus status;
 
+    /** Estado desde el que se bloqueó — BLOCKED solo puede volver aquí. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "previous_status", length = 20)
+    private StoryStatus previousStatus;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "nfr_category", length = 50)
     private NfrCategory nfrCategory;

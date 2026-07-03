@@ -2131,7 +2131,8 @@ function StoryDetailModal({
               >
                 📋 Crear tarea
               </button>
-              {story.status !== 'DONE' && (
+              {/* Transiciones válidas según la máquina de estados del backend */}
+              {isNfr && story.status === 'REVIEW' && (
                 <button
                   type="button"
                   style={{ ...btnPrimaryStyle, opacity: isUpdating ? 0.7 : 1 }}
@@ -2141,7 +2142,7 @@ function StoryDetailModal({
                   {isUpdating ? 'Guardando...' : '✓ Marcar completada'}
                 </button>
               )}
-              {(story.status === 'DEFINED' || story.status === 'BLOCKED') && (
+              {story.status === 'DEFINED' && (
                 <button
                   type="button"
                   style={{ ...btnSecondaryStyle, color: '#f59e0b', borderColor: '#f59e0b', opacity: isUpdating ? 0.7 : 1 }}
@@ -2161,14 +2162,46 @@ function StoryDetailModal({
                   Poner en revisión
                 </button>
               )}
-              {!isNfr && (story.status === 'IN_DEV' || story.status === 'REVIEW' || story.status === 'QA_FAILED') && (
+              {(story.status === 'REVIEW' || story.status === 'QA_FAILED') && (
+                <>
+                  {!isNfr && (
+                    <button
+                      type="button"
+                      style={{ ...btnSecondaryStyle, color: '#06b6d4', borderColor: '#06b6d4', opacity: isUpdating ? 0.7 : 1 }}
+                      disabled={isUpdating}
+                      onClick={() => onStatusChange('READY_FOR_QA')}
+                    >
+                      🧪 {story.status === 'QA_FAILED' ? 'Re-enviar a QA' : 'Enviar a QA'}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    style={{ ...btnSecondaryStyle, color: '#f59e0b', borderColor: '#f59e0b', opacity: isUpdating ? 0.7 : 1 }}
+                    disabled={isUpdating}
+                    onClick={() => onStatusChange('IN_DEV')}
+                  >
+                    ↩ Volver a desarrollo
+                  </button>
+                </>
+              )}
+              {story.status === 'BLOCKED' && (
                 <button
                   type="button"
-                  style={{ ...btnSecondaryStyle, color: '#06b6d4', borderColor: '#06b6d4', opacity: isUpdating ? 0.7 : 1 }}
+                  style={{ ...btnSecondaryStyle, color: '#10b981', borderColor: '#10b981', opacity: isUpdating ? 0.7 : 1 }}
                   disabled={isUpdating}
-                  onClick={() => onStatusChange('READY_FOR_QA')}
+                  onClick={() => onStatusChange(story.previousStatus ?? 'IN_DEV')}
                 >
-                  🧪 Enviar a QA
+                  🔓 Desbloquear ({STORY_STATUS_LABELS[story.previousStatus ?? 'IN_DEV']})
+                </button>
+              )}
+              {story.status !== 'DONE' && story.status !== 'BLOCKED' && (
+                <button
+                  type="button"
+                  style={{ ...btnSecondaryStyle, color: '#ef4444', borderColor: '#ef4444', opacity: isUpdating ? 0.7 : 1 }}
+                  disabled={isUpdating}
+                  onClick={() => onStatusChange('BLOCKED')}
+                >
+                  ⛔ Bloquear
                 </button>
               )}
             </div>
@@ -2866,12 +2899,18 @@ export function ProjectPage() {
   const createStoryMut = useMutation({
     mutationFn: (d: UserStoryRequest) => userStoriesApi.create(d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['user-stories'] }); setStoryModal({ open: false, story: null }); toast({ type: 'success', message: 'Historia creada' }) },
-    onError: () => toast({ type: 'error', message: 'Error al crear historia' }),
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast({ type: 'error', message: msg ?? 'Error al crear historia' })
+    },
   })
   const updateStoryMut = useMutation({
     mutationFn: ({ id, data }: { id: string; data: UserStoryRequest }) => userStoriesApi.update(id, data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['user-stories'] }); setStoryModal({ open: false, story: null }); toast({ type: 'success', message: 'Historia actualizada' }) },
-    onError: () => toast({ type: 'error', message: 'Error al actualizar historia' }),
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast({ type: 'error', message: msg ?? 'Error al actualizar historia' })
+    },
   })
   const storyStatusMut = useMutation({
     mutationFn: ({ id, status }: { id: string; status: StoryStatus }) => userStoriesApi.updateStatus(id, status),
@@ -2879,7 +2918,10 @@ export function ProjectPage() {
       qc.invalidateQueries({ queryKey: ['user-stories'] })
       toast({ type: 'success', message: 'Estado actualizado' })
     },
-    onError: () => toast({ type: 'error', message: 'Error al cambiar estado' }),
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast({ type: 'error', message: msg ?? 'Error al cambiar estado' })
+    },
   })
   const deleteStoryMut = useMutation({
     mutationFn: (id: string) => userStoriesApi.delete(id),
@@ -3126,7 +3168,7 @@ export function ProjectPage() {
           stories={stories}
           epics={epics}
           isUpdating={storyStatusMut.isPending}
-          onSendToQa={id => storyStatusMut.mutate({ id, status: 'READY_FOR_QA' })}
+          onStatusChange={(id, status) => storyStatusMut.mutate({ id, status })}
         />
       )}
       {tab === 'config' && <ConfigTab />}

@@ -1,9 +1,11 @@
 package com.sapiens.erp.modules.project.application;
 
+import com.sapiens.erp.modules.identity.domain.UserRepository;
 import com.sapiens.erp.modules.project.api.dto.TestExecutionRequest;
 import com.sapiens.erp.modules.project.api.dto.TestExecutionResponse;
 import com.sapiens.erp.modules.project.domain.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +34,7 @@ public class QaExecutionService {
     private final ProjectTaskRepository taskRepository;
     private final QaTestRunRepository runRepository;
     private final QaTestRunItemRepository runItemRepository;
+    private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
     public List<TestExecutionResponse> listByStory(UUID storyId) {
@@ -52,6 +55,7 @@ public class QaExecutionService {
 
         ScenarioTestExecution execution = ScenarioTestExecution.create(
                 story, scenario, req.result(), req.executedBy(), req.notes());
+        execution.setExecutedByPrincipal(currentPrincipal());
 
         if (req.testRunId() != null) {
             QaTestRun run = runRepository.findByIdAndDeletedAtIsNull(req.testRunId())
@@ -86,6 +90,24 @@ public class QaExecutionService {
         storyRepository.save(story);
 
         return TestExecutionResponse.from(execution);
+    }
+
+    /**
+     * Email del usuario autenticado; null si no hay contexto de seguridad.
+     * El principal JWT es el UUID del usuario — se resuelve a email vía identity.
+     */
+    private String currentPrincipal() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getName())) {
+            return null;
+        }
+        try {
+            return userRepository.findById(UUID.fromString(auth.getName()))
+                    .map(u -> u.getEmail())
+                    .orElse(auth.getName());
+        } catch (IllegalArgumentException notAUuid) {
+            return auth.getName();
+        }
     }
 
     private StoryStatus deriveStatus(UserStory story, UUID justExecutedScenarioId, TestResult justRecorded) {

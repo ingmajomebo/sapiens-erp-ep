@@ -48,8 +48,10 @@ public class UserStoryController {
     }
 
     @PatchMapping("/{id}/status")
-    public UserStoryResponse updateStatus(@PathVariable UUID id, @RequestParam String status) {
-        return service.updateStatus(id, StoryStatus.valueOf(status));
+    public UserStoryResponse updateStatus(@PathVariable UUID id,
+                                          @RequestParam String status,
+                                          @RequestParam(defaultValue = "false") boolean force) {
+        return service.updateStatus(id, StoryStatus.valueOf(status), force);
     }
 
     @DeleteMapping("/{id}")

@@ -71,6 +71,7 @@ export interface UserStoryDto {
   module: string | null
   priority: TaskPriority
   status: StoryStatus
+  previousStatus: StoryStatus | null
   nfrCategory: NfrCategory | null
   nfrCriterion: string | null
   scenarios: StoryScenarioDto[]
@@ -164,6 +165,7 @@ export interface TestExecutionDto {
   scenarioTitle: string
   result: TestResult
   executedBy: TaskAssignee | null
+  executedByPrincipal: string | null
   notes: string | null
   defectTaskId: string | null
   defectTaskTitle: string | null

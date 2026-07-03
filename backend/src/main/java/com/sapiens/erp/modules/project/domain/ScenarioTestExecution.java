@@ -43,6 +43,10 @@ public class ScenarioTestExecution extends AuditableEntity {
     @Column(name = "executed_by", length = 20)
     private TaskAssignee executedBy;
 
+    /** Email del usuario autenticado que registró la ejecución (SecurityContext). */
+    @Column(name = "executed_by_principal", length = 150)
+    private String executedByPrincipal;
+
     @Column(columnDefinition = "TEXT")
     private String notes;
 

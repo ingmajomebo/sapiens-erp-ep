@@ -542,10 +542,10 @@ function RunCard({ run }: { run: QaTestRunDto }) {
 
 // ─── Pestaña QA ───────────────────────────────────────────────────────────────
 
-export function QaTab({ stories, epics, onSendToQa, isUpdating }: {
+export function QaTab({ stories, epics, onStatusChange, isUpdating }: {
   stories: UserStoryDto[]
   epics: EpicDto[]
-  onSendToQa: (id: string) => void
+  onStatusChange: (id: string, status: StoryStatus) => void
   isUpdating?: boolean
 }) {
   const qc = useQueryClient()
@@ -686,13 +686,23 @@ export function QaTab({ stories, epics, onSendToQa, isUpdating }: {
                     {s.actionStatement ?? s.description ?? ''}
                   </span>
                 </div>
-                <button
-                  style={{ ...btnSecondaryStyle, color: '#06b6d4', borderColor: '#06b6d4', padding: '6px 12px', fontSize: 12, opacity: isUpdating ? 0.6 : 1 }}
-                  disabled={isUpdating}
-                  onClick={() => onSendToQa(s.id)}
-                >
-                  🧪 Enviar a QA
-                </button>
+                {s.status === 'IN_DEV' ? (
+                  <button
+                    style={{ ...btnSecondaryStyle, color: '#8b5cf6', borderColor: '#8b5cf6', padding: '6px 12px', fontSize: 12, opacity: isUpdating ? 0.6 : 1 }}
+                    disabled={isUpdating}
+                    onClick={() => onStatusChange(s.id, 'REVIEW')}
+                  >
+                    Poner en revisión
+                  </button>
+                ) : (
+                  <button
+                    style={{ ...btnSecondaryStyle, color: '#06b6d4', borderColor: '#06b6d4', padding: '6px 12px', fontSize: 12, opacity: isUpdating ? 0.6 : 1 }}
+                    disabled={isUpdating}
+                    onClick={() => onStatusChange(s.id, 'READY_FOR_QA')}
+                  >
+                    🧪 Enviar a QA
+                  </button>
+                )}
               </div>
             ))}
           </div>
