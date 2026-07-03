@@ -148,8 +148,8 @@ function OrderDetailModal({ order, onClose }: { order: SalesOrderDto; onClose: (
               <span style={{ color: 'var(--muted)' }}>Factura:</span>
               <b>{order.invoiceNumber}</b>
               <StatusChip
-                status={order.invoiceStatus === 'PAID' ? 'paid' : order.invoiceStatus === 'CANCELLED' ? 'critical' : 'issued'}
-                label={order.invoiceStatus === 'PAID' ? 'Pagada' : order.invoiceStatus === 'CANCELLED' ? 'Cancelada' : 'Emitida'}
+                status={order.invoiceStatus === 'PAID' ? 'paid' : order.invoiceStatus === 'CANCELLED' ? 'critical' : order.invoiceStatus === 'DRAFT' ? 'draft' : order.invoiceStatus === 'PARTIALLY_PAID' ? 'partial' : 'issued'}
+                label={order.invoiceStatus === 'PAID' ? 'Pagada' : order.invoiceStatus === 'CANCELLED' ? 'Cancelada' : order.invoiceStatus === 'DRAFT' ? 'Borrador' : order.invoiceStatus === 'PARTIALLY_PAID' ? 'Pago parcial' : 'Emitida'}
               />
             </>
           ) : (

@@ -5,7 +5,9 @@ import client from '../../../api/client'
 export type SalesOrderStatus = 'PENDING' | 'PREPARING' | 'DISPATCHED' | 'DELIVERED' | 'CANCELLED'
 export type SalesChannel = 'PUBLIC' | 'ADMIN'
 export type DeliveryMethod = 'PICKUP' | 'DELIVERY'
-export type SalesInvoiceStatus = 'ISSUED' | 'PAID' | 'CANCELLED'
+export type SalesInvoiceStatus = 'DRAFT' | 'ISSUED' | 'PARTIALLY_PAID' | 'PAID' | 'CANCELLED'
+export type PaymentForm = 'CASH' | 'CREDIT'
+export type InvoicePaymentMethod = 'CASH' | 'TRANSFER' | 'CARD' | 'OTHER'
 
 export interface SalesOrderLineDto {
   productId: string
@@ -41,12 +43,73 @@ export interface SalesInvoiceDto {
   invoiceNumber: string
   orderId: string
   orderNumber: string
+  customerId: string | null
   customerName: string
   status: SalesInvoiceStatus
+  overdue: boolean
+  paymentForm: PaymentForm
   total: number
-  issuedAt: string
+  paidAmount: number
+  balance: number
+  issuedAt: string | null
+  dueDate: string | null
   paidAt: string | null
   cancelReason: string | null
+  createdAt: string
+}
+
+export interface InvoiceLineDto {
+  productId: string | null
+  description: string
+  quantity: number
+  unitPrice: number
+  discountPct: number
+  taxRate: number
+  taxAmount: number
+  lineTotal: number
+}
+
+export interface InvoicePaymentDto {
+  id: string
+  amount: number
+  paymentMethod: InvoicePaymentMethod
+  paidOn: string
+  reference: string | null
+  notes: string | null
+}
+
+export interface InvoiceHistoryDto {
+  fromStatus: SalesInvoiceStatus | null
+  toStatus: SalesInvoiceStatus
+  reason: string | null
+  changedBy: string | null
+  changedAt: string
+}
+
+export interface CreditNoteDto {
+  id: string
+  noteNumber: string
+  invoiceNumber: string
+  reason: string
+  total: number
+  issuedAt: string
+}
+
+export interface InvoiceDetailDto {
+  header: SalesInvoiceDto
+  subtotal: number
+  totalDiscounts: number
+  totalTaxes: number
+  taxesByRate: Record<string, number>
+  creditTermDays: number
+  paymentMethod: InvoicePaymentMethod | null
+  notes: string | null
+  customerEmail: string | null
+  customerPhone: string | null
+  lines: InvoiceLineDto[]
+  payments: InvoicePaymentDto[]
+  history: InvoiceHistoryDto[]
+  creditNotes: CreditNoteDto[]
 }
 
 export interface CustomerDto {
@@ -127,6 +190,21 @@ export const salesOrderApi = {
 export const salesInvoiceApi = {
   list: async (status?: string): Promise<SalesInvoiceDto[]> => {
     const { data } = await client.get('/sales-invoices', { params: status ? { status } : {} })
+    return data
+  },
+
+  detail: async (id: string): Promise<InvoiceDetailDto> => {
+    const { data } = await client.get(`/sales-invoices/${id}`)
+    return data
+  },
+
+  emit: async (id: string, req: { paymentForm: PaymentForm; creditTermDays?: number; paymentMethod?: InvoicePaymentMethod }): Promise<SalesInvoiceDto> => {
+    const { data } = await client.patch(`/sales-invoices/${id}/emit`, req)
+    return data
+  },
+
+  registerPayment: async (id: string, req: { amount: number; paymentMethod: InvoicePaymentMethod; paidOn?: string; reference?: string; notes?: string }): Promise<SalesInvoiceDto> => {
+    const { data } = await client.post(`/sales-invoices/${id}/payments`, req)
     return data
   },
 
