@@ -62,4 +62,33 @@ public interface SalesInvoiceRepository extends JpaRepository<SalesInvoice, UUID
 
     @Query(value = "SELECT nextval('sales_invoice_number_seq')", nativeQuery = true)
     long nextInvoiceNumberValue();
+
+    /** Total facturado por cliente (excluye borradores y canceladas). */
+    @Query("""
+        SELECT i.customer.id, COALESCE(SUM(i.total), 0)
+        FROM SalesInvoice i
+        WHERE i.deletedAt IS NULL AND i.customer IS NOT NULL
+          AND i.status <> com.sapiens.erp.modules.sales.domain.SalesInvoiceStatus.DRAFT
+          AND i.status <> com.sapiens.erp.modules.sales.domain.SalesInvoiceStatus.CANCELLED
+        GROUP BY i.customer.id
+        """)
+    List<Object[]> invoicedTotalsByCustomer();
+
+    /** Total de facturas abiertas (emitidas o con pago parcial) por cliente. */
+    @Query("""
+        SELECT i.customer.id, COALESCE(SUM(i.total), 0)
+        FROM SalesInvoice i
+        WHERE i.deletedAt IS NULL AND i.customer IS NOT NULL
+          AND (i.status = com.sapiens.erp.modules.sales.domain.SalesInvoiceStatus.ISSUED
+               OR i.status = com.sapiens.erp.modules.sales.domain.SalesInvoiceStatus.PARTIALLY_PAID)
+        GROUP BY i.customer.id
+        """)
+    List<Object[]> openTotalsByCustomer();
+
+    @Query("""
+        SELECT i FROM SalesInvoice i
+        WHERE i.deletedAt IS NULL AND i.customer.id = :customerId
+        ORDER BY i.createdAt DESC
+        """)
+    List<SalesInvoice> findByCustomerId(@Param("customerId") UUID customerId);
 }

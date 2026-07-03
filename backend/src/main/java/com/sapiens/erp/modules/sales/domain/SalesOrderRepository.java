@@ -22,4 +22,22 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, UUID> {
 
     @Query(value = "SELECT nextval('so_number_seq')", nativeQuery = true)
     long nextOrderNumberValue();
+
+    /** Estadísticas de compra por cliente: total pedidos, primera y última compra (excluye cancelados). */
+    @Query("""
+        SELECT so.customer.id, COUNT(so), MIN(so.createdAt), MAX(so.createdAt)
+        FROM SalesOrder so
+        WHERE so.deletedAt IS NULL
+          AND so.customer IS NOT NULL
+          AND so.status <> com.sapiens.erp.modules.sales.domain.SalesOrderStatus.CANCELLED
+        GROUP BY so.customer.id
+        """)
+    List<Object[]> purchaseStatsByCustomer();
+
+    @Query("""
+        SELECT so FROM SalesOrder so
+        WHERE so.deletedAt IS NULL AND so.customer.id = :customerId
+        ORDER BY so.createdAt DESC
+        """)
+    List<SalesOrder> findByCustomerId(@Param("customerId") UUID customerId);
 }

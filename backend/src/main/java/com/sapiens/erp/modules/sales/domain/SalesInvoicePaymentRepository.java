@@ -29,4 +29,14 @@ public interface SalesInvoicePaymentRepository extends JpaRepository<SalesInvoic
         GROUP BY p.invoice.id
         """)
     List<Object[]> sumByInvoiceIds(@Param("invoiceIds") List<UUID> invoiceIds);
+
+    /** Pagos aplicados a facturas abiertas, agrupados por cliente (para saldo pendiente). */
+    @Query("""
+        SELECT p.invoice.customer.id, COALESCE(SUM(p.amount), 0) FROM SalesInvoicePayment p
+        WHERE p.deletedAt IS NULL AND p.invoice.customer IS NOT NULL
+          AND (p.invoice.status = com.sapiens.erp.modules.sales.domain.SalesInvoiceStatus.ISSUED
+               OR p.invoice.status = com.sapiens.erp.modules.sales.domain.SalesInvoiceStatus.PARTIALLY_PAID)
+        GROUP BY p.invoice.customer.id
+        """)
+    List<Object[]> openPaymentsByCustomer();
 }

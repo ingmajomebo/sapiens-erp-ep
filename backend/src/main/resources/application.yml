@@ -36,6 +36,11 @@ app:
     refresh-token-expiration: 604800000  # 7 días en ms
   cors:
     allowed-origin: ${CORS_ORIGIN:http://localhost:5173}
+  customers:
+    segmentation:
+      new-max-purchases: 1   # hasta N compras sigue siendo NEW
+      at-risk-days: 30       # días sin comprar para AT_RISK
+      inactive-days: 90      # días sin comprar para INACTIVE
 
 server:
   port: ${PORT:8080}

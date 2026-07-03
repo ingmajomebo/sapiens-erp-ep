@@ -11,4 +11,8 @@ public interface CustomerRepository extends JpaRepository<Customer, UUID> {
     List<Customer> findAllByDeletedAtIsNullOrderByNameAsc();
 
     Optional<Customer> findByIdAndDeletedAtIsNull(UUID id);
+
+    boolean existsByDocumentTypeAndDocumentNumberAndDeletedAtIsNull(DocumentType documentType, String documentNumber);
+
+    boolean existsByDocumentTypeAndDocumentNumberAndIdNotAndDeletedAtIsNull(DocumentType documentType, String documentNumber, UUID id);
 }
