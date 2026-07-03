@@ -24,4 +24,21 @@ public interface ScenarioTestExecutionRepository extends JpaRepository<ScenarioT
         ORDER BY e.executedAt DESC
         """)
     List<ScenarioTestExecution> findByRunId(@Param("runId") UUID runId);
+
+    @Query("""
+        SELECT e FROM ScenarioTestExecution e
+        LEFT JOIN FETCH e.defectTask
+        WHERE e.deletedAt IS NULL
+          AND e.testRun.id = :runId
+        ORDER BY e.executedAt DESC
+        """)
+    List<ScenarioTestExecution> findByRunIdWithDefects(@Param("runId") UUID runId);
+
+    @Query("""
+        SELECT e FROM ScenarioTestExecution e
+        WHERE e.deletedAt IS NULL
+          AND e.userStory.id IN :storyIds
+        ORDER BY e.executedAt DESC
+        """)
+    List<ScenarioTestExecution> findByStoryIds(@Param("storyIds") List<UUID> storyIds);
 }

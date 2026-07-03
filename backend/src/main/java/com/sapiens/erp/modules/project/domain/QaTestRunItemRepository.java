@@ -17,5 +17,22 @@ public interface QaTestRunItemRepository extends JpaRepository<QaTestRunItem, UU
         """)
     List<QaTestRunItem> findByRunId(@Param("runId") UUID runId);
 
+    @Query("""
+        SELECT i FROM QaTestRunItem i
+        JOIN FETCH i.scenario sc
+        JOIN FETCH i.story st
+        LEFT JOIN FETCH st.epic
+        WHERE i.deletedAt IS NULL AND i.run.id = :runId
+        """)
+    List<QaTestRunItem> findByRunIdWithEpic(@Param("runId") UUID runId);
+
+    @Query("""
+        SELECT i FROM QaTestRunItem i
+        JOIN FETCH i.run r
+        WHERE i.deletedAt IS NULL AND i.story.id = :storyId
+        ORDER BY r.createdAt DESC
+        """)
+    List<QaTestRunItem> findByStoryIdWithRun(@Param("storyId") UUID storyId);
+
     boolean existsByRunIdAndScenarioIdAndDeletedAtIsNull(UUID runId, UUID scenarioId);
 }

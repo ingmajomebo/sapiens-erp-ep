@@ -8,152 +8,33 @@ import {
   type UserStoryDto, type StoryType, type StoryStatus, type NfrCategory,
   type ScenarioType, type UserStoryRequest, type StoryScenarioRequest,
   type EpicDto, type EpicRequest, type EpicStatus,
-  type TestResult, type TestExecutionDto, type TestExecutionRequest,
+  type TestExecutionDto,
   type AiChatMessage,
   type AiContextDto,
 } from './api/projectApi'
 import { toast } from '../../shared/toast'
+import { QaTab } from './components/QaTab'
+import {
+  MODULES, MODULE_LABELS,
+  TASK_TYPE_LABELS, TASK_TYPE_COLORS,
+  STATUS_LABELS, STATUS_COLORS, STATUS_BG,
+  PRIORITY_LABELS, PRIORITY_COLORS,
+  PROMPT_CAT_LABELS, PROMPT_CAT_COLORS,
+  PROMPT_STATUS_LABELS, PROMPT_STATUS_COLORS,
+  STORY_STATUS_LABELS, STORY_STATUS_COLORS,
+  EPIC_STATUS_LABELS, EPIC_STATUS_COLORS,
+  TEST_RESULT_LABELS, TEST_RESULT_COLORS,
+  NFR_CAT_LABELS, NFR_CAT_COLORS,
+  SCENARIO_TYPE_LABELS, SCENARIO_TYPE_COLORS,
+  NEXT_STATUS,
+  Badge, Avatar, KpiCard,
+  overlayStyle, modalStyle, modalHeaderStyle, closeBtnStyle, labelStyle, inputStyle,
+  btnPrimaryStyle, btnSecondaryStyle, iconBtnStyle,
+} from './components/shared'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 type Tab = 'dashboard' | 'board' | 'tasks' | 'prompts' | 'requirements' | 'qa' | 'config'
-
-const MODULES = ['catalog', 'inventory', 'procurement', 'finance', 'identity', 'reports', 'project']
-const MODULE_LABELS: Record<string, string> = {
-  catalog: 'Catálogo', inventory: 'Inventario', procurement: 'Compras',
-  finance: 'Finanzas', identity: 'Identidad', reports: 'Reportes', project: 'Proyecto',
-}
-
-const TASK_TYPE_LABELS: Record<TaskType, string> = {
-  DEV: 'Desarrollo', QA: 'QA', BUG: 'Bug', PLANNING: 'Planificación', INFRA: 'Infraestructura', DESIGN: 'Diseño',
-}
-const TASK_TYPE_COLORS: Record<TaskType, string> = {
-  DEV: '#6366f1', QA: '#10b981', BUG: '#ef4444', PLANNING: '#f59e0b', INFRA: '#64748b', DESIGN: '#ec4899',
-}
-
-const STATUS_LABELS: Record<TaskStatus, string> = {
-  TODO: 'Por hacer', IN_PROGRESS: 'En curso', REVIEW: 'En revisión', DONE: 'Completado',
-}
-const STATUS_COLORS: Record<TaskStatus, string> = {
-  TODO: '#64748b', IN_PROGRESS: '#f59e0b', REVIEW: '#8b5cf6', DONE: '#10b981',
-}
-const STATUS_BG: Record<TaskStatus, string> = {
-  TODO: '#f1f5f9', IN_PROGRESS: '#fef3c7', REVIEW: '#ede9fe', DONE: '#d1fae5',
-}
-
-const PRIORITY_LABELS: Record<TaskPriority, string> = {
-  LOW: 'Baja', MEDIUM: 'Media', HIGH: 'Alta', CRITICAL: 'Crítica',
-}
-const PRIORITY_COLORS: Record<TaskPriority, string> = {
-  LOW: '#94a3b8', MEDIUM: '#f59e0b', HIGH: '#ef4444', CRITICAL: '#7c3aed',
-}
-
-const PROMPT_CAT_LABELS: Record<PromptCategory, string> = {
-  NEW_FEATURE: 'Nueva función', BUG_FIX: 'Bug fix', REFACTOR: 'Refactoring',
-  DOCUMENTATION: 'Documentación', TESTING: 'Testing', DATABASE: 'Base de datos',
-  CONFIGURATION: 'Configuración',
-}
-const PROMPT_CAT_COLORS: Record<PromptCategory, string> = {
-  NEW_FEATURE: '#6366f1', BUG_FIX: '#ef4444', REFACTOR: '#f59e0b',
-  DOCUMENTATION: '#06b6d4', TESTING: '#10b981', DATABASE: '#8b5cf6', CONFIGURATION: '#64748b',
-}
-
-const PROMPT_STATUS_LABELS: Record<PromptStatus, string> = {
-  DRAFT: 'Borrador', READY: 'Listo', USED: 'Utilizado', ARCHIVED: 'Archivado',
-}
-const PROMPT_STATUS_COLORS: Record<PromptStatus, string> = {
-  DRAFT: '#94a3b8', READY: '#6366f1', USED: '#10b981', ARCHIVED: '#cbd5e1',
-}
-
-const STORY_STATUS_LABELS: Record<StoryStatus, string> = {
-  DEFINED: 'Definida', IN_DEV: 'En desarrollo', REVIEW: 'En revisión',
-  READY_FOR_QA: 'Lista para QA', IN_QA: 'En QA', QA_FAILED: 'QA fallido',
-  DONE: 'Completada', BLOCKED: 'Bloqueada',
-}
-const STORY_STATUS_COLORS: Record<StoryStatus, string> = {
-  DEFINED: '#64748b', IN_DEV: '#f59e0b', REVIEW: '#8b5cf6',
-  READY_FOR_QA: '#06b6d4', IN_QA: '#0ea5e9', QA_FAILED: '#f43f5e',
-  DONE: '#10b981', BLOCKED: '#ef4444',
-}
-
-const EPIC_STATUS_LABELS: Record<EpicStatus, string> = {
-  PLANNED: 'Planificada', IN_PROGRESS: 'En progreso', DONE: 'Completada', ON_HOLD: 'En pausa',
-}
-const EPIC_STATUS_COLORS: Record<EpicStatus, string> = {
-  PLANNED: '#64748b', IN_PROGRESS: '#f59e0b', DONE: '#10b981', ON_HOLD: '#8b5cf6',
-}
-
-const TEST_RESULT_LABELS: Record<TestResult, string> = {
-  PASS: 'Aprobado', FAIL: 'Fallido', BLOCKED: 'Bloqueado', SKIPPED: 'Omitido',
-}
-const TEST_RESULT_COLORS: Record<TestResult, string> = {
-  PASS: '#10b981', FAIL: '#ef4444', BLOCKED: '#f59e0b', SKIPPED: '#94a3b8',
-}
-
-const NFR_CAT_LABELS: Record<NfrCategory, string> = {
-  DATA_INTEGRITY: 'Integridad de datos', CONSISTENCY: 'Consistencia',
-  BUSINESS_RULES: 'Reglas de negocio', SECURITY: 'Seguridad',
-  PERFORMANCE: 'Rendimiento', USABILITY: 'Usabilidad', COMPLIANCE: 'Cumplimiento',
-}
-const NFR_CAT_COLORS: Record<NfrCategory, string> = {
-  DATA_INTEGRITY: '#6366f1', CONSISTENCY: '#8b5cf6', BUSINESS_RULES: '#f59e0b',
-  SECURITY: '#ef4444', PERFORMANCE: '#06b6d4', USABILITY: '#10b981', COMPLIANCE: '#64748b',
-}
-
-const SCENARIO_TYPE_LABELS: Record<ScenarioType, string> = {
-  HAPPY_PATH: 'Camino feliz', NEGATIVE: 'Negativo', EDGE: 'Caso límite',
-}
-const SCENARIO_TYPE_COLORS: Record<ScenarioType, string> = {
-  HAPPY_PATH: '#10b981', NEGATIVE: '#ef4444', EDGE: '#f59e0b',
-}
-
-const NEXT_STATUS: Partial<Record<TaskStatus, TaskStatus>> = {
-  TODO: 'IN_PROGRESS', IN_PROGRESS: 'REVIEW', REVIEW: 'DONE',
-}
-
-function initials(assignee: TaskAssignee | null) {
-  return assignee === 'MANUEL' ? 'M' : assignee === 'ISKIAN' ? 'I' : '?'
-}
-function assigneeColor(assignee: TaskAssignee | null) {
-  return assignee === 'MANUEL' ? '#6366f1' : assignee === 'ISKIAN' ? '#10b981' : '#94a3b8'
-}
-
-// ─── sub-components ─────────────────────────────────────────────────────────
-
-function Badge({ label, color, bg }: { label: string; color: string; bg?: string }) {
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center',
-      padding: '2px 8px', borderRadius: 20,
-      fontSize: 11, fontWeight: 600, lineHeight: 1.6,
-      color, background: bg || color + '1a',
-    }}>{label}</span>
-  )
-}
-
-function Avatar({ assignee }: { assignee: TaskAssignee | null }) {
-  return (
-    <span style={{
-      width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
-      background: assigneeColor(assignee),
-      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-      color: '#fff', fontSize: 11, fontWeight: 700,
-    }}>{initials(assignee)}</span>
-  )
-}
-
-function KpiCard({ label, value, color }: { label: string; value: number; color?: string }) {
-  return (
-    <div style={{
-      background: 'var(--surface)', border: '1px solid var(--border)',
-      borderRadius: 12, padding: '16px 20px',
-      display: 'flex', flexDirection: 'column', gap: 4,
-    }}>
-      <div style={{ fontSize: 26, fontWeight: 800, color: color || 'var(--text)' }}>{value}</div>
-      <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>{label}</div>
-    </div>
-  )
-}
 
 // ─── Task Modal ──────────────────────────────────────────────────────────────
 
@@ -2017,6 +1898,11 @@ function StoryDetailModal({
     queryFn: () => qaApi.listExecutions(story.id),
     enabled: !isNfr,
   })
+  const { data: qaHistory = [] } = useQuery({
+    queryKey: ['qa-history', story.id],
+    queryFn: () => qaApi.storyHistory(story.id),
+    enabled: !isNfr,
+  })
   const latestByScenario = new Map<string, TestExecutionDto>()
   for (const ex of executions) {
     if (!latestByScenario.has(ex.scenarioId)) latestByScenario.set(ex.scenarioId, ex)
@@ -2171,6 +2057,31 @@ function StoryDetailModal({
                         {new Date(ex.executedAt).toLocaleDateString('es', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Participación en ciclos de prueba (trazabilidad inversa) */}
+          {!isNfr && qaHistory.length > 0 && (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+                Ciclos de prueba en los que participó ({qaHistory.length})
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {qaHistory.map(h => (
+                  <div key={h.runId} style={{
+                    display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+                    background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 12px',
+                  }}>
+                    <span style={{ fontSize: 11.5, fontWeight: 700, color: '#8b5cf6', background: '#f5f3ff', padding: '1px 7px', borderRadius: 20 }}>{h.runCode}</span>
+                    <span style={{ fontSize: 12.5, color: 'var(--text)', fontWeight: 600 }}>{h.runName}</span>
+                    {h.buildVersion && <Badge label={h.buildVersion} color="#0ea5e9" />}
+                    <Badge label={h.runStatus === 'OPEN' ? 'Abierto' : 'Cerrado'} color={h.runStatus === 'OPEN' ? '#10b981' : '#64748b'} />
+                    <span style={{ marginLeft: 'auto', fontSize: 11.5, color: 'var(--muted)' }}>
+                      ✅ {h.results.pass ?? 0} · ❌ {h.results.fail ?? 0} · ⏳ {h.results.pending ?? 0}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -2664,244 +2575,6 @@ function RequirementsTab({
           <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>Sin requisitos</div>
           <div style={{ fontSize: 13 }}>Crea el primero con el botón "+ Nueva historia"</div>
         </div>
-      )}
-    </div>
-  )
-}
-
-// ─── QA Tab ───────────────────────────────────────────────────────────────────
-
-function QaScenarioRow({ story, scenario, latest, onRecord, isPending }: {
-  story: UserStoryDto
-  scenario: UserStoryDto['scenarios'][0]
-  latest: TestExecutionDto | undefined
-  onRecord: (scenarioId: string, req: TestExecutionRequest) => void
-  isPending: boolean
-}) {
-  const [notes, setNotes] = useState('')
-  const [createDefect, setCreateDefect] = useState(true)
-
-  function record(result: TestResult) {
-    onRecord(scenario.id, {
-      result,
-      executedBy: 'ISKIAN',
-      notes: notes || undefined,
-      createDefect: result === 'FAIL' ? createDefect : false,
-      defectTitle: result === 'FAIL' && createDefect
-        ? `BUG ${story.reqId} — ${scenario.scenarioTitle}`
-        : undefined,
-      defectAssignee: result === 'FAIL' && createDefect ? 'MANUEL' : undefined,
-    })
-    setNotes('')
-  }
-
-  return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', background: 'var(--bg)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>{scenario.scenarioTitle}</span>
-          <Badge label={SCENARIO_TYPE_LABELS[scenario.scenarioType]} color={SCENARIO_TYPE_COLORS[scenario.scenarioType]} />
-          {latest
-            ? <Badge label={`Último: ${TEST_RESULT_LABELS[latest.result]}`} color={TEST_RESULT_COLORS[latest.result]} />
-            : <Badge label="Sin ejecutar" color="#94a3b8" />}
-        </div>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 12.5, color: 'var(--text)', lineHeight: 1.6, marginBottom: 10 }}>
-        <div><span style={{ fontWeight: 700, color: '#6366f1' }}>Dado que</span> {scenario.givenConditions}</div>
-        <div><span style={{ fontWeight: 700, color: '#f59e0b' }}>Cuando</span> {scenario.whenEvent}</div>
-        <div><span style={{ fontWeight: 700, color: '#10b981' }}>Entonces</span> {scenario.thenOutcome}</div>
-      </div>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-        <input
-          style={{ ...inputStyle, flex: 1, minWidth: 180 }}
-          placeholder="Notas / evidencia de la ejecución"
-          value={notes}
-          onChange={e => setNotes(e.target.value)}
-        />
-        <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11.5, color: 'var(--muted)', whiteSpace: 'nowrap', cursor: 'pointer' }}>
-          <input type="checkbox" checked={createDefect} onChange={e => setCreateDefect(e.target.checked)} />
-          Crear BUG si falla
-        </label>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <button disabled={isPending} onClick={() => record('PASS')}
-            style={{ ...btnSecondaryStyle, padding: '6px 12px', fontSize: 12, color: '#10b981', borderColor: '#10b981', opacity: isPending ? 0.6 : 1 }}>
-            ✓ Pasa
-          </button>
-          <button disabled={isPending} onClick={() => record('FAIL')}
-            style={{ ...btnSecondaryStyle, padding: '6px 12px', fontSize: 12, color: '#ef4444', borderColor: '#ef4444', opacity: isPending ? 0.6 : 1 }}>
-            ✗ Falla
-          </button>
-          <button disabled={isPending} onClick={() => record('BLOCKED')}
-            style={{ ...btnSecondaryStyle, padding: '6px 12px', fontSize: 12, color: '#f59e0b', borderColor: '#f59e0b', opacity: isPending ? 0.6 : 1 }}>
-            ⊘ Bloqueado
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function QaStoryPanel({ story }: { story: UserStoryDto }) {
-  const qc = useQueryClient()
-  const { data: executions = [] } = useQuery({
-    queryKey: ['test-executions', story.id],
-    queryFn: () => qaApi.listExecutions(story.id),
-  })
-  const latestByScenario = new Map<string, TestExecutionDto>()
-  for (const ex of executions) {
-    if (!latestByScenario.has(ex.scenarioId)) latestByScenario.set(ex.scenarioId, ex)
-  }
-
-  const recordMut = useMutation({
-    mutationFn: ({ scenarioId, req }: { scenarioId: string; req: TestExecutionRequest }) =>
-      qaApi.recordExecution(story.id, scenarioId, req),
-    onSuccess: res => {
-      qc.invalidateQueries({ queryKey: ['test-executions', story.id] })
-      qc.invalidateQueries({ queryKey: ['user-stories'] })
-      qc.invalidateQueries({ queryKey: ['project-tasks'] })
-      const statusLabel = STORY_STATUS_LABELS[res.storyStatusAfter]
-      toast({
-        type: res.result === 'PASS' ? 'success' : 'info',
-        message: `Resultado registrado: ${TEST_RESULT_LABELS[res.result]} · Historia → ${statusLabel}${res.defectTaskId ? ' · BUG creado' : ''}`,
-      })
-    },
-    onError: () => toast({ type: 'error', message: 'Error al registrar la ejecución' }),
-  })
-
-  const passed = story.scenarios.filter(sc => latestByScenario.get(sc.id)?.result === 'PASS').length
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 12 }}>
-      {story.scenarios.length === 0 ? (
-        <div style={{ border: '2px dashed var(--border)', borderRadius: 8, padding: '16px', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
-          Esta historia no tiene criterios de aceptación (escenarios Gherkin).
-          Agrégalos en la pestaña Requisitos antes de probar.
-        </div>
-      ) : (
-        <>
-          <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>
-            Criterios de aceptación: {passed}/{story.scenarios.length} aprobados
-          </div>
-          {story.scenarios.map(sc => (
-            <QaScenarioRow
-              key={sc.id}
-              story={story}
-              scenario={sc}
-              latest={latestByScenario.get(sc.id)}
-              onRecord={(scenarioId, req) => recordMut.mutate({ scenarioId, req })}
-              isPending={recordMut.isPending}
-            />
-          ))}
-        </>
-      )}
-    </div>
-  )
-}
-
-function QaTab({ stories, onSendToQa, isUpdating }: {
-  stories: UserStoryDto[]
-  onSendToQa: (id: string) => void
-  isUpdating?: boolean
-}) {
-  const [expandedId, setExpandedId] = useState<string | null>(null)
-
-  const functional = stories.filter(s => s.storyType === 'FUNCTIONAL')
-  const inQaCycle = functional.filter(s => ['READY_FOR_QA', 'IN_QA', 'QA_FAILED'].includes(s.status))
-  const pendingDev = functional.filter(s => ['IN_DEV', 'REVIEW'].includes(s.status))
-  const doneCount = functional.filter(s => s.status === 'DONE').length
-
-  return (
-    <div>
-      {/* KPI strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 24 }}>
-        {([['READY_FOR_QA', 'Listas para QA'], ['IN_QA', 'En QA'], ['QA_FAILED', 'QA fallido']] as [StoryStatus, string][]).map(([st, label]) => (
-          <div key={st} style={{
-            background: 'var(--surface)', border: `1px solid ${STORY_STATUS_COLORS[st]}33`,
-            borderRadius: 10, padding: '12px 14px', textAlign: 'center',
-          }}>
-            <div style={{ fontSize: 22, fontWeight: 800, color: STORY_STATUS_COLORS[st] }}>
-              {functional.filter(s => s.status === st).length}
-            </div>
-            <div style={{ fontSize: 11, color: STORY_STATUS_COLORS[st], fontWeight: 600, marginTop: 2 }}>{label}</div>
-          </div>
-        ))}
-        <div style={{
-          background: 'var(--surface)', border: '1px solid #10b98133',
-          borderRadius: 10, padding: '12px 14px', textAlign: 'center',
-        }}>
-          <div style={{ fontSize: 22, fontWeight: 800, color: '#10b981' }}>{doneCount}</div>
-          <div style={{ fontSize: 11, color: '#10b981', fontWeight: 600, marginTop: 2 }}>Completadas</div>
-        </div>
-      </div>
-
-      {/* Ciclo de QA */}
-      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ width: 4, height: 16, background: '#06b6d4', borderRadius: 2, display: 'inline-block' }} />
-        Historias en ciclo de QA
-      </div>
-      {inQaCycle.length === 0 && (
-        <div style={{ border: '2px dashed var(--border)', borderRadius: 10, padding: '28px', textAlign: 'center', color: 'var(--muted)', fontSize: 13, marginBottom: 28 }}>
-          🧪 No hay historias en QA. Envía una historia a QA desde Requisitos o desde la lista de abajo.
-        </div>
-      )}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 32 }}>
-        {inQaCycle.map(s => (
-          <div key={s.id} style={{
-            background: 'var(--surface)', border: '1px solid var(--border)',
-            borderLeft: `4px solid ${STORY_STATUS_COLORS[s.status]}`,
-            borderRadius: 12, padding: '14px 18px',
-          }}>
-            <div
-              style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', flexWrap: 'wrap' }}
-              onClick={() => setExpandedId(expandedId === s.id ? null : s.id)}
-            >
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#6366f1', background: '#eef2ff', padding: '2px 8px', borderRadius: 20 }}>{s.reqId}</span>
-              <Badge label={STORY_STATUS_LABELS[s.status]} color={STORY_STATUS_COLORS[s.status]} />
-              {s.epicCode && <span style={{ fontSize: 11.5, color: 'var(--muted)' }}>{s.epicCode}</span>}
-              <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)', flex: 1, minWidth: 200 }}>
-                {s.actionStatement ?? s.description ?? s.reqId}
-              </span>
-              <span style={{ fontSize: 11.5, color: 'var(--muted)' }}>
-                {s.scenarios.length} escenario{s.scenarios.length !== 1 ? 's' : ''}
-              </span>
-              <span style={{ fontSize: 13, color: 'var(--muted)' }}>{expandedId === s.id ? '▲' : '▼'}</span>
-            </div>
-            {expandedId === s.id && <QaStoryPanel story={s} />}
-          </div>
-        ))}
-      </div>
-
-      {/* Pendientes de enviar a QA */}
-      {pendingDev.length > 0 && (
-        <>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ width: 4, height: 16, background: '#f59e0b', borderRadius: 2, display: 'inline-block' }} />
-            En desarrollo / revisión — aún no enviadas a QA
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {pendingDev.map(s => (
-              <div key={s.id} style={{
-                display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'space-between',
-                background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 16px', flexWrap: 'wrap',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#6366f1', background: '#eef2ff', padding: '2px 8px', borderRadius: 20 }}>{s.reqId}</span>
-                  <Badge label={STORY_STATUS_LABELS[s.status]} color={STORY_STATUS_COLORS[s.status]} />
-                  <span style={{ fontSize: 13, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {s.actionStatement ?? s.description ?? ''}
-                  </span>
-                </div>
-                <button
-                  style={{ ...btnSecondaryStyle, color: '#06b6d4', borderColor: '#06b6d4', padding: '6px 12px', fontSize: 12, opacity: isUpdating ? 0.6 : 1 }}
-                  disabled={isUpdating}
-                  onClick={() => onSendToQa(s.id)}
-                >
-                  🧪 Enviar a QA
-                </button>
-              </div>
-            ))}
-          </div>
-        </>
       )}
     </div>
   )
@@ -3451,6 +3124,7 @@ export function ProjectPage() {
       {tab === 'qa' && (
         <QaTab
           stories={stories}
+          epics={epics}
           isUpdating={storyStatusMut.isPending}
           onSendToQa={id => storyStatusMut.mutate({ id, status: 'READY_FOR_QA' })}
         />
@@ -3469,60 +3143,4 @@ export function ProjectPage() {
       )}
     </div>
   )
-}
-
-// ─── styles ───────────────────────────────────────────────────────────────────
-
-const overlayStyle: React.CSSProperties = {
-  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
-  display: 'flex', alignItems: 'center', justifyContent: 'center',
-  zIndex: 1000, padding: 20,
-}
-
-const modalStyle: React.CSSProperties = {
-  background: 'var(--surface)', borderRadius: 16,
-  padding: '24px 28px', width: '100%',
-  maxHeight: '90vh', overflowY: 'auto',
-  boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
-}
-
-const modalHeaderStyle: React.CSSProperties = {
-  display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-  marginBottom: 20,
-}
-
-const closeBtnStyle: React.CSSProperties = {
-  background: 'none', border: 'none', fontSize: 22, cursor: 'pointer',
-  color: 'var(--muted)', lineHeight: 1, padding: '0 4px', flexShrink: 0,
-}
-
-const labelStyle: React.CSSProperties = {
-  display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--muted)',
-  marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.04em',
-}
-
-const inputStyle: React.CSSProperties = {
-  width: '100%', padding: '8px 11px', borderRadius: 8,
-  border: '1px solid var(--border)', background: 'var(--bg)',
-  color: 'var(--text)', fontSize: 13.5, fontFamily: 'inherit',
-  boxSizing: 'border-box',
-}
-
-const btnPrimaryStyle: React.CSSProperties = {
-  background: 'var(--accent)', color: '#fff', border: 'none',
-  borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600,
-  cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
-}
-
-const btnSecondaryStyle: React.CSSProperties = {
-  background: 'var(--surface)', color: 'var(--text)',
-  border: '1px solid var(--border)', borderRadius: 8,
-  padding: '8px 16px', fontSize: 13, fontWeight: 600,
-  cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
-}
-
-const iconBtnStyle: React.CSSProperties = {
-  background: 'none', border: 'none', cursor: 'pointer',
-  fontSize: 14, padding: '3px 5px', borderRadius: 6,
-  opacity: 0.65, transition: 'opacity 0.12s',
 }

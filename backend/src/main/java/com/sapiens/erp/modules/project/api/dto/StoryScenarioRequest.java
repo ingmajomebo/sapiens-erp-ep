@@ -3,6 +3,8 @@ package com.sapiens.erp.modules.project.api.dto;
 import com.sapiens.erp.modules.project.domain.ScenarioType;
 import jakarta.validation.constraints.NotBlank;
 
+import java.util.List;
+
 public record StoryScenarioRequest(
         @NotBlank String scenarioTitle,
         @NotBlank String givenConditions,
@@ -10,5 +12,6 @@ public record StoryScenarioRequest(
         @NotBlank String thenOutcome,
         ScenarioType scenarioType,
         Integer sortOrder,
-        Boolean isActive
+        Boolean isActive,
+        List<String> tags
 ) {}

@@ -1,5 +1,6 @@
 package com.sapiens.erp.modules.project.api;
 
+import com.sapiens.erp.modules.project.api.dto.StoryQaHistoryResponse;
 import com.sapiens.erp.modules.project.api.dto.StoryScenarioRequest;
 import com.sapiens.erp.modules.project.api.dto.StoryScenarioResponse;
 import com.sapiens.erp.modules.project.api.dto.TestExecutionRequest;
@@ -7,6 +8,7 @@ import com.sapiens.erp.modules.project.api.dto.TestExecutionResponse;
 import com.sapiens.erp.modules.project.api.dto.UserStoryRequest;
 import com.sapiens.erp.modules.project.api.dto.UserStoryResponse;
 import com.sapiens.erp.modules.project.application.QaExecutionService;
+import com.sapiens.erp.modules.project.application.QaReportService;
 import com.sapiens.erp.modules.project.application.UserStoryService;
 import com.sapiens.erp.modules.project.domain.StoryStatus;
 import jakarta.validation.Valid;
@@ -24,6 +26,7 @@ public class UserStoryController {
 
     private final UserStoryService service;
     private final QaExecutionService qaService;
+    private final QaReportService qaReportService;
 
     @GetMapping
     public List<UserStoryResponse> list(
@@ -89,6 +92,11 @@ public class UserStoryController {
     @GetMapping("/{storyId}/test-executions")
     public List<TestExecutionResponse> listExecutions(@PathVariable UUID storyId) {
         return qaService.listByStory(storyId);
+    }
+
+    @GetMapping("/{storyId}/qa-history")
+    public List<StoryQaHistoryResponse> qaHistory(@PathVariable UUID storyId) {
+        return qaReportService.getStoryHistory(storyId);
     }
 
     @PostMapping("/{storyId}/scenarios/{scenarioId}/test-executions")

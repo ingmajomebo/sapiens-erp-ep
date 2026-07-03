@@ -95,6 +95,7 @@ public class UserStoryService {
                 story, req.scenarioTitle(), req.givenConditions(),
                 req.whenEvent(), req.thenOutcome(), req.scenarioType(), order
         );
+        applyTags(scenario, req.tags());
         return StoryScenarioResponse.from(scenarioRepository.save(scenario));
     }
 
@@ -116,6 +117,7 @@ public class UserStoryService {
         if (req.scenarioType() != null) sc.setScenarioType(req.scenarioType());
         if (req.sortOrder() != null) sc.setSortOrder(req.sortOrder());
         if (req.isActive() != null) sc.setIsActive(req.isActive());
+        if (req.tags() != null) applyTags(sc, req.tags());
         if (gherkinChanged) sc.bumpVersion();
         return StoryScenarioResponse.from(scenarioRepository.save(sc));
     }
@@ -124,10 +126,13 @@ public class UserStoryService {
     public StoryScenarioResponse updateScenarioTags(UUID scenarioId, List<String> tags) {
         StoryScenario sc = scenarioRepository.findByIdAndDeletedAtIsNull(scenarioId)
                 .orElseThrow(() -> new IllegalArgumentException("Escenario no encontrado: " + scenarioId));
-        sc.setTags(tags != null
-                ? tags.stream().map(String::trim).filter(t -> !t.isEmpty()).distinct().toArray(String[]::new)
-                : new String[0]);
+        applyTags(sc, tags != null ? tags : List.of());
         return StoryScenarioResponse.from(scenarioRepository.save(sc));
+    }
+
+    private void applyTags(StoryScenario sc, List<String> tags) {
+        if (tags == null) return;
+        sc.setTags(tags.stream().map(String::trim).filter(t -> !t.isEmpty()).distinct().toArray(String[]::new));
     }
 
     @Transactional

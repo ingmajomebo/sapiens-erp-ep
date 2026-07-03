@@ -52,6 +52,9 @@ export interface StoryScenarioDto {
   thenOutcome: string
   scenarioType: ScenarioType
   sortOrder: number
+  version: number
+  tags: string[]
+  isActive: boolean
 }
 
 export interface UserStoryDto {
@@ -96,6 +99,8 @@ export interface StoryScenarioRequest {
   thenOutcome: string
   scenarioType?: ScenarioType
   sortOrder?: number
+  isActive?: boolean
+  tags?: string[]
 }
 
 // ─── AI Assistant ─────────────────────────────────────────────────────────────
@@ -144,6 +149,15 @@ export const userStoriesApi = {
 
 export type TestResult = 'PASS' | 'FAIL' | 'BLOCKED' | 'SKIPPED'
 
+export interface ScenarioSnapshot {
+  name: string
+  givenConditions: string
+  whenEvent: string
+  thenOutcome: string
+  scenarioType: string
+  version: number
+}
+
 export interface TestExecutionDto {
   id: string
   scenarioId: string
@@ -155,6 +169,11 @@ export interface TestExecutionDto {
   defectTaskTitle: string | null
   executedAt: string
   storyStatusAfter: StoryStatus
+  testRunId: string | null
+  testRunCode: string | null
+  scenarioSnapshot: ScenarioSnapshot
+  buildVersion: string | null
+  environment: RunEnvironment | null
 }
 
 export interface TestExecutionRequest {
@@ -164,6 +183,9 @@ export interface TestExecutionRequest {
   createDefect?: boolean
   defectTitle?: string
   defectAssignee?: TaskAssignee
+  testRunId?: string
+  buildVersion?: string
+  environment?: RunEnvironment
 }
 
 export const qaApi = {
@@ -171,6 +193,179 @@ export const qaApi = {
     client.get<TestExecutionDto[]>(`/user-stories/${storyId}/test-executions`).then(r => r.data),
   recordExecution: (storyId: string, scenarioId: string, req: TestExecutionRequest) =>
     client.post<TestExecutionDto>(`/user-stories/${storyId}/scenarios/${scenarioId}/test-executions`, req).then(r => r.data),
+  updateScenarioTags: (scenarioId: string, tags: string[]) =>
+    client.patch<StoryScenarioDto>(`/user-stories/scenarios/${scenarioId}/tags`, { tags }).then(r => r.data),
+  storyHistory: (storyId: string) =>
+    client.get<StoryQaHistoryDto[]>(`/user-stories/${storyId}/qa-history`).then(r => r.data),
+}
+
+// ─── QA: ciclos de prueba (test runs) ────────────────────────────────────────
+
+export type RunType = 'FEATURE' | 'REGRESSION' | 'SMOKE' | 'HOTFIX'
+export type RunEnvironment = 'LOCAL' | 'QA' | 'STAGING' | 'PROD'
+export type RunStatus = 'OPEN' | 'CLOSED'
+
+export interface QaTestRunDto {
+  id: string
+  code: string
+  name: string
+  runType: RunType
+  buildVersion: string | null
+  environment: RunEnvironment | null
+  status: RunStatus
+  openedBy: TaskAssignee | null
+  closedAt: string | null
+  notes: string | null
+  sprintId: string | null
+  sprintName: string | null
+  summary: Record<string, number> | null
+  totalItems: number
+  createdAt: string
+}
+
+export interface QaRunScope {
+  type: 'TAG' | 'EPIC' | 'STORIES'
+  tag?: string
+  epicId?: string
+  storyIds?: string[]
+}
+
+export interface QaTestRunRequest {
+  name: string
+  runType?: RunType
+  buildVersion?: string
+  environment?: RunEnvironment
+  openedBy?: TaskAssignee
+  notes?: string
+  sprintId?: string
+  scope: QaRunScope
+}
+
+export interface QaRunItemDto {
+  scenarioId: string
+  storyId: string
+  storyReqId: string
+  scenarioTitle: string
+  scenarioVersion: number
+  lastResult: TestResult | null
+  lastExecutedAt: string | null
+  pending: boolean
+}
+
+export interface QaRunDetailDto {
+  run: QaTestRunDto
+  items: QaRunItemDto[]
+}
+
+export interface QaRunTreeExecution {
+  id: string
+  result: TestResult
+  executedBy: TaskAssignee | null
+  executedAt: string
+  notes: string | null
+  snapshotVersion: number | null
+  buildVersion: string | null
+  environment: RunEnvironment | null
+  defectTaskId: string | null
+  defectTaskTitle: string | null
+}
+
+export interface QaRunTreeScenario {
+  scenarioId: string
+  title: string
+  version: number
+  scenarioType: string
+  tags: string[]
+  givenConditions: string
+  whenEvent: string
+  thenOutcome: string
+  pending: boolean
+  executions: QaRunTreeExecution[]
+}
+
+export interface QaRunTreeStory {
+  storyId: string
+  reqId: string
+  title: string
+  status: StoryStatus
+  scenarios: QaRunTreeScenario[]
+}
+
+export interface QaRunTreeEpic {
+  epicId: string | null
+  epicCode: string | null
+  epicName: string
+  stories: QaRunTreeStory[]
+}
+
+export interface QaRunTreeDto {
+  run: QaTestRunDto
+  epics: QaRunTreeEpic[]
+}
+
+export interface QaCoverageStory {
+  storyId: string
+  reqId: string
+  status: StoryStatus
+  totalScenarios: number
+  coveredScenarios: number
+  lastResults: Partial<Record<TestResult, number>>
+  neverExecuted: { scenarioId: string; title: string }[]
+}
+
+export interface QaCoverageEpic {
+  epicId: string | null
+  epicCode: string | null
+  epicName: string
+  totalScenarios: number
+  coveredScenarios: number
+  passingScenarios: number
+  coveragePct: number
+  greenPct: number
+  stories: QaCoverageStory[]
+}
+
+export interface QaCoverageDto {
+  totals: {
+    totalScenarios: number
+    coveredScenarios: number
+    passingScenarios: number
+    neverExecuted: number
+  }
+  epics: QaCoverageEpic[]
+}
+
+export interface StoryQaHistoryDto {
+  runId: string
+  runCode: string
+  runName: string
+  runType: RunType
+  runStatus: RunStatus
+  buildVersion: string | null
+  environment: RunEnvironment | null
+  closedAt: string | null
+  results: Record<string, number>
+  lastExecutedAt: string | null
+}
+
+export const qaRunsApi = {
+  list: (status?: string, runType?: string) => {
+    const params: Record<string, string> = {}
+    if (status) params.status = status
+    if (runType) params.runType = runType
+    return client.get<QaTestRunDto[]>('/qa/test-runs', { params }).then(r => r.data)
+  },
+  create: (req: QaTestRunRequest) => client.post<QaTestRunDto>('/qa/test-runs', req).then(r => r.data),
+  detail: (id: string) => client.get<QaRunDetailDto>(`/qa/test-runs/${id}`).then(r => r.data),
+  tree: (id: string) => client.get<QaRunTreeDto>(`/qa/test-runs/${id}/tree`).then(r => r.data),
+  close: (id: string) => client.post<QaTestRunDto>(`/qa/test-runs/${id}/close`).then(r => r.data),
+  delete: (id: string) => client.delete(`/qa/test-runs/${id}`),
+  coverage: (epicId?: string, module?: string) => {
+    const params: Record<string, string> = {}
+    if (epicId) params.epicId = epicId
+    if (module) params.module = module
+    return client.get<QaCoverageDto>('/qa/coverage', { params }).then(r => r.data)
+  },
 }
 
 // ─── Tasks / Sprints / Prompts ────────────────────────────────────────────────

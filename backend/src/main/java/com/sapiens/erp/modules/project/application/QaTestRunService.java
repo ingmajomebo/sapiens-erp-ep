@@ -154,6 +154,18 @@ public class QaTestRunService {
         };
     }
 
+    @Transactional
+    public void delete(UUID id) {
+        QaTestRun run = findActive(id);
+        // Las ejecuciones no se tocan (historial inmutable); solo se retira el run y su alcance
+        for (QaTestRunItem item : itemRepository.findByRunId(id)) {
+            item.softDelete();
+            itemRepository.save(item);
+        }
+        run.softDelete();
+        runRepository.save(run);
+    }
+
     private QaTestRun findActive(UUID id) {
         return runRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new IllegalArgumentException("Run no encontrado: " + id));
