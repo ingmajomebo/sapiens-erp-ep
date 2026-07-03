@@ -6,6 +6,16 @@
 
 ---
 
+## [2026-07-03] ingest | Módulo Project: QA con trazabilidad completa (V22–V25, 5 etapas)
+
+- **Etapa 1 (V22)**: ciclos de prueba `qa_test_runs` (RUN-NN, tipo, build, ambiente, OPEN/CLOSED) con alcance dinámico (TAG/EPIC/STORIES) materializado en items; snapshot JSONB inmutable del Gherkin en cada ejecución; `story_scenarios.version` (incrementa al editar), `tags text[]`, `is_active`
+- **Etapa 2**: árbol de trazabilidad `GET /qa/test-runs/{id}/tree` (Run→Épica→Historia→Escenario→Ejecución), cobertura `GET /qa/coverage` (huecos de QA por épica), historial inverso `GET /user-stories/{id}/qa-history`; UI de ciclos en la pestaña QA + widget de cobertura; QaTab extraído a `components/`
+- **Etapa 3 (V23/V24)**: máquina de estados de historias validada en backend (409 en transiciones inválidas; DONE solo por derivación de QA; BLOCKED recuerda estado previo; `force=true` administrativo); RNF REVIEW→DONE; reglas laxas en épicas/tasks; `executed_by_principal` = email del JWT; V24 fija `req_id` único solo entre activas
+- **Etapa 4 (V25)**: evidencia adjunta PNG/JPEG/PDF ≤5MB (`qa_execution_attachments`, almacenamiento local `app.uploads.dir`); `ScenarioType.NFR_CHECK` autogenerable desde el criterio medible — los RNF recorren el mismo ciclo de QA
+- **Etapa 5**: 34 tests del módulo (unit + integración MockMvc); paginación `page/size` y búsqueda `q` retrocompatibles en historias/tasks/ejecuciones; DashboardTab/ConfigTab extraídos + hook `useProjectData`
+- Página [[modules/project/module]] actualizada con el nuevo modelo, API y deuda restante
+- Verificación por etapa: 21+16+19+9 checks de API, 9 de paginación, Playwright sobre la UI
+
 ## [2026-07-03] update | Documentación completa del módulo Project + fix V21
 
 - Creada página [[modules/project/module]] con el detalle completo del módulo de seguimiento de proyecto: modelo de datos (V14–V21), reglas de negocio de QA, API, pestañas del frontend, flujo del equipo y deuda técnica conocida
