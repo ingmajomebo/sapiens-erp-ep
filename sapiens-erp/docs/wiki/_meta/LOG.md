@@ -6,6 +6,19 @@
 
 ---
 
+## [2026-07-03] ingest | Módulo Sales MVP: pedidos por canal público y administrativo (V27)
+
+- Primer backend real del módulo Sales (REQ-VEN-001), patrón espejo de procurement:
+  `customers` (anónimos/identificados), `sales_orders` (SO-NNNNNN), `sales_order_lines`
+  (snapshot nombre+precio), `sales_order_links` (token administrado por la empresa)
+- Dos canales, misma entidad y mismo estado inicial PENDING; transiciones validadas
+  PENDING→CONFIRMED|CANCELLED, CONFIRMED→DELIVERED|CANCELLED (ciclo adoptado del
+  prototipo — pendiente de Gherkin formal); sin descuento de stock en el MVP
+- Canal público `/api/v1/public/orders/{token}` sin JWT (permitAll), validado por enlace activo
+- Frontend: Sales.tsx con datos reales (sustituye el mock), gestión de enlace público,
+  y página pública `/pedido/{token}` accesible sin login (excepción al gate de auth en App.tsx)
+- created_by = email del usuario del ERP en canal admin; cliente anónimo válido en ambos
+
 ## [2026-07-03] ingest | Módulo Project: QA con trazabilidad completa (V22–V25, 5 etapas)
 
 - **Etapa 1 (V22)**: ciclos de prueba `qa_test_runs` (RUN-NN, tipo, build, ambiente, OPEN/CLOSED) con alcance dinámico (TAG/EPIC/STORIES) materializado en items; snapshot JSONB inmutable del Gherkin en cada ejecución; `story_scenarios.version` (incrementa al editar), `tags text[]`, `is_active`
