@@ -8,26 +8,190 @@ import {
   tableStyle, thStyle, tdStyle,
 } from '../../shared/helpers'
 import { toast } from '../../shared/toast'
+import { formatCOP } from '../../shared/currency'
 import { productApi } from '../catalog/api/productApi'
 import {
   salesOrderApi, customerApi, salesLinkApi,
-  type SalesOrderDto, type SalesOrderStatus,
+  type SalesOrderDto, type SalesOrderStatus, type DeliveryMethod,
 } from './api/salesApi'
 
+export const ORDER_STATUS_LABELS: Record<SalesOrderStatus, string> = {
+  PENDING: 'Pendiente', PREPARING: 'En preparación', DISPATCHED: 'En despacho',
+  DELIVERED: 'Entregado', CANCELLED: 'Cancelado',
+}
+/** Mapea al vocabulario de StatusChip para heredar sus colores (warn/pos/neg). */
 const STATUS_TO_CHIP: Record<SalesOrderStatus, string> = {
-  PENDING: 'pending', CONFIRMED: 'confirmed', DELIVERED: 'delivered', CANCELLED: 'cancelled',
+  PENDING: 'pending', PREPARING: 'partial', DISPATCHED: 'ordered',
+  DELIVERED: 'delivered', CANCELLED: 'critical',
 }
 
-/** Transiciones válidas del MVP (espejo del backend): PENDING→CONFIRMED|CANCELLED, CONFIRMED→DELIVERED|CANCELLED */
-const NEXT_ACTIONS: Partial<Record<SalesOrderStatus, { status: SalesOrderStatus; label: string }[]>> = {
-  PENDING: [{ status: 'CONFIRMED', label: 'Confirmar' }, { status: 'CANCELLED', label: 'Cancelar' }],
-  CONFIRMED: [{ status: 'DELIVERED', label: 'Entregar' }, { status: 'CANCELLED', label: 'Cancelar' }],
+const DELIVERY_LABELS: Record<DeliveryMethod, string> = {
+  PICKUP: '🏪 Recogida en local', DELIVERY: '🛵 Domicilio',
+}
+
+/** Transiciones del ciclo operativo (espejo del backend). */
+const NEXT_ACTIONS: Partial<Record<SalesOrderStatus, { status: SalesOrderStatus; label: string }>> = {
+  PENDING: { status: 'PREPARING', label: '▶ Preparar' },
+  PREPARING: { status: 'DISPATCHED', label: '📦 Despachar' },
+  DISPATCHED: { status: 'DELIVERED', label: '✓ Entregar' },
 }
 
 const inputStyle: React.CSSProperties = {
   width: '100%', padding: '8px 11px', borderRadius: 8,
   border: '1px solid var(--border)', background: 'var(--bg)',
   color: 'var(--text)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box',
+}
+const labelSm: React.CSSProperties = {
+  fontSize: 11.5, fontWeight: 600, color: 'var(--muted)', display: 'block', marginBottom: 4,
+}
+const overlay: React.CSSProperties = {
+  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000,
+  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+}
+const modal: React.CSSProperties = {
+  background: 'var(--surface)', borderRadius: 14, padding: '22px 26px', width: '100%',
+  maxWidth: 560, maxHeight: '88vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+}
+
+// ─── Modal: detalle del pedido (qué empacar + acciones) ───────────────────────
+
+function OrderDetailModal({ order, onClose }: { order: SalesOrderDto; onClose: () => void }) {
+  const qc = useQueryClient()
+  const [showCancel, setShowCancel] = useState(false)
+  const [cancelReason, setCancelReason] = useState('')
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ['sales-orders'] })
+    qc.invalidateQueries({ queryKey: ['sales-invoices'] })
+  }
+
+  const statusMut = useMutation({
+    mutationFn: (status: SalesOrderStatus) => salesOrderApi.updateStatus(order.id, status),
+    onSuccess: o => { invalidate(); toast(`${o.orderNumber} → ${ORDER_STATUS_LABELS[o.status]}`, 'success'); onClose() },
+    onError: (e: unknown) => toast((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Error al cambiar el estado', 'error'),
+  })
+  const cancelMut = useMutation({
+    mutationFn: () => salesOrderApi.cancel(order.id, cancelReason),
+    onSuccess: o => { invalidate(); toast(`${o.orderNumber} cancelado`, 'info'); onClose() },
+    onError: (e: unknown) => toast((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Error al cancelar', 'error'),
+  })
+  const invoiceMut = useMutation({
+    mutationFn: () => salesOrderApi.issueInvoice(order.id),
+    onSuccess: inv => { invalidate(); toast(`Factura ${inv.invoiceNumber} generada`, 'success'); onClose() },
+    onError: (e: unknown) => toast((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Error al generar la factura', 'error'),
+  })
+
+  const next = NEXT_ACTIONS[order.status]
+  const cancellable = ['PENDING', 'PREPARING', 'DISPATCHED'].includes(order.status)
+
+  return (
+    <div style={overlay} onClick={onClose}>
+      <div style={modal} onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+          <div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
+              <span style={{ fontWeight: 700, fontSize: 16, color: 'var(--accent-text)' }}>{order.orderNumber}</span>
+              <StatusChip status={STATUS_TO_CHIP[order.status]} label={ORDER_STATUS_LABELS[order.status]} />
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--muted)' }}>
+              {order.customerName}{order.customerAnonymous ? ' (anónimo)' : ''} · {order.channel === 'PUBLIC' ? 'Canal público' : 'Panel'} · {new Date(order.createdAt).toLocaleString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--muted)' }}>×</button>
+        </div>
+
+        {/* Entrega */}
+        <div style={{
+          background: 'var(--surface-2)', borderRadius: 10, padding: '11px 14px', marginBottom: 14,
+          fontSize: 13.5, display: 'flex', flexDirection: 'column', gap: 4,
+        }}>
+          <div><b>{DELIVERY_LABELS[order.deliveryMethod]}</b></div>
+          {order.deliveryMethod === 'DELIVERY' && (
+            <div style={{ color: 'var(--muted)' }}>📍 {order.deliveryAddress ?? 'Sin dirección registrada'}</div>
+          )}
+          {order.notes && <div style={{ color: 'var(--muted)' }}>📝 {order.notes}</div>}
+        </div>
+
+        {/* Qué empacar */}
+        <div style={{ ...labelSm, marginBottom: 8 }}>QUÉ EMPACAR ({order.lines.length} líneas)</div>
+        <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', marginBottom: 14 }}>
+          {order.lines.map((l, i) => (
+            <div key={l.productId} style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '9px 14px', fontSize: 13.5,
+              borderBottom: i < order.lines.length - 1 ? '1px solid var(--border)' : 'none',
+            }}>
+              <span><b>{l.quantity}</b> × {l.productName}</span>
+              <span style={{ fontWeight: 600 }}>{formatCOP(l.lineTotal)}</span>
+            </div>
+          ))}
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', padding: '10px 14px',
+            fontWeight: 800, fontSize: 14, background: 'var(--surface-2)',
+          }}>
+            <span>Total</span><span>{formatCOP(order.total)}</span>
+          </div>
+        </div>
+
+        {/* Novedad de cancelación */}
+        {order.status === 'CANCELLED' && order.cancelReason && (
+          <div style={{ background: 'var(--neg-bg)', color: 'var(--neg)', borderRadius: 10, padding: '10px 14px', fontSize: 13, marginBottom: 14 }}>
+            <b>Novedad:</b> {order.cancelReason}
+          </div>
+        )}
+
+        {/* Factura */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, fontSize: 13 }}>
+          {order.invoiceNumber ? (
+            <>
+              <span style={{ color: 'var(--muted)' }}>Factura:</span>
+              <b>{order.invoiceNumber}</b>
+              <StatusChip
+                status={order.invoiceStatus === 'PAID' ? 'paid' : order.invoiceStatus === 'CANCELLED' ? 'critical' : 'issued'}
+                label={order.invoiceStatus === 'PAID' ? 'Pagada' : order.invoiceStatus === 'CANCELLED' ? 'Cancelada' : 'Emitida'}
+              />
+            </>
+          ) : (
+            <span style={{ color: 'var(--muted)' }}>Sin factura generada.</span>
+          )}
+        </div>
+
+        {/* Acciones */}
+        {!showCancel ? (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {cancellable && (
+              <GhostBtn style={{ color: 'var(--neg)' }} onClick={() => setShowCancel(true)}>✕ Cancelar pedido</GhostBtn>
+            )}
+            {!order.invoiceNumber && order.status !== 'CANCELLED' && (
+              <GhostBtn onClick={() => invoiceMut.mutate()} disabled={invoiceMut.isPending}>
+                🧾 Generar factura
+              </GhostBtn>
+            )}
+            {next && (
+              <PrimaryBtn onClick={() => statusMut.mutate(next.status)} disabled={statusMut.isPending}>
+                {next.label}
+              </PrimaryBtn>
+            )}
+          </div>
+        ) : (
+          <div>
+            <label style={labelSm}>NOVEDAD DE CANCELACIÓN (OBLIGATORIA)</label>
+            <textarea style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }}
+              placeholder="ej. El cliente no contestó / producto agotado…"
+              value={cancelReason} onChange={e => setCancelReason(e.target.value)} autoFocus />
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 10 }}>
+              <GhostBtn onClick={() => setShowCancel(false)}>Volver</GhostBtn>
+              <PrimaryBtn style={{ background: 'var(--neg)' }} disabled={!cancelReason.trim() || cancelMut.isPending}
+                onClick={() => cancelMut.mutate()}>
+                Confirmar cancelación
+              </PrimaryBtn>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }
 
 // ─── Modal: nuevo pedido (canal administrativo) ───────────────────────────────
@@ -37,6 +201,8 @@ function NewOrderModal({ onClose }: { onClose: () => void }) {
   const [customerId, setCustomerId] = useState('')
   const [contactName, setContactName] = useState('')
   const [notes, setNotes] = useState('')
+  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>('PICKUP')
+  const [deliveryAddress, setDeliveryAddress] = useState('')
   const [lines, setLines] = useState<{ productId: string; quantity: string }[]>([{ productId: '', quantity: '' }])
 
   const { data: productsPage } = useQuery({ queryKey: ['products'], queryFn: () => productApi.listAll() })
@@ -48,6 +214,8 @@ function NewOrderModal({ onClose }: { onClose: () => void }) {
       customerId: customerId || null,
       contactName: !customerId && contactName.trim() ? contactName.trim() : undefined,
       notes: notes.trim() || undefined,
+      deliveryMethod,
+      deliveryAddress: deliveryMethod === 'DELIVERY' ? deliveryAddress.trim() : undefined,
       lines: lines
         .filter(l => l.productId && parseFloat(l.quantity) > 0)
         .map(l => ({ productId: l.productId, quantity: parseFloat(l.quantity) })),
@@ -69,25 +237,19 @@ function NewOrderModal({ onClose }: { onClose: () => void }) {
     const p = products.find(pr => pr.id === l.productId)
     return acc + (p?.salePrice ?? 0) * parseFloat(l.quantity)
   }, 0)
+  const deliveryOk = deliveryMethod === 'PICKUP' || deliveryAddress.trim() !== ''
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
-    }} onClick={onClose}>
-      <div style={{
-        background: 'var(--surface)', borderRadius: 14, padding: '22px 26px', width: '100%',
-        maxWidth: 560, maxHeight: '88vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
-      }} onClick={e => e.stopPropagation()}>
+    <div style={overlay} onClick={onClose}>
+      <div style={modal} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
           <div style={{ fontSize: 16, fontWeight: 700 }}>Nuevo pedido</div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--muted)' }}>×</button>
         </div>
 
-        {/* Cliente: existente o anónimo */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
           <div>
-            <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>CLIENTE</label>
+            <label style={labelSm}>CLIENTE</label>
             <select style={inputStyle} value={customerId} onChange={e => setCustomerId(e.target.value)}>
               <option value="">Cliente anónimo</option>
               {customers.filter(c => !c.anonymous).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -95,20 +257,41 @@ function NewOrderModal({ onClose }: { onClose: () => void }) {
           </div>
           {!customerId && (
             <div>
-              <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>NOMBRE DE CONTACTO (OPCIONAL)</label>
+              <label style={labelSm}>NOMBRE DE CONTACTO (OPCIONAL)</label>
               <input style={inputStyle} placeholder="ej. Restaurante El Puerto" value={contactName} onChange={e => setContactName(e.target.value)} />
             </div>
           )}
         </div>
 
+        {/* Entrega */}
+        <label style={labelSm}>ENTREGA</label>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+          {(['PICKUP', 'DELIVERY'] as DeliveryMethod[]).map(m => (
+            <button key={m} type="button" onClick={() => setDeliveryMethod(m)}
+              style={{
+                ...inputStyle, width: 'auto', cursor: 'pointer', fontWeight: deliveryMethod === m ? 700 : 500,
+                borderColor: deliveryMethod === m ? 'var(--accent)' : 'var(--border)',
+                background: deliveryMethod === m ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'var(--bg)',
+              }}>
+              {DELIVERY_LABELS[m]}
+            </button>
+          ))}
+        </div>
+        {deliveryMethod === 'DELIVERY' && (
+          <div style={{ marginBottom: 14 }}>
+            <input style={inputStyle} placeholder="Dirección de entrega *" value={deliveryAddress}
+              onChange={e => setDeliveryAddress(e.target.value)} />
+          </div>
+        )}
+
         {/* Líneas */}
-        <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--muted)', display: 'block', marginBottom: 6 }}>LÍNEAS DEL PEDIDO</label>
+        <label style={labelSm}>LÍNEAS DEL PEDIDO</label>
         {lines.map((line, i) => (
           <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
             <select style={{ ...inputStyle, flex: 1 }} value={line.productId}
               onChange={e => setLines(ls => ls.map((l, j) => j === i ? { ...l, productId: e.target.value } : l))}>
               <option value="">Selecciona producto…</option>
-              {products.map(p => <option key={p.id} value={p.id}>{p.name} — €{p.salePrice?.toFixed(2)}</option>)}
+              {products.map(p => <option key={p.id} value={p.id}>{p.name} — {formatCOP(p.salePrice ?? 0)}</option>)}
             </select>
             <input style={{ ...inputStyle, width: 90 }} type="number" min="0" step="0.5" placeholder="Cant."
               value={line.quantity}
@@ -125,14 +308,14 @@ function NewOrderModal({ onClose }: { onClose: () => void }) {
         </GhostBtn>
 
         <div style={{ marginBottom: 16 }}>
-          <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>NOTAS</label>
+          <label style={labelSm}>NOTAS</label>
           <textarea style={{ ...inputStyle, minHeight: 52, resize: 'vertical' }} value={notes} onChange={e => setNotes(e.target.value)} />
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: 14, fontWeight: 700 }}>Total: €{total.toFixed(2)}</span>
+          <span style={{ fontSize: 14, fontWeight: 700 }}>Total: {formatCOP(total)}</span>
           <PrimaryBtn
-            disabled={validLines.length === 0 || createMut.isPending}
+            disabled={validLines.length === 0 || !deliveryOk || createMut.isPending}
             onClick={() => createMut.mutate()}
           >
             {createMut.isPending ? 'Creando…' : 'Crear pedido'}
@@ -151,38 +334,25 @@ export function Sales() {
   const qc = useQueryClient()
   const [statusFilter, setStatusFilter] = useState('all')
   const [showNewOrder, setShowNewOrder] = useState(false)
+  const [detail, setDetail] = useState<SalesOrderDto | null>(null)
 
   const { data: orders = [] } = useQuery({ queryKey: ['sales-orders'], queryFn: () => salesOrderApi.list() })
   const { data: links = [] } = useQuery({ queryKey: ['sales-order-links'], queryFn: salesLinkApi.listAll })
-
-  const statusMut = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: SalesOrderStatus }) => salesOrderApi.updateStatus(id, status),
-    onSuccess: o => { qc.invalidateQueries({ queryKey: ['sales-orders'] }); toast(`Pedido ${o.orderNumber} → ${o.status}`, 'success') },
-    onError: (e: unknown) => {
-      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast(msg ?? 'Error al cambiar el estado', 'error')
-    },
-  })
 
   const createLinkMut = useMutation({
     mutationFn: () => salesLinkApi.create('Enlace de pedidos'),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['sales-order-links'] }); toast('Enlace público creado', 'success') },
     onError: () => toast('Error al crear el enlace (requiere rol SUPERVISOR o ADMIN)', 'error'),
   })
-
   const toggleLinkMut = useMutation({
     mutationFn: (id: string) => salesLinkApi.toggle(id),
     onSuccess: l => { qc.invalidateQueries({ queryKey: ['sales-order-links'] }); toast(l.active ? 'Enlace activado' : 'Enlace desactivado', 'success') },
   })
 
-  const filtered = orders.filter(o => statusFilter === 'all' || STATUS_TO_CHIP[o.status] === statusFilter)
-  const pending = orders.filter(o => o.status === 'PENDING').length
-  const confirmedTotal = orders.filter(o => o.status === 'CONFIRMED' || o.status === 'DELIVERED')
+  const filtered = orders.filter(o => statusFilter === 'all' || o.status === statusFilter)
+  const count = (s: SalesOrderStatus) => orders.filter(o => o.status === s).length
+  const revenue = orders.filter(o => ['PREPARING', 'DISPATCHED', 'DELIVERED'].includes(o.status))
     .reduce((acc, o) => acc + o.total, 0)
-
-  const statusLabelMap: Record<string, string> = {
-    pending: t.ss_pending, confirmed: t.ss_confirmed, delivered: t.ss_delivered, cancelled: t.ss_cancelled,
-  }
 
   function publicUrl(token: string) {
     return `${window.location.origin}/pedido/${token}`
@@ -191,13 +361,14 @@ export function Sales() {
   return (
     <div style={{ padding: '24px 26px 40px', display: 'flex', flexDirection: 'column', gap: 20, animation: 'fadeUp 0.25s ease' }}>
       {showNewOrder && <NewOrderModal onClose={() => setShowNewOrder(false)} />}
+      {detail && <OrderDetailModal order={detail} onClose={() => setDetail(null)} />}
 
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
-        <KpiCard label={t.sa_orders} value={String(orders.length)} sub="pedidos totales" />
-        <KpiCard label={t.ss_pending} value={String(pending)} sub="por confirmar" />
-        <KpiCard label={t.sa_revenue} value={`€${confirmedTotal.toFixed(2)}`} sub="confirmado + entregado" />
-        <KpiCard label="Canal público" value={String(orders.filter(o => o.channel === 'PUBLIC').length)} sub="pedidos por enlace" />
+        <KpiCard label="Pendientes" value={String(count('PENDING'))} sub="por preparar" />
+        <KpiCard label="En preparación" value={String(count('PREPARING'))} sub="empacando" />
+        <KpiCard label="En despacho" value={String(count('DISPATCHED'))} sub="listos o en camino" />
+        <KpiCard label={t.sa_revenue} value={formatCOP(revenue)} sub="en curso + entregado" />
       </div>
 
       {/* Enlace público */}
@@ -215,7 +386,7 @@ export function Sales() {
           )}
           {links.map(l => (
             <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', flexWrap: 'wrap' }}>
-              <StatusChip status={l.active ? 'confirmed' : 'cancelled'} label={l.active ? 'Activo' : 'Inactivo'} />
+              <StatusChip status={l.active ? 'confirmed' : 'critical'} label={l.active ? 'Activo' : 'Inactivo'} />
               <code style={{ fontSize: 12.5, color: 'var(--text)', background: 'var(--surface-2)', padding: '4px 10px', borderRadius: 6, overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 380 }}>
                 {publicUrl(l.token)}
               </code>
@@ -233,17 +404,18 @@ export function Sales() {
 
       {/* Pedidos */}
       <Card>
-        <CardHeader title={t.nav_sales} action={
+        <CardHeader title="Pedidos" action={
           <PrimaryBtn onClick={() => setShowNewOrder(true)}>+ Nuevo pedido</PrimaryBtn>
         } />
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 18px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
           <FilterSelect value={statusFilter} onChange={setStatusFilter} options={[
-            { value: 'all', label: t.fil_allstatus },
-            { value: 'pending', label: t.ss_pending },
-            { value: 'confirmed', label: t.ss_confirmed },
-            { value: 'delivered', label: t.ss_delivered },
-            { value: 'cancelled', label: t.ss_cancelled },
+            { value: 'all', label: 'Todos los estados' },
+            { value: 'PENDING', label: 'Pendientes' },
+            { value: 'PREPARING', label: 'En preparación' },
+            { value: 'DISPATCHED', label: 'En despacho' },
+            { value: 'DELIVERED', label: 'Entregados' },
+            { value: 'CANCELLED', label: 'Cancelados' },
           ]} />
         </div>
 
@@ -251,19 +423,21 @@ export function Sales() {
           <table style={tableStyle}>
             <thead>
               <tr>
-                <th style={thStyle}>{t.th_order}</th>
-                <th style={thStyle}>{t.th_customer}</th>
+                <th style={thStyle}>Pedido</th>
+                <th style={thStyle}>Cliente</th>
                 <th style={thStyle}>Canal</th>
-                <th style={thStyle}>{t.th_date}</th>
-                <th style={thStyle}>{t.th_items}</th>
-                <th style={thStyle}>{t.th_total}</th>
-                <th style={thStyle}>{t.th_status}</th>
-                <th style={thStyle}></th>
+                <th style={thStyle}>Entrega</th>
+                <th style={thStyle}>Fecha</th>
+                <th style={thStyle}>Total</th>
+                <th style={thStyle}>Factura</th>
+                <th style={thStyle}>Estado</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(o => (
                 <tr key={o.id}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => setDetail(o)}
                   onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-2)')}
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
@@ -272,24 +446,19 @@ export function Sales() {
                     {o.customerName}{o.customerAnonymous && <span style={{ color: 'var(--muted)', fontSize: 11 }}> (anónimo)</span>}
                   </td>
                   <td style={tdStyle}>{o.channel === 'PUBLIC' ? '🌐 Público' : '🏪 Panel'}</td>
-                  <td style={tdStyle}>{new Date(o.createdAt).toLocaleDateString('es', { day: '2-digit', month: 'short' })}</td>
-                  <td style={tdStyle}>{o.lines.length}</td>
-                  <td style={{ ...tdStyle, fontWeight: 600, color: 'var(--text)' }}>€{o.total.toFixed(2)}</td>
-                  <td style={tdStyle}><StatusChip status={STATUS_TO_CHIP[o.status]} label={statusLabelMap[STATUS_TO_CHIP[o.status]] ?? o.status} /></td>
+                  <td style={tdStyle}>{o.deliveryMethod === 'DELIVERY' ? '🛵 Domicilio' : '🏪 Recogida'}</td>
+                  <td style={tdStyle}>{new Date(o.createdAt).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}</td>
+                  <td style={{ ...tdStyle, fontWeight: 600, color: 'var(--text)' }}>{formatCOP(o.total)}</td>
                   <td style={tdStyle}>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      {(NEXT_ACTIONS[o.status] ?? []).map(a => (
-                        <GhostBtn key={a.status} style={{ fontSize: 11.5, padding: '3px 9px' }}
-                          onClick={() => statusMut.mutate({ id: o.id, status: a.status })}>
-                          {a.label}
-                        </GhostBtn>
-                      ))}
-                    </div>
+                    {o.invoiceNumber
+                      ? <span style={{ fontSize: 12 }}>{o.invoiceNumber}</span>
+                      : <span style={{ color: 'var(--muted)', fontSize: 12 }}>—</span>}
                   </td>
+                  <td style={tdStyle}><StatusChip status={STATUS_TO_CHIP[o.status]} label={ORDER_STATUS_LABELS[o.status]} /></td>
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={8} style={{ ...tdStyle, textAlign: 'center', color: 'var(--muted)', padding: 30 }}>Sin pedidos todavía.</td></tr>
+                <tr><td colSpan={8} style={{ ...tdStyle, textAlign: 'center', color: 'var(--muted)', padding: 30 }}>Sin pedidos en este estado.</td></tr>
               )}
             </tbody>
           </table>
@@ -297,7 +466,7 @@ export function Sales() {
 
         <div style={{ padding: '12px 18px' }}>
           <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>
-            {t.showing} <b style={{ color: 'var(--text-2)' }}>{filtered.length}</b> {t.of} {orders.length}
+            {t.showing} <b style={{ color: 'var(--text-2)' }}>{filtered.length}</b> {t.of} {orders.length} · clic en un pedido para ver el detalle
           </span>
         </div>
       </Card>

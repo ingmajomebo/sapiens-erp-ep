@@ -2,8 +2,10 @@ import client from '../../../api/client'
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
-export type SalesOrderStatus = 'PENDING' | 'CONFIRMED' | 'DELIVERED' | 'CANCELLED'
+export type SalesOrderStatus = 'PENDING' | 'PREPARING' | 'DISPATCHED' | 'DELIVERED' | 'CANCELLED'
 export type SalesChannel = 'PUBLIC' | 'ADMIN'
+export type DeliveryMethod = 'PICKUP' | 'DELIVERY'
+export type SalesInvoiceStatus = 'ISSUED' | 'PAID' | 'CANCELLED'
 
 export interface SalesOrderLineDto {
   productId: string
@@ -21,11 +23,30 @@ export interface SalesOrderDto {
   customerAnonymous: boolean
   channel: SalesChannel
   status: SalesOrderStatus
+  deliveryMethod: DeliveryMethod
+  deliveryAddress: string | null
+  cancelReason: string | null
   createdBy: string | null
   notes: string | null
   total: number
   lines: SalesOrderLineDto[]
+  invoiceId: string | null
+  invoiceNumber: string | null
+  invoiceStatus: SalesInvoiceStatus | null
   createdAt: string
+}
+
+export interface SalesInvoiceDto {
+  id: string
+  invoiceNumber: string
+  orderId: string
+  orderNumber: string
+  customerName: string
+  status: SalesInvoiceStatus
+  total: number
+  issuedAt: string
+  paidAt: string | null
+  cancelReason: string | null
 }
 
 export interface CustomerDto {
@@ -51,6 +72,8 @@ export interface CreateSalesOrderDto {
   contactEmail?: string
   contactPhone?: string
   notes?: string
+  deliveryMethod?: DeliveryMethod
+  deliveryAddress?: string
   lines: { productId: string; quantity: number }[]
 }
 
@@ -87,6 +110,33 @@ export const salesOrderApi = {
 
   updateStatus: async (id: string, status: SalesOrderStatus): Promise<SalesOrderDto> => {
     const { data } = await client.patch(`/sales-orders/${id}/status`, null, { params: { status } })
+    return data
+  },
+
+  cancel: async (id: string, reason: string): Promise<SalesOrderDto> => {
+    const { data } = await client.patch(`/sales-orders/${id}/cancel`, { reason })
+    return data
+  },
+
+  issueInvoice: async (id: string): Promise<SalesInvoiceDto> => {
+    const { data } = await client.post(`/sales-orders/${id}/invoice`)
+    return data
+  },
+}
+
+export const salesInvoiceApi = {
+  list: async (status?: string): Promise<SalesInvoiceDto[]> => {
+    const { data } = await client.get('/sales-invoices', { params: status ? { status } : {} })
+    return data
+  },
+
+  pay: async (id: string): Promise<SalesInvoiceDto> => {
+    const { data } = await client.patch(`/sales-invoices/${id}/pay`)
+    return data
+  },
+
+  cancel: async (id: string, reason: string): Promise<SalesInvoiceDto> => {
+    const { data } = await client.patch(`/sales-invoices/${id}/cancel`, { reason })
     return data
   },
 }

@@ -47,11 +47,23 @@ public class SalesOrder extends AuditableEntity {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "delivery_method", length = 10, nullable = false)
+    private DeliveryMethod deliveryMethod = DeliveryMethod.PICKUP;
+
+    @Column(name = "delivery_address", columnDefinition = "TEXT")
+    private String deliveryAddress;
+
+    /** Novedad registrada al cancelar el pedido. */
+    @Column(name = "cancel_reason", columnDefinition = "TEXT")
+    private String cancelReason;
+
     @OneToMany(mappedBy = "salesOrder", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SalesOrderLine> lines = new ArrayList<>();
 
     public static SalesOrder create(String orderNumber, Customer customer, SalesChannel channel,
-                                    String createdBy, SalesOrderLink link, String notes) {
+                                    String createdBy, SalesOrderLink link, String notes,
+                                    DeliveryMethod deliveryMethod, String deliveryAddress) {
         SalesOrder so = new SalesOrder();
         so.id = UUID.randomUUID();
         so.orderNumber = orderNumber;
@@ -61,7 +73,17 @@ public class SalesOrder extends AuditableEntity {
         so.createdBy = createdBy;
         so.link = link;
         so.notes = notes;
+        so.deliveryMethod = deliveryMethod != null ? deliveryMethod : DeliveryMethod.PICKUP;
+        so.deliveryAddress = deliveryAddress;
         return so;
+    }
+
+    public void cancel(String reason) {
+        if (!status.canTransitionTo(SalesOrderStatus.CANCELLED)) {
+            throw new IllegalArgumentException("El pedido no puede cancelarse en estado " + status);
+        }
+        this.status = SalesOrderStatus.CANCELLED;
+        this.cancelReason = reason;
     }
 
     public void addLine(SalesOrderLine line) {

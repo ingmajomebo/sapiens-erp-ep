@@ -2,6 +2,7 @@ package com.sapiens.erp.modules.sales.api;
 
 import com.sapiens.erp.modules.sales.api.dto.SalesOrderDtos.*;
 import com.sapiens.erp.modules.sales.application.CustomerService;
+import com.sapiens.erp.modules.sales.application.SalesInvoiceService;
 import com.sapiens.erp.modules.sales.application.SalesOrderLinkService;
 import com.sapiens.erp.modules.sales.application.SalesOrderService;
 import com.sapiens.erp.modules.sales.domain.SalesOrderStatus;
@@ -24,6 +25,7 @@ public class SalesOrderController {
     private final SalesOrderService salesOrderService;
     private final SalesOrderLinkService linkService;
     private final CustomerService customerService;
+    private final SalesInvoiceService invoiceService;
 
     // ── Pedidos (canal administrativo) ────────────────────────────────────────
 
@@ -51,6 +53,39 @@ public class SalesOrderController {
     public ResponseEntity<OrderResponse> updateStatus(@PathVariable UUID id,
                                                       @RequestParam String status) {
         return ResponseEntity.ok(salesOrderService.updateStatus(id, SalesOrderStatus.valueOf(status)));
+    }
+
+    @PatchMapping("/sales-orders/{id}/cancel")
+    @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN')")
+    public ResponseEntity<OrderResponse> cancelOrder(@PathVariable UUID id,
+                                                     @Valid @RequestBody CancelRequest request) {
+        return ResponseEntity.ok(salesOrderService.cancel(id, request.reason()));
+    }
+
+    // ── Facturación de ventas ─────────────────────────────────────────────────
+
+    @PostMapping("/sales-orders/{id}/invoice")
+    @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN')")
+    public ResponseEntity<InvoiceResponse> issueInvoice(@PathVariable UUID id) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(invoiceService.issueForOrder(id));
+    }
+
+    @GetMapping("/sales-invoices")
+    public ResponseEntity<List<InvoiceResponse>> listInvoices(@RequestParam(required = false) String status) {
+        return ResponseEntity.ok(invoiceService.listFiltered(status));
+    }
+
+    @PatchMapping("/sales-invoices/{id}/pay")
+    @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN')")
+    public ResponseEntity<InvoiceResponse> payInvoice(@PathVariable UUID id) {
+        return ResponseEntity.ok(invoiceService.markPaid(id));
+    }
+
+    @PatchMapping("/sales-invoices/{id}/cancel")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN')")
+    public ResponseEntity<InvoiceResponse> cancelInvoice(@PathVariable UUID id,
+                                                         @Valid @RequestBody CancelRequest request) {
+        return ResponseEntity.ok(invoiceService.cancel(id, request.reason()));
     }
 
     // ── Clientes ──────────────────────────────────────────────────────────────

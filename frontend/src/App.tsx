@@ -10,6 +10,7 @@ import { Inventory } from './features/inventory/Inventory'
 import { Purchases } from './features/purchases/Purchases'
 import { Sales } from './features/sales/Sales'
 import { PublicOrderPage } from './features/sales/PublicOrderPage'
+import { Invoicing } from './features/invoicing/Invoicing'
 import { CashRegister } from './features/cash/CashRegister'
 import { AccountsPayablePage } from './features/finance/AccountsPayablePage'
 import { AccountsReceivable } from './features/finance/AccountsReceivable'
@@ -40,6 +41,7 @@ function PageContent() {
     case 'cash':                return <CashRegister />
     case 'accountsPayable':     return <AccountsPayablePage />
     case 'accountsReceivable':  return <AccountsReceivable />
+    case 'invoicing':           return <Invoicing />
     case 'cashBanks':           return <CashBanks />
     case 'expenses':            return <Expenses />
     case 'accounting':          return <Accounting />

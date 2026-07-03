@@ -32,6 +32,8 @@ public final class SalesOrderDtos {
             String contactEmail,
             String contactPhone,
             String notes,
+            DeliveryMethod deliveryMethod,
+            String deliveryAddress,
             @NotEmpty(message = "El pedido debe contener al menos una línea")
             List<@Valid LineRequest> lines
     ) {}
@@ -42,8 +44,15 @@ public final class SalesOrderDtos {
             String contactEmail,
             String contactPhone,
             String notes,
+            DeliveryMethod deliveryMethod,
+            String deliveryAddress,
             @NotEmpty(message = "El pedido debe contener al menos una línea")
             List<@Valid LineRequest> lines
+    ) {}
+
+    /** Novedad obligatoria al cancelar un pedido o una factura. */
+    public record CancelRequest(
+            @NotBlank(message = "La novedad de cancelación es obligatoria") String reason
     ) {}
 
     public record CustomerRequest(
@@ -77,23 +86,62 @@ public final class SalesOrderDtos {
             boolean customerAnonymous,
             SalesChannel channel,
             SalesOrderStatus status,
+            DeliveryMethod deliveryMethod,
+            String deliveryAddress,
+            String cancelReason,
             String createdBy,
             String notes,
             BigDecimal total,
             List<LineResponse> lines,
+            UUID invoiceId,
+            String invoiceNumber,
+            SalesInvoiceStatus invoiceStatus,
             Instant createdAt
     ) {
         public static OrderResponse from(SalesOrder so) {
+            return from(so, null);
+        }
+
+        public static OrderResponse from(SalesOrder so, SalesInvoice invoice) {
             return new OrderResponse(
                     so.getId(), so.getOrderNumber(),
                     so.getCustomer() != null ? so.getCustomer().getId() : null,
                     so.getCustomer() != null ? so.getCustomer().getName() : "Cliente anónimo",
                     so.getCustomer() == null || so.getCustomer().isAnonymous(),
-                    so.getChannel(), so.getStatus(), so.getCreatedBy(), so.getNotes(),
+                    so.getChannel(), so.getStatus(),
+                    so.getDeliveryMethod(), so.getDeliveryAddress(), so.getCancelReason(),
+                    so.getCreatedBy(), so.getNotes(),
                     so.total(),
                     so.getLines().stream().filter(l -> l.getDeletedAt() == null)
                             .map(LineResponse::from).toList(),
+                    invoice != null ? invoice.getId() : null,
+                    invoice != null ? invoice.getInvoiceNumber() : null,
+                    invoice != null ? invoice.getStatus() : null,
                     so.getCreatedAt()
+            );
+        }
+    }
+
+    public record InvoiceResponse(
+            UUID id,
+            String invoiceNumber,
+            UUID orderId,
+            String orderNumber,
+            String customerName,
+            SalesInvoiceStatus status,
+            BigDecimal total,
+            Instant issuedAt,
+            Instant paidAt,
+            String cancelReason
+    ) {
+        public static InvoiceResponse from(SalesInvoice inv) {
+            SalesOrder order = inv.getSalesOrder();
+            return new InvoiceResponse(
+                    inv.getId(), inv.getInvoiceNumber(),
+                    order.getId(), order.getOrderNumber(),
+                    order.getCustomer() != null ? order.getCustomer().getName() : "Cliente anónimo",
+                    inv.getStatus(), inv.getTotal(), inv.getIssuedAt(), inv.getPaidAt(),
+                    inv.getCancelReason()
             );
         }
     }

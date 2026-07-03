@@ -113,6 +113,7 @@ const navGroups: { labelKey: keyof typeof translations.en; items: NavDef[] }[] =
     items: [
       { key: 'accountsPayable',    icon: <FileTextIcon /> },
       { key: 'accountsReceivable', icon: <ReceiptIcon /> },
+      { key: 'invoicing',          icon: <ReceiptIcon /> },
       { key: 'cashBanks',          icon: <CashIcon /> },
       { key: 'expenses',           icon: <TagIcon /> },
       { key: 'accounting',         icon: <TrendingUpIcon /> },
@@ -134,6 +135,7 @@ const navLabelKeys: Record<Page, keyof typeof translations.en> = {
   cash:                'nav_cash',
   accountsPayable:     'nav_accounts_payable',
   accountsReceivable:  'nav_accounts_receivable',
+  invoicing:           'nav_invoicing',
   cashBanks:           'nav_cash_banks',
   accounting:          'nav_accounting',
   expenses:            'nav_expenses',

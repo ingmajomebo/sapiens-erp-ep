@@ -12,7 +12,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -23,29 +25,44 @@ public class SalesOrderService {
     private final CustomerRepository customerRepository;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
+    private final SalesInvoiceRepository invoiceRepository;
 
     @Transactional(readOnly = true)
     public List<OrderResponse> listFiltered(String statusStr) {
         SalesOrderStatus status = statusStr != null ? SalesOrderStatus.valueOf(statusStr) : null;
-        return orderRepository.findFiltered(status).stream()
-                .map(OrderResponse::from)
+        List<SalesOrder> orders = orderRepository.findFiltered(status);
+
+        // Factura activa por pedido en una sola consulta (sin N+1)
+        Map<UUID, SalesInvoice> invoiceByOrder = new HashMap<>();
+        if (!orders.isEmpty()) {
+            List<UUID> ids = orders.stream().map(SalesOrder::getId).toList();
+            for (SalesInvoice inv : invoiceRepository.findActiveByOrderIds(ids)) {
+                invoiceByOrder.put(inv.getSalesOrder().getId(), inv);
+            }
+        }
+        return orders.stream()
+                .map(so -> OrderResponse.from(so, invoiceByOrder.get(so.getId())))
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public OrderResponse findById(UUID id) {
-        return orderRepository.findByIdAndDeletedAtIsNull(id)
-                .map(OrderResponse::from)
+        SalesOrder order = orderRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new SalesOrderNotFoundException(id));
+        SalesInvoice invoice = invoiceRepository.findActiveByOrderIds(List.of(id)).stream()
+                .findFirst().orElse(null);
+        return OrderResponse.from(order, invoice);
     }
 
     /** Canal administrativo: el usuario autenticado queda registrado como creador. */
     @Transactional
     public OrderResponse createAdmin(CreateRequest req) {
+        validateDelivery(req.deliveryMethod(), req.deliveryAddress());
         Customer customer = resolveCustomer(req.customerId(), req.contactName(),
                 req.contactEmail(), req.contactPhone());
         SalesOrder order = SalesOrder.create(nextOrderNumber(), customer,
-                SalesChannel.ADMIN, currentPrincipal(), null, req.notes());
+                SalesChannel.ADMIN, currentPrincipal(), null, req.notes(),
+                req.deliveryMethod(), req.deliveryAddress());
         addValidatedLines(order, req.lines());
         return OrderResponse.from(orderRepository.save(order));
     }
@@ -53,20 +70,40 @@ public class SalesOrderService {
     /** Canal público: mismo tipo de entidad y mismo estado inicial que el canal administrativo. */
     @Transactional
     public OrderResponse createPublic(SalesOrderLink link, PublicCreateRequest req) {
+        validateDelivery(req.deliveryMethod(), req.deliveryAddress());
         Customer customer = customerRepository.save(
                 Customer.anonymous(req.contactName(), req.contactEmail(), req.contactPhone()));
         SalesOrder order = SalesOrder.create(nextOrderNumber(), customer,
-                SalesChannel.PUBLIC, null, link, req.notes());
+                SalesChannel.PUBLIC, null, link, req.notes(),
+                req.deliveryMethod(), req.deliveryAddress());
         addValidatedLines(order, req.lines());
         return OrderResponse.from(orderRepository.save(order));
     }
 
     @Transactional
     public OrderResponse updateStatus(UUID id, SalesOrderStatus status) {
+        if (status == SalesOrderStatus.CANCELLED) {
+            throw new IllegalArgumentException("Para cancelar usa el endpoint de cancelación con novedad");
+        }
         SalesOrder order = orderRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new SalesOrderNotFoundException(id));
         order.transitionTo(status);
         return OrderResponse.from(orderRepository.save(order));
+    }
+
+    /** Cancela el pedido registrando la novedad (obligatoria). */
+    @Transactional
+    public OrderResponse cancel(UUID id, String reason) {
+        SalesOrder order = orderRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new SalesOrderNotFoundException(id));
+        order.cancel(reason.trim());
+        return OrderResponse.from(orderRepository.save(order));
+    }
+
+    private void validateDelivery(DeliveryMethod method, String address) {
+        if (method == DeliveryMethod.DELIVERY && (address == null || address.isBlank())) {
+            throw new IllegalArgumentException("El envío a domicilio requiere una dirección de entrega");
+        }
     }
 
     // ── Reglas de creación (REQ-VEN-001) ──────────────────────────────────────

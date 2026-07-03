@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { publicOrderApi, type PublicProductDto, type SalesOrderDto } from './api/salesApi'
+import { publicOrderApi, type PublicProductDto, type SalesOrderDto, type DeliveryMethod } from './api/salesApi'
 import { productImageSrc } from '../catalog/api/productApi'
+import { formatCOP } from '../../shared/currency'
 
 /**
  * Canal público de pedidos (REQ-VEN-001) — storefront de La Pescadería.
@@ -124,7 +125,7 @@ function ProductCard({ product, qty, onChange }: {
       <div style={{ padding: '13px 15px 15px' }}>
         <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1.25 }}>{product.name}</div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, margin: '5px 0 13px' }}>
-          <span style={{ fontSize: 17, fontWeight: 800, color: '#0E7C86' }}>€{product.salePrice.toFixed(2)}</span>
+          <span style={{ fontSize: 17, fontWeight: 800, color: '#0E7C86' }}>{formatCOP(product.salePrice)}</span>
           <span className="lp-serif" style={{ fontSize: 12.5, color: '#4A6572' }}>el {unit}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -152,6 +153,8 @@ export function PublicOrderPage({ token }: { token: string }) {
   const [contactPhone, setContactPhone] = useState('')
   const [contactEmail, setContactEmail] = useState('')
   const [notes, setNotes] = useState('')
+  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>('PICKUP')
+  const [deliveryAddress, setDeliveryAddress] = useState('')
   const [confirmed, setConfirmed] = useState<SalesOrderDto | null>(null)
   const orderRef = useRef<HTMLDivElement>(null)
   const catalogRef = useRef<HTMLDivElement>(null)
@@ -168,6 +171,8 @@ export function PublicOrderPage({ token }: { token: string }) {
       contactEmail: contactEmail.trim() || undefined,
       contactPhone: contactPhone.trim() || undefined,
       notes: notes.trim() || undefined,
+      deliveryMethod,
+      deliveryAddress: deliveryMethod === 'DELIVERY' ? deliveryAddress.trim() : undefined,
       lines: Object.entries(quantities)
         .filter(([, q]) => q > 0)
         .map(([productId, quantity]) => ({ productId, quantity })),
@@ -230,14 +235,14 @@ export function PublicOrderPage({ token }: { token: string }) {
             {confirmed.lines.map(l => (
               <div key={l.productId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, padding: '6px 0' }}>
                 <span>{l.productName} <span className="lp-serif" style={{ color: '#4A6572' }}>× {l.quantity}</span></span>
-                <span style={{ fontWeight: 700 }}>€{l.lineTotal.toFixed(2)}</span>
+                <span style={{ fontWeight: 700 }}>{formatCOP(l.lineTotal)}</span>
               </div>
             ))}
             <div style={{
               display: 'flex', justifyContent: 'space-between', fontSize: 16, fontWeight: 800,
               borderTop: '2px solid #0B2436', marginTop: 10, paddingTop: 12,
             }}>
-              <span>Total estimado</span><span style={{ color: '#0E7C86' }}>€{confirmed.total.toFixed(2)}</span>
+              <span>Total estimado</span><span style={{ color: '#0E7C86' }}>{formatCOP(confirmed.total)}</span>
             </div>
             <div className="lp-serif" style={{ fontSize: 12.5, color: '#4A6572', marginTop: 10 }}>
               El importe final se ajusta al peso exacto en mostrador.
@@ -250,7 +255,7 @@ export function PublicOrderPage({ token }: { token: string }) {
 
   // ── Storefront ─────────────────────────────────────────────────────────────
   const tickerItems = catalog.products.map(p =>
-    `${emojiFor(p.name)} ${p.name.toUpperCase()} · €${p.salePrice.toFixed(2)}/${UNIT_LABELS[p.unitOfMeasure] ?? ''}`)
+    `${emojiFor(p.name)} ${p.name.toUpperCase()} · ${formatCOP(p.salePrice)}/${UNIT_LABELS[p.unitOfMeasure] ?? ''}`)
   const ticker = tickerItems.length > 0 ? tickerItems.join('   ✦   ') + '   ✦   ' : ''
 
   return (
@@ -343,16 +348,36 @@ export function PublicOrderPage({ token }: { token: string }) {
               {selected.map(({ product, qty }) => (
                 <div key={product.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 14, padding: '6px 0' }}>
                   <span>{product.name} <span className="lp-serif" style={{ color: '#4A6572' }}>× {qty} {UNIT_LABELS[product.unitOfMeasure] ?? ''}</span></span>
-                  <span style={{ fontWeight: 700 }}>€{(product.salePrice * qty).toFixed(2)}</span>
+                  <span style={{ fontWeight: 700 }}>{formatCOP(product.salePrice * qty)}</span>
                 </div>
               ))}
               <div style={{
                 display: 'flex', justifyContent: 'space-between', fontSize: 16, fontWeight: 800,
                 borderTop: '2px solid #0B2436', marginTop: 10, paddingTop: 12, marginBottom: 6,
               }}>
-                <span>Total estimado</span><span style={{ color: '#0E7C86' }}>€{total.toFixed(2)}</span>
+                <span>Total estimado</span><span style={{ color: '#0E7C86' }}>{formatCOP(total)}</span>
               </div>
             </>
+          )}
+
+          {/* ¿Cómo lo recibes? */}
+          <div style={{ fontSize: 13, fontWeight: 800, margin: '18px 0 10px' }}>¿Cómo lo recibes?</div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            {([['PICKUP', '🏪 Recojo en el local'], ['DELIVERY', '🛵 Envío a domicilio']] as [DeliveryMethod, string][]).map(([m, label]) => (
+              <button key={m} type="button" onClick={() => setDeliveryMethod(m)}
+                style={{
+                  flex: 1, padding: '12px 10px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
+                  fontSize: 13.5, fontWeight: deliveryMethod === m ? 800 : 600,
+                  border: deliveryMethod === m ? '2px solid #0E7C86' : '1.5px solid #DCE8E9',
+                  background: deliveryMethod === m ? '#E7F3F4' : '#fff', color: '#0B2436',
+                }}>
+                {label}
+              </button>
+            ))}
+          </div>
+          {deliveryMethod === 'DELIVERY' && (
+            <input className="lp-input" style={{ marginTop: 10 }} placeholder="Dirección de entrega *"
+              value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} />
           )}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 16 }}>
@@ -367,7 +392,7 @@ export function PublicOrderPage({ token }: { token: string }) {
           <button className="lp-cta" style={{ width: '100%', marginTop: 14 }}
             disabled={selected.length === 0 || submitMut.isPending}
             onClick={() => submitMut.mutate()}>
-            {submitMut.isPending ? 'Enviando…' : `Enviar pedido · €${total.toFixed(2)}`}
+            {submitMut.isPending ? 'Enviando…' : `Enviar pedido · ${formatCOP(total)}`}
           </button>
           {submitMut.isError && (
             <div style={{ color: '#C2402A', fontSize: 13, marginTop: 10 }}>
@@ -396,7 +421,7 @@ export function PublicOrderPage({ token }: { token: string }) {
       {selected.length > 0 && (
         <div className="lp-cartbar">
           <span style={{ fontSize: 14 }}>
-            <b>{selected.length}</b> producto{selected.length !== 1 ? 's' : ''} · <b style={{ color: '#BFE0E2' }}>€{total.toFixed(2)}</b>
+            <b>{selected.length}</b> producto{selected.length !== 1 ? 's' : ''} · <b style={{ color: '#BFE0E2' }}>{formatCOP(total)}</b>
           </span>
           <button className="lp-cta" style={{ background: '#FF6B4A', padding: '10px 20px', fontSize: 14 }}
             onClick={() => orderRef.current?.scrollIntoView({ behavior: 'smooth' })}>
