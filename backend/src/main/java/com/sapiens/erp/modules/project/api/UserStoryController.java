@@ -1,5 +1,6 @@
 package com.sapiens.erp.modules.project.api;
 
+import com.sapiens.erp.modules.project.api.dto.PagedResponse;
 import com.sapiens.erp.modules.project.api.dto.StoryQaHistoryResponse;
 import com.sapiens.erp.modules.project.api.dto.StoryScenarioRequest;
 import com.sapiens.erp.modules.project.api.dto.StoryScenarioResponse;
@@ -14,6 +15,7 @@ import com.sapiens.erp.modules.project.domain.StoryStatus;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -28,12 +30,23 @@ public class UserStoryController {
     private final QaExecutionService qaService;
     private final QaReportService qaReportService;
 
+    /**
+     * Retrocompatible: sin page/size devuelve el array plano de siempre;
+     * con page/size devuelve el envoltorio { content, page, size, totalElements }.
+     */
     @GetMapping
-    public List<UserStoryResponse> list(
+    public ResponseEntity<?> list(
             @RequestParam(required = false) String storyType,
             @RequestParam(required = false) String module,
-            @RequestParam(required = false) String status) {
-        return service.listFiltered(storyType, module, status);
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        List<UserStoryResponse> all = service.listFiltered(storyType, module, status, q);
+        if (page == null || size == null) {
+            return ResponseEntity.ok(all);
+        }
+        return ResponseEntity.ok(PagedResponse.of(all, page, size));
     }
 
     @PostMapping
@@ -92,8 +105,14 @@ public class UserStoryController {
     // ── QA: ejecuciones de prueba ────────────────────────────────────────────
 
     @GetMapping("/{storyId}/test-executions")
-    public List<TestExecutionResponse> listExecutions(@PathVariable UUID storyId) {
-        return qaService.listByStory(storyId);
+    public ResponseEntity<?> listExecutions(@PathVariable UUID storyId,
+                                            @RequestParam(required = false) Integer page,
+                                            @RequestParam(required = false) Integer size) {
+        List<TestExecutionResponse> all = qaService.listByStory(storyId);
+        if (page == null || size == null) {
+            return ResponseEntity.ok(all);
+        }
+        return ResponseEntity.ok(PagedResponse.of(all, page, size));
     }
 
     @GetMapping("/{storyId}/qa-history")

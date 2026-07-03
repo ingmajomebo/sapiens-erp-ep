@@ -23,12 +23,27 @@ public class UserStoryService {
     private final EpicRepository epicRepository;
 
     @Transactional(readOnly = true)
-    public List<UserStoryResponse> listFiltered(String storyTypeStr, String module, String statusStr) {
+    public List<UserStoryResponse> listFiltered(String storyTypeStr, String module, String statusStr, String q) {
         StoryType storyType = storyTypeStr != null ? StoryType.valueOf(storyTypeStr) : null;
         StoryStatus status  = statusStr != null    ? StoryStatus.valueOf(statusStr)    : null;
         return storyRepository.findFiltered(storyType, module, status).stream()
+                .filter(s -> matchesQuery(s, q))
                 .map(UserStoryResponse::from)
                 .toList();
+    }
+
+    private boolean matchesQuery(UserStory s, String q) {
+        if (q == null || q.isBlank()) return true;
+        String needle = q.toLowerCase();
+        return contains(s.getReqId(), needle)
+                || contains(s.getPersona(), needle)
+                || contains(s.getActionStatement(), needle)
+                || contains(s.getOutcomeStatement(), needle)
+                || contains(s.getDescription(), needle);
+    }
+
+    private static boolean contains(String haystack, String needle) {
+        return haystack != null && haystack.toLowerCase().contains(needle);
     }
 
     @Transactional
@@ -63,8 +78,7 @@ public class UserStoryService {
                     "se verifica el criterio no funcional definido",
                     req.nfrCriterion().trim(),
                     ScenarioType.NFR_CHECK, 0);
-            scenarioRepository.save(check);
-            story.getScenarios().add(check);
+            story.getScenarios().add(scenarioRepository.save(check));
         }
         return UserStoryResponse.from(story);
     }
@@ -185,7 +199,10 @@ public class UserStoryService {
                 req.whenEvent(), req.thenOutcome(), req.scenarioType(), order
         );
         applyTags(scenario, req.tags());
-        return StoryScenarioResponse.from(scenarioRepository.save(scenario));
+        // save() devuelve la instancia gestionada: usarla también en la colección inversa
+        StoryScenario saved = scenarioRepository.save(scenario);
+        story.getScenarios().add(saved);
+        return StoryScenarioResponse.from(saved);
     }
 
     @Transactional

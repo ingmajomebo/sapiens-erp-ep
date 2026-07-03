@@ -14,6 +14,9 @@ import {
 } from './api/projectApi'
 import { toast } from '../../shared/toast'
 import { QaTab, AttachmentThumb } from './components/QaTab'
+import { DashboardTab } from './components/DashboardTab'
+import { ConfigTab } from './components/ConfigTab'
+import { useProjectData } from './hooks/useProjectData'
 import {
   MODULES, MODULE_LABELS,
   TASK_TYPE_LABELS, TASK_TYPE_COLORS,
@@ -1063,108 +1066,6 @@ function TaskCard({ task, onMove, onClick, onDragStart, onDragEnd, isDragging, o
             → {STATUS_LABELS[next]}
           </button>
         )}
-      </div>
-    </div>
-  )
-}
-
-// ─── Dashboard Tab ────────────────────────────────────────────────────────────
-
-function DashboardTab({ tasks, sprints }: { tasks: ProjectTaskDto[]; sprints: SprintDto[] }) {
-  const activeSprint = sprints.find(s => s.status === 'ACTIVE')
-  const sprintTasks = activeSprint ? tasks.filter(t => t.sprintId === activeSprint.id) : []
-  const done = sprintTasks.filter(t => t.status === 'DONE').length
-  const total = sprintTasks.length
-  const progress = total > 0 ? Math.round((done / total) * 100) : 0
-
-  const allDone = tasks.filter(t => t.status === 'DONE').length
-  const allInProgress = tasks.filter(t => t.status === 'IN_PROGRESS').length
-  const allTodo = tasks.filter(t => t.status === 'TODO').length
-
-  const manuelTasks = tasks.filter(t => t.assignee === 'MANUEL')
-  const iskianTasks = tasks.filter(t => t.assignee === 'ISKIAN')
-
-  const byModule = MODULES.map(m => ({
-    module: m,
-    label: MODULE_LABELS[m],
-    count: tasks.filter(t => t.module === m).length,
-  })).filter(x => x.count > 0).sort((a, b) => b.count - a.count)
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-        <KpiCard label="Total tareas" value={tasks.length} />
-        <KpiCard label="Completadas" value={allDone} color="#10b981" />
-        <KpiCard label="En curso" value={allInProgress} color="#f59e0b" />
-        <KpiCard label="Por hacer" value={allTodo} />
-      </div>
-
-      {activeSprint && (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '20px 24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-            <div>
-              <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 2 }}>Sprint activo</div>
-              <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{activeSprint.name}</div>
-              {activeSprint.goal && <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 4 }}>{activeSprint.goal}</div>}
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 22, fontWeight: 800, color: '#6366f1' }}>{progress}%</div>
-              <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>{done} / {total} tareas</div>
-            </div>
-          </div>
-          <div style={{ height: 8, background: 'var(--border)', borderRadius: 4, overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${progress}%`, background: '#6366f1', borderRadius: 4, transition: 'width 0.4s' }} />
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginTop: 16 }}>
-            {(['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE'] as TaskStatus[]).map(s => (
-              <div key={s} style={{ textAlign: 'center', background: STATUS_BG[s], borderRadius: 8, padding: '8px 4px' }}>
-                <div style={{ fontSize: 18, fontWeight: 700, color: STATUS_COLORS[s] }}>
-                  {sprintTasks.filter(t => t.status === s).length}
-                </div>
-                <div style={{ fontSize: 10.5, color: STATUS_COLORS[s], fontWeight: 600 }}>{STATUS_LABELS[s]}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '20px 24px' }}>
-          <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', marginBottom: 14 }}>Por asignado</div>
-          {[
-            { name: 'Manuel', assignee: 'MANUEL' as TaskAssignee, tasks: manuelTasks, color: '#6366f1' },
-            { name: 'Iskian', assignee: 'ISKIAN' as TaskAssignee, tasks: iskianTasks, color: '#10b981' },
-          ].map(({ name, assignee, tasks: at, color }) => (
-            <div key={assignee} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-              <Avatar assignee={assignee} />
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{name}</span>
-                  <span style={{ fontSize: 12, color: 'var(--muted)' }}>
-                    {at.filter(t => t.status === 'DONE').length}/{at.length}
-                  </span>
-                </div>
-                <div style={{ height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
-                  <div style={{
-                    height: '100%', borderRadius: 3, background: color,
-                    width: at.length > 0 ? `${Math.round((at.filter(t => t.status === 'DONE').length / at.length) * 100)}%` : '0%',
-                  }} />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '20px 24px' }}>
-          <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', marginBottom: 14 }}>Por módulo</div>
-          {byModule.slice(0, 6).map(({ module, label, count }) => (
-            <div key={module} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <span style={{ fontSize: 13, color: 'var(--text)' }}>{label}</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#6366f1', background: '#eef2ff', borderRadius: 20, padding: '1px 8px' }}>{count}</span>
-            </div>
-          ))}
-          {byModule.length === 0 && <div style={{ fontSize: 13, color: 'var(--muted)' }}>Sin tareas por módulo</div>}
-        </div>
       </div>
     </div>
   )
@@ -2618,183 +2519,6 @@ function RequirementsTab({
   )
 }
 
-// ─── Config Tab ───────────────────────────────────────────────────────────────
-
-function ConfigTab() {
-  const qc = useQueryClient()
-  const { data: ctx, isLoading } = useQuery({
-    queryKey: ['ai-context'],
-    queryFn: aiApi.getContext,
-  })
-
-  const [content, setContent] = useState('')
-  const [isDirty, setIsDirty] = useState(false)
-
-  // Sync content when data loads
-  useState(() => { if (ctx) setContent(ctx.content) })
-
-  const saveMut = useMutation({
-    mutationFn: (c: string) => aiApi.updateContext(c),
-    onSuccess: (updated: AiContextDto) => {
-      setContent(updated.content)
-      setIsDirty(false)
-      qc.invalidateQueries({ queryKey: ['ai-context'] })
-      toast({ type: 'success', message: 'Contexto guardado correctamente' })
-    },
-    onError: () => toast({ type: 'error', message: 'Error al guardar el contexto' }),
-  })
-
-  // Initialize content from query
-  if (ctx && content === '' && !isDirty) {
-    setContent(ctx.content)
-  }
-
-  function handleChange(val: string) {
-    setContent(val)
-    setIsDirty(true)
-  }
-
-  function handleReset() {
-    if (ctx) { setContent(ctx.content); setIsDirty(false) }
-  }
-
-  const wordCount = content.trim().split(/\s+/).filter(Boolean).length
-  const charCount = content.length
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 900 }}>
-      {/* Header */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '20px 24px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
-          <div style={{
-            width: 48, height: 48, borderRadius: 12, background: '#eef2ff',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0,
-          }}>🤖</div>
-          <div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>
-              Contexto del Asistente IA
-            </div>
-            <div style={{ fontSize: 13.5, color: 'var(--muted)', lineHeight: 1.6 }}>
-              Este documento define el conocimiento base que recibe el asistente al generar prompts.
-              Puedes editarlo para agregar contexto del proyecto, reglas de negocio, arquitectura actualizada
-              o cualquier información que mejore la calidad de los prompts generados.
-            </div>
-            {ctx?.updatedAt && (
-              <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>
-                Última actualización: {new Date(ctx.updatedAt).toLocaleString('es', { dateStyle: 'medium', timeStyle: 'short' })}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Tips */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-        {[
-          { icon: '📐', title: 'Arquitectura', desc: 'Describe la estructura de carpetas, capas y patrones usados' },
-          { icon: '⚡', title: 'Invariantes', desc: 'Lista las reglas de negocio que nunca deben violarse' },
-          { icon: '📦', title: 'Módulos', desc: 'Documenta qué hace cada módulo y sus dependencias' },
-        ].map(tip => (
-          <div key={tip.title} style={{
-            background: 'var(--surface)', border: '1px solid var(--border)',
-            borderRadius: 10, padding: '14px 16px',
-          }}>
-            <div style={{ fontSize: 20, marginBottom: 6 }}>{tip.icon}</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginBottom: 3 }}>{tip.title}</div>
-            <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.5 }}>{tip.desc}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Editor */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
-        {/* Toolbar */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '12px 18px', borderBottom: '1px solid var(--border)',
-          background: 'var(--bg)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
-              {ctx?.label ?? 'Contexto base del Asistente IA'}
-            </span>
-            {isDirty && (
-              <span style={{
-                fontSize: 11, fontWeight: 700, background: '#fef3c7', color: '#92400e',
-                borderRadius: 20, padding: '1px 8px',
-              }}>Sin guardar</span>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <span style={{ fontSize: 11.5, color: 'var(--muted)' }}>
-              {charCount.toLocaleString()} chars · {wordCount.toLocaleString()} palabras
-            </span>
-            <button
-              type="button"
-              style={{ fontSize: 11.5, color: '#6366f1', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-              onClick={() => { navigator.clipboard.writeText(content); toast({ type: 'success', message: 'Copiado al portapapeles' }) }}
-            >
-              📋 Copiar
-            </button>
-          </div>
-        </div>
-
-        {/* Textarea */}
-        {isLoading ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
-            Cargando contexto...
-          </div>
-        ) : (
-          <textarea
-            style={{
-              width: '100%', minHeight: 520, padding: '18px 20px',
-              border: 'none', outline: 'none', resize: 'vertical',
-              fontFamily: 'monospace', fontSize: 13, lineHeight: 1.7,
-              color: 'var(--text)', background: 'var(--surface)',
-              boxSizing: 'border-box',
-            }}
-            value={content}
-            onChange={e => handleChange(e.target.value)}
-            placeholder="Describe el proyecto, arquitectura, invariantes, módulos..."
-            spellCheck={false}
-          />
-        )}
-
-        {/* Footer actions */}
-        <div style={{
-          display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center',
-          padding: '12px 18px', borderTop: '1px solid var(--border)', background: 'var(--bg)',
-        }}>
-          {isDirty && (
-            <button type="button" style={btnSecondaryStyle} onClick={handleReset}>
-              Descartar cambios
-            </button>
-          )}
-          <button
-            type="button"
-            style={{ ...btnPrimaryStyle, background: '#6366f1', opacity: saveMut.isPending ? 0.7 : 1 }}
-            disabled={saveMut.isPending || !isDirty}
-            onClick={() => saveMut.mutate(content)}
-          >
-            {saveMut.isPending ? 'Guardando...' : '💾 Guardar contexto'}
-          </button>
-        </div>
-      </div>
-
-      {/* Info box */}
-      <div style={{
-        background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10,
-        padding: '14px 18px', fontSize: 13, color: '#166534', lineHeight: 1.6,
-      }}>
-        <strong>¿Cómo se usa este contexto?</strong> Cada vez que haces click en "🤖 Generar prompt con IA"
-        en el formulario de Nuevo Prompt, este documento se envía automáticamente al asistente
-        como base de conocimiento del proyecto. Mantenerlo actualizado mejora la calidad y precisión
-        de los prompts generados.
-      </div>
-    </div>
-  )
-}
-
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export function ProjectPage() {
@@ -2809,11 +2533,7 @@ export function ProjectPage() {
   const [scenarioModal, setScenarioModal] = useState<{ open: boolean; storyId: string; scenario: UserStoryDto['scenarios'][0] | null } | null>(null)
   const [aiChatOpen, setAiChatOpen] = useState(false)
 
-  const { data: sprints = [] } = useQuery({ queryKey: ['sprints'], queryFn: sprintsApi.listAll })
-  const { data: tasks = [] } = useQuery({ queryKey: ['project-tasks'], queryFn: () => projectTasksApi.listFiltered() })
-  const { data: prompts = [] } = useQuery({ queryKey: ['prompt-plans'], queryFn: promptPlansApi.listAll })
-  const { data: stories = [] } = useQuery({ queryKey: ['user-stories'], queryFn: () => userStoriesApi.listFiltered() })
-  const { data: epics = [] } = useQuery({ queryKey: ['epics'], queryFn: epicsApi.listAll })
+  const { sprints, tasks, prompts, stories, epics } = useProjectData()
 
   const createEpicMut = useMutation({
     mutationFn: (d: EpicRequest) => epicsApi.create(d),

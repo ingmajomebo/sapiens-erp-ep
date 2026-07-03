@@ -1,5 +1,6 @@
 package com.sapiens.erp.modules.project.api;
 
+import com.sapiens.erp.modules.project.api.dto.PagedResponse;
 import com.sapiens.erp.modules.project.api.dto.ProjectTaskRequest;
 import com.sapiens.erp.modules.project.api.dto.ProjectTaskResponse;
 import com.sapiens.erp.modules.project.api.dto.TaskStatusUpdateRequest;
@@ -20,12 +21,20 @@ public class ProjectTaskController {
 
     private final ProjectTaskService service;
 
+    /** Retrocompatible: sin page/size devuelve el array plano; con ambos, el envoltorio paginado. */
     @GetMapping
-    public ResponseEntity<List<ProjectTaskResponse>> list(
+    public ResponseEntity<?> list(
             @RequestParam(required = false) UUID sprintId,
             @RequestParam(required = false) String assignee,
-            @RequestParam(required = false) String status) {
-        return ResponseEntity.ok(service.listFiltered(sprintId, assignee, status));
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        List<ProjectTaskResponse> all = service.listFiltered(sprintId, assignee, status, q);
+        if (page == null || size == null) {
+            return ResponseEntity.ok(all);
+        }
+        return ResponseEntity.ok(PagedResponse.of(all, page, size));
     }
 
     @PostMapping

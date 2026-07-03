@@ -20,12 +20,26 @@ public class ProjectTaskService {
     private final UserStoryRepository storyRepository;
 
     @Transactional(readOnly = true)
-    public List<ProjectTaskResponse> listFiltered(UUID sprintId, String assigneeStr, String statusStr) {
+    public List<ProjectTaskResponse> listFiltered(UUID sprintId, String assigneeStr, String statusStr, String q) {
         TaskAssignee assignee = assigneeStr != null ? TaskAssignee.valueOf(assigneeStr) : null;
         TaskStatus status = statusStr != null ? TaskStatus.valueOf(statusStr) : null;
         return taskRepository.findFiltered(sprintId, assignee, status).stream()
+                .filter(t -> matchesQuery(t, q))
                 .map(ProjectTaskResponse::from)
                 .toList();
+    }
+
+    private boolean matchesQuery(ProjectTask t, String q) {
+        if (q == null || q.isBlank()) return true;
+        String needle = q.toLowerCase();
+        return contains(t.getTitle(), needle)
+                || contains(t.getDescription(), needle)
+                || contains(t.getLinkedRequirementId(), needle)
+                || contains(t.getNotes(), needle);
+    }
+
+    private static boolean contains(String haystack, String needle) {
+        return haystack != null && haystack.toLowerCase().contains(needle);
     }
 
     @Transactional
