@@ -122,30 +122,6 @@ public final class SalesOrderDtos {
         }
     }
 
-    public record InvoiceResponse(
-            UUID id,
-            String invoiceNumber,
-            UUID orderId,
-            String orderNumber,
-            String customerName,
-            SalesInvoiceStatus status,
-            BigDecimal total,
-            Instant issuedAt,
-            Instant paidAt,
-            String cancelReason
-    ) {
-        public static InvoiceResponse from(SalesInvoice inv) {
-            SalesOrder order = inv.getSalesOrder();
-            return new InvoiceResponse(
-                    inv.getId(), inv.getInvoiceNumber(),
-                    order.getId(), order.getOrderNumber(),
-                    order.getCustomer() != null ? order.getCustomer().getName() : "Cliente anónimo",
-                    inv.getStatus(), inv.getTotal(), inv.getIssuedAt(), inv.getPaidAt(),
-                    inv.getCancelReason()
-            );
-        }
-    }
-
     public record CustomerResponse(UUID id, String name, String email, String phone,
                                    boolean anonymous, Instant createdAt) {
         public static CustomerResponse from(Customer c) {

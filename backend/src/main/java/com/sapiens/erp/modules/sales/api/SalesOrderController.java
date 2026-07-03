@@ -1,5 +1,6 @@
 package com.sapiens.erp.modules.sales.api;
 
+import com.sapiens.erp.modules.sales.api.dto.SalesInvoiceDtos.*;
 import com.sapiens.erp.modules.sales.api.dto.SalesOrderDtos.*;
 import com.sapiens.erp.modules.sales.application.CustomerService;
 import com.sapiens.erp.modules.sales.application.SalesInvoiceService;
@@ -64,27 +65,48 @@ public class SalesOrderController {
 
     // ── Facturación de ventas ─────────────────────────────────────────────────
 
+    /** Genera la factura del pedido en estado BORRADOR (se emite después). */
     @PostMapping("/sales-orders/{id}/invoice")
     @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN')")
-    public ResponseEntity<InvoiceResponse> issueInvoice(@PathVariable UUID id) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(invoiceService.issueForOrder(id));
+    public ResponseEntity<InvoiceListResponse> createInvoiceDraft(@PathVariable UUID id) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(invoiceService.createDraftForOrder(id));
     }
 
     @GetMapping("/sales-invoices")
-    public ResponseEntity<List<InvoiceResponse>> listInvoices(@RequestParam(required = false) String status) {
+    public ResponseEntity<List<InvoiceListResponse>> listInvoices(@RequestParam(required = false) String status) {
         return ResponseEntity.ok(invoiceService.listFiltered(status));
     }
 
+    @GetMapping("/sales-invoices/{id}")
+    public ResponseEntity<InvoiceDetailResponse> invoiceDetail(@PathVariable UUID id) {
+        return ResponseEntity.ok(invoiceService.getDetail(id));
+    }
+
+    @PatchMapping("/sales-invoices/{id}/emit")
+    @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN')")
+    public ResponseEntity<InvoiceListResponse> emitInvoice(@PathVariable UUID id,
+                                                           @Valid @RequestBody EmitRequest request) {
+        return ResponseEntity.ok(invoiceService.emit(id, request));
+    }
+
+    @PostMapping("/sales-invoices/{id}/payments")
+    @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN')")
+    public ResponseEntity<InvoiceListResponse> registerPayment(@PathVariable UUID id,
+                                                               @Valid @RequestBody PaymentRequest request) {
+        return ResponseEntity.ok(invoiceService.registerPayment(id, request));
+    }
+
+    /** Compatibilidad con el flujo simple: paga el saldo completo en efectivo. */
     @PatchMapping("/sales-invoices/{id}/pay")
     @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN')")
-    public ResponseEntity<InvoiceResponse> payInvoice(@PathVariable UUID id) {
-        return ResponseEntity.ok(invoiceService.markPaid(id));
+    public ResponseEntity<InvoiceListResponse> payInvoice(@PathVariable UUID id) {
+        return ResponseEntity.ok(invoiceService.payRemaining(id));
     }
 
     @PatchMapping("/sales-invoices/{id}/cancel")
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN')")
-    public ResponseEntity<InvoiceResponse> cancelInvoice(@PathVariable UUID id,
-                                                         @Valid @RequestBody CancelRequest request) {
+    public ResponseEntity<InvoiceListResponse> cancelInvoice(@PathVariable UUID id,
+                                                             @Valid @RequestBody CancelRequest request) {
         return ResponseEntity.ok(invoiceService.cancel(id, request.reason()));
     }
 
