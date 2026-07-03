@@ -193,6 +193,19 @@ export const salesInvoiceApi = {
     return data
   },
 
+  search: async (params: Record<string, string | number | boolean | string[] | undefined>): Promise<{ content: SalesInvoiceDto[]; page: number; size: number; totalElements: number }> => {
+    const { data } = await client.get('/sales-invoices/search', { params, paramsSerializer: { indexes: null } })
+    return data
+  },
+
+  summary: async (params: Record<string, string | number | boolean | string[] | undefined>): Promise<{
+    drafts: number; issued: number; partiallyPaid: number; paid: number; cancelled: number
+    overdue: number; pendingBalance: number; overdueBalance: number; paidTotal: number; total: number
+  }> => {
+    const { data } = await client.get('/sales-invoices/summary', { params, paramsSerializer: { indexes: null } })
+    return data
+  },
+
   detail: async (id: string): Promise<InvoiceDetailDto> => {
     const { data } = await client.get(`/sales-invoices/${id}`)
     return data

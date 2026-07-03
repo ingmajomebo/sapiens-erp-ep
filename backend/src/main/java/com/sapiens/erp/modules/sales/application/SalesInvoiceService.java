@@ -2,6 +2,10 @@ package com.sapiens.erp.modules.sales.application;
 
 import com.sapiens.erp.modules.identity.domain.UserRepository;
 import com.sapiens.erp.modules.sales.api.dto.SalesInvoiceDtos.*;
+import com.sapiens.erp.shared.api.PagedResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import com.sapiens.erp.modules.sales.domain.*;
 import com.sapiens.erp.modules.sales.domain.exception.SalesOrderNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -10,10 +14,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -69,6 +77,82 @@ public class SalesInvoiceService {
                 historyRepository.findByInvoiceId(id).stream().map(HistoryResponse::from).toList(),
                 creditNoteRepository.findByInvoiceId(id).stream().map(CreditNoteResponse::from).toList()
         );
+    }
+
+    /** Columnas ordenables permitidas (whitelist para evitar inyección en el sort). */
+    private static final Set<String> SORTABLE = Set.of("invoiceNumber", "issuedAt", "dueDate", "total", "status", "createdAt");
+
+    public record SearchParams(String q, List<SalesInvoiceStatus> statuses, UUID customerId,
+                               LocalDate from, LocalDate to, BigDecimal minTotal, BigDecimal maxTotal,
+                               boolean overdueOnly) {}
+
+    @Transactional(readOnly = true)
+    public PagedResponse<InvoiceListResponse> search(SearchParams params, int page, int size,
+                                                     String sortField, String sortDir) {
+        String field = SORTABLE.contains(sortField) ? sortField : "createdAt";
+        Sort sort = "asc".equalsIgnoreCase(sortDir) ? Sort.by(field).ascending() : Sort.by(field).descending();
+
+        Page<SalesInvoice> result = invoiceRepository.search(
+                normalizeQuery(params.q()),
+                params.statuses() == null || params.statuses().isEmpty() ? null : params.statuses(),
+                params.customerId(),
+                toStartInstant(params.from()), toEndInstant(params.to()),
+                params.minTotal(), params.maxTotal(), params.overdueOnly(),
+                PageRequest.of(page, size, sort));
+
+        Map<UUID, BigDecimal> paidByInvoice = paidSums(result.getContent());
+        List<InvoiceListResponse> content = result.getContent().stream()
+                .map(inv -> InvoiceListResponse.from(inv, paidByInvoice.get(inv.getId())))
+                .toList();
+        return new PagedResponse<>(content, page, size, result.getTotalElements());
+    }
+
+    public record Summary(long drafts, long issued, long partiallyPaid, long paid, long cancelled,
+                          long overdue, BigDecimal pendingBalance, BigDecimal overdueBalance,
+                          BigDecimal paidTotal, long total) {}
+
+    /**
+     * KPIs sobre el mismo filtro. Se calcula sobre el conjunto filtrado completo:
+     * el volumen de facturas de una pescadería no justifica agregaciones materializadas.
+     */
+    @Transactional(readOnly = true)
+    public Summary summary(SearchParams params) {
+        List<SalesInvoice> all = invoiceRepository.search(
+                normalizeQuery(params.q()),
+                params.statuses() == null || params.statuses().isEmpty() ? null : params.statuses(),
+                params.customerId(),
+                toStartInstant(params.from()), toEndInstant(params.to()),
+                params.minTotal(), params.maxTotal(), params.overdueOnly(),
+                PageRequest.of(0, Integer.MAX_VALUE)).getContent();
+
+        Map<UUID, BigDecimal> paidByInvoice = paidSums(all);
+        long drafts = 0, issued = 0, partial = 0, paid = 0, cancelled = 0, overdue = 0;
+        BigDecimal pendingBalance = BigDecimal.ZERO, overdueBalance = BigDecimal.ZERO, paidTotal = BigDecimal.ZERO;
+        for (SalesInvoice inv : all) {
+            BigDecimal balance = inv.getTotal().subtract(paidByInvoice.getOrDefault(inv.getId(), BigDecimal.ZERO));
+            switch (inv.getStatus()) {
+                case DRAFT -> drafts++;
+                case ISSUED -> { issued++; pendingBalance = pendingBalance.add(balance); }
+                case PARTIALLY_PAID -> { partial++; pendingBalance = pendingBalance.add(balance); }
+                case PAID -> { paid++; paidTotal = paidTotal.add(inv.getTotal()); }
+                case CANCELLED -> cancelled++;
+            }
+            if (inv.isOverdue()) { overdue++; overdueBalance = overdueBalance.add(balance); }
+        }
+        return new Summary(drafts, issued, partial, paid, cancelled, overdue,
+                pendingBalance, overdueBalance, paidTotal, all.size());
+    }
+
+    private String normalizeQuery(String q) {
+        return q == null || q.isBlank() ? null : "%" + q.trim().toLowerCase() + "%";
+    }
+
+    private Instant toStartInstant(LocalDate d) {
+        return d == null ? null : d.atStartOfDay(ZoneId.systemDefault()).toInstant();
+    }
+
+    private Instant toEndInstant(LocalDate d) {
+        return d == null ? null : d.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
     }
 
     // ── Flujo ─────────────────────────────────────────────────────────────────

@@ -1,9 +1,13 @@
 package com.sapiens.erp.modules.sales.domain;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,6 +23,34 @@ public interface SalesInvoiceRepository extends JpaRepository<SalesInvoice, UUID
     List<SalesInvoice> findFiltered(@Param("status") SalesInvoiceStatus status);
 
     Optional<SalesInvoice> findByIdAndDeletedAtIsNull(UUID id);
+
+    /** Filtros combinables (texto, estados, fechas, cliente, montos, solo vencidas) con paginación. */
+    @Query("""
+        SELECT i FROM SalesInvoice i
+        LEFT JOIN i.customer c
+        WHERE i.deletedAt IS NULL
+          AND (:statuses IS NULL OR i.status IN :statuses)
+          AND (:customerId IS NULL OR c.id = :customerId)
+          AND (CAST(:fromDate AS timestamp) IS NULL OR i.issuedAt >= :fromDate)
+          AND (CAST(:toDate AS timestamp) IS NULL OR i.issuedAt < :toDate)
+          AND (:minTotal IS NULL OR i.total >= :minTotal)
+          AND (:maxTotal IS NULL OR i.total <= :maxTotal)
+          AND (:overdueOnly = false OR (i.dueDate < CURRENT_DATE
+               AND (i.status = com.sapiens.erp.modules.sales.domain.SalesInvoiceStatus.ISSUED
+                    OR i.status = com.sapiens.erp.modules.sales.domain.SalesInvoiceStatus.PARTIALLY_PAID)))
+          AND (:q IS NULL OR LOWER(i.invoiceNumber) LIKE :q
+               OR LOWER(i.salesOrder.orderNumber) LIKE :q
+               OR LOWER(COALESCE(c.name, '')) LIKE :q)
+        """)
+    Page<SalesInvoice> search(@Param("q") String q,
+                              @Param("statuses") List<SalesInvoiceStatus> statuses,
+                              @Param("customerId") UUID customerId,
+                              @Param("fromDate") Instant fromDate,
+                              @Param("toDate") Instant toDate,
+                              @Param("minTotal") BigDecimal minTotal,
+                              @Param("maxTotal") BigDecimal maxTotal,
+                              @Param("overdueOnly") boolean overdueOnly,
+                              Pageable pageable);
 
     @Query("""
         SELECT i FROM SalesInvoice i

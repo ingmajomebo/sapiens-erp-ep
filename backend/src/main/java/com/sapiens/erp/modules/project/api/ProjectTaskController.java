@@ -1,6 +1,6 @@
 package com.sapiens.erp.modules.project.api;
 
-import com.sapiens.erp.modules.project.api.dto.PagedResponse;
+import com.sapiens.erp.shared.api.PagedResponse;
 import com.sapiens.erp.modules.project.api.dto.ProjectTaskRequest;
 import com.sapiens.erp.modules.project.api.dto.ProjectTaskResponse;
 import com.sapiens.erp.modules.project.api.dto.TaskStatusUpdateRequest;

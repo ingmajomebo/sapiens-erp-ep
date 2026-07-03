@@ -1,6 +1,6 @@
 package com.sapiens.erp.modules.project.api;
 
-import com.sapiens.erp.modules.project.api.dto.PagedResponse;
+import com.sapiens.erp.shared.api.PagedResponse;
 import com.sapiens.erp.modules.project.api.dto.StoryQaHistoryResponse;
 import com.sapiens.erp.modules.project.api.dto.StoryScenarioRequest;
 import com.sapiens.erp.modules.project.api.dto.StoryScenarioResponse;

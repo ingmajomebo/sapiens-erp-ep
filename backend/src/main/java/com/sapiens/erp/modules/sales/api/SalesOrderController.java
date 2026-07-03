@@ -7,14 +7,20 @@ import com.sapiens.erp.modules.sales.application.SalesInvoiceService;
 import com.sapiens.erp.modules.sales.application.SalesOrderLinkService;
 import com.sapiens.erp.modules.sales.application.SalesOrderService;
 import com.sapiens.erp.modules.sales.domain.SalesOrderStatus;
+import com.sapiens.erp.modules.sales.application.SalesInvoiceService;
+import com.sapiens.erp.modules.sales.domain.SalesInvoiceStatus;
+import com.sapiens.erp.shared.api.PagedResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.net.URI;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -80,6 +86,42 @@ public class SalesOrderController {
     @GetMapping("/sales-invoices/{id}")
     public ResponseEntity<InvoiceDetailResponse> invoiceDetail(@PathVariable UUID id) {
         return ResponseEntity.ok(invoiceService.getDetail(id));
+    }
+
+    /** Filtros combinables con paginación y ordenamiento (whitelist de columnas). */
+    @GetMapping("/sales-invoices/search")
+    public ResponseEntity<PagedResponse<InvoiceListResponse>> searchInvoices(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) List<SalesInvoiceStatus> statuses,
+            @RequestParam(required = false) UUID customerId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) BigDecimal minTotal,
+            @RequestParam(required = false) BigDecimal maxTotal,
+            @RequestParam(defaultValue = "false") boolean overdueOnly,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortField,
+            @RequestParam(defaultValue = "desc") String sortDir) {
+        var params = new SalesInvoiceService.SearchParams(q, statuses, customerId, from, to,
+                minTotal, maxTotal, overdueOnly);
+        return ResponseEntity.ok(invoiceService.search(params, page, size, sortField, sortDir));
+    }
+
+    /** KPIs que reflejan los mismos filtros de la búsqueda. */
+    @GetMapping("/sales-invoices/summary")
+    public ResponseEntity<SalesInvoiceService.Summary> invoiceSummary(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) List<SalesInvoiceStatus> statuses,
+            @RequestParam(required = false) UUID customerId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) BigDecimal minTotal,
+            @RequestParam(required = false) BigDecimal maxTotal,
+            @RequestParam(defaultValue = "false") boolean overdueOnly) {
+        var params = new SalesInvoiceService.SearchParams(q, statuses, customerId, from, to,
+                minTotal, maxTotal, overdueOnly);
+        return ResponseEntity.ok(invoiceService.summary(params));
     }
 
     @PatchMapping("/sales-invoices/{id}/emit")

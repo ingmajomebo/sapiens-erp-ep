@@ -1,4 +1,4 @@
-package com.sapiens.erp.modules.project.api.dto;
+package com.sapiens.erp.shared.api;
 
 import java.util.List;
 

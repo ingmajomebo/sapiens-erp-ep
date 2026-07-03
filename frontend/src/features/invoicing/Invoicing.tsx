@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Card, KpiCard, CardHeader, StatusChip,
@@ -216,24 +216,149 @@ function PaymentModal({ invoice, onClose }: { invoice: SalesInvoiceDto; onClose:
 
 // ─── Página de Facturación ────────────────────────────────────────────────────
 
+const STATUS_OPTIONS: SalesInvoiceStatus[] = ['DRAFT', 'ISSUED', 'PARTIALLY_PAID', 'PAID', 'CANCELLED']
+const DATE_PRESETS = [
+  { key: '', label: 'Cualquier fecha' },
+  { key: 'today', label: 'Hoy' },
+  { key: '7d', label: 'Últimos 7 días' },
+  { key: 'month', label: 'Este mes' },
+  { key: 'prevMonth', label: 'Mes anterior' },
+  { key: 'custom', label: 'Personalizado' },
+]
+
+function presetRange(key: string): { from?: string; to?: string } {
+  const today = new Date()
+  const iso = (d: Date) => d.toISOString().slice(0, 10)
+  if (key === 'today') return { from: iso(today), to: iso(today) }
+  if (key === '7d') { const d = new Date(today); d.setDate(d.getDate() - 7); return { from: iso(d), to: iso(today) } }
+  if (key === 'month') return { from: iso(new Date(today.getFullYear(), today.getMonth(), 1)), to: iso(today) }
+  if (key === 'prevMonth') {
+    return {
+      from: iso(new Date(today.getFullYear(), today.getMonth() - 1, 1)),
+      to: iso(new Date(today.getFullYear(), today.getMonth(), 0)),
+    }
+  }
+  return {}
+}
+
+interface Filters {
+  q: string
+  statuses: SalesInvoiceStatus[]
+  preset: string
+  from: string
+  to: string
+  customerId: string
+  minTotal: string
+  maxTotal: string
+  overdueOnly: boolean
+}
+
+const EMPTY_FILTERS: Filters = {
+  q: '', statuses: [], preset: '', from: '', to: '', customerId: '', minTotal: '', maxTotal: '', overdueOnly: false,
+}
+
+/** Lee los filtros desde la URL para que se puedan compartir/recargar. */
+function filtersFromUrl(): Filters {
+  const p = new URLSearchParams(window.location.search)
+  return {
+    q: p.get('q') ?? '',
+    statuses: (p.get('statuses')?.split(',').filter(Boolean) ?? []) as SalesInvoiceStatus[],
+    preset: p.get('preset') ?? '',
+    from: p.get('from') ?? '',
+    to: p.get('to') ?? '',
+    customerId: p.get('customerId') ?? '',
+    minTotal: p.get('minTotal') ?? '',
+    maxTotal: p.get('maxTotal') ?? '',
+    overdueOnly: p.get('overdueOnly') === 'true',
+  }
+}
+
 export function Invoicing() {
-  const [statusFilter, setStatusFilter] = useState('all')
+  const [filters, setFilters] = useState<Filters>(filtersFromUrl)
+  const [qInput, setQInput] = useState(filters.q)
+  const [page, setPage] = useState(0)
+  const [sortField, setSortField] = useState('createdAt')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [cancelling, setCancelling] = useState<SalesInvoiceDto | null>(null)
   const [emitting, setEmitting] = useState<SalesInvoiceDto | null>(null)
   const [paying, setPaying] = useState<SalesInvoiceDto | null>(null)
 
-  const { data: invoices = [] } = useQuery({ queryKey: ['sales-invoices'], queryFn: () => salesInvoiceApi.list() })
+  const { data: customers = [] } = useQuery({
+    queryKey: ['customers'],
+    queryFn: async () => (await import('../sales/api/salesApi')).customerApi.listAll(),
+  })
 
-  const filtered = invoices.filter(i =>
-    statusFilter === 'all' ? true
-      : statusFilter === 'OVERDUE' ? i.overdue
-      : i.status === statusFilter)
-  const count = (s: SalesInvoiceStatus) => invoices.filter(i => i.status === s).length
-  const paidTotal = invoices.filter(i => i.status === 'PAID').reduce((acc, i) => acc + i.total, 0)
-  const pendingBalance = invoices.filter(i => i.status === 'ISSUED' || i.status === 'PARTIALLY_PAID')
-    .reduce((acc, i) => acc + i.balance, 0)
-  const overdueInvoices = invoices.filter(i => i.overdue)
-  const overdueBalance = overdueInvoices.reduce((acc, i) => acc + i.balance, 0)
+  // Debounce de la búsqueda por texto
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setFilters(f => (f.q === qInput ? f : { ...f, q: qInput }))
+      setPage(0)
+    }, 300)
+    return () => clearTimeout(t)
+  }, [qInput])
+
+  // Persistir filtros en la URL (compartible/recargable)
+  useEffect(() => {
+    const p = new URLSearchParams()
+    if (filters.q) p.set('q', filters.q)
+    if (filters.statuses.length) p.set('statuses', filters.statuses.join(','))
+    if (filters.preset) p.set('preset', filters.preset)
+    if (filters.from) p.set('from', filters.from)
+    if (filters.to) p.set('to', filters.to)
+    if (filters.customerId) p.set('customerId', filters.customerId)
+    if (filters.minTotal) p.set('minTotal', filters.minTotal)
+    if (filters.maxTotal) p.set('maxTotal', filters.maxTotal)
+    if (filters.overdueOnly) p.set('overdueOnly', 'true')
+    const qs = p.toString()
+    window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname)
+  }, [filters])
+
+  const range = filters.preset === 'custom' ? { from: filters.from || undefined, to: filters.to || undefined } : presetRange(filters.preset)
+  const apiParams = {
+    q: filters.q || undefined,
+    statuses: filters.statuses.length ? filters.statuses : undefined,
+    customerId: filters.customerId || undefined,
+    from: range.from,
+    to: range.to,
+    minTotal: filters.minTotal || undefined,
+    maxTotal: filters.maxTotal || undefined,
+    overdueOnly: filters.overdueOnly || undefined,
+  }
+
+  const { data: pageData } = useQuery({
+    queryKey: ['sales-invoices-search', apiParams, page, sortField, sortDir],
+    queryFn: () => salesInvoiceApi.search({ ...apiParams, page, size: 20, sortField, sortDir }),
+  })
+  const { data: summary } = useQuery({
+    queryKey: ['sales-invoices-summary', apiParams],
+    queryFn: () => salesInvoiceApi.summary(apiParams),
+  })
+
+  const invoices = pageData?.content ?? []
+  const totalPages = pageData ? Math.max(1, Math.ceil(pageData.totalElements / pageData.size)) : 1
+
+  function toggleStatus(st: SalesInvoiceStatus) {
+    setFilters(f => ({
+      ...f,
+      statuses: f.statuses.includes(st) ? f.statuses.filter(x => x !== st) : [...f.statuses, st],
+    }))
+    setPage(0)
+  }
+
+  function sortBy(field: string) {
+    if (sortField === field) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
+    else { setSortField(field); setSortDir('desc') }
+  }
+
+  const activeChips: { label: string; clear: () => void }[] = []
+  if (filters.q) activeChips.push({ label: `“${filters.q}”`, clear: () => { setQInput(''); setFilters(f => ({ ...f, q: '' })) } })
+  filters.statuses.forEach(st => activeChips.push({ label: STATUS_LABELS[st], clear: () => toggleStatus(st) }))
+  if (filters.preset) activeChips.push({ label: DATE_PRESETS.find(d => d.key === filters.preset)?.label ?? filters.preset, clear: () => setFilters(f => ({ ...f, preset: '', from: '', to: '' })) })
+  if (filters.customerId) activeChips.push({ label: customers.find(c => c.id === filters.customerId)?.name ?? 'Cliente', clear: () => setFilters(f => ({ ...f, customerId: '' })) })
+  if (filters.minTotal || filters.maxTotal) activeChips.push({ label: `${filters.minTotal ? formatCOP(Number(filters.minTotal)) : '…'} – ${filters.maxTotal ? formatCOP(Number(filters.maxTotal)) : '…'}`, clear: () => setFilters(f => ({ ...f, minTotal: '', maxTotal: '' })) })
+  if (filters.overdueOnly) activeChips.push({ label: 'Solo vencidas', clear: () => setFilters(f => ({ ...f, overdueOnly: false })) })
+
+  const sortIndicator = (field: string) => sortField === field ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''
 
   return (
     <div style={{ padding: '24px 26px 40px', display: 'flex', flexDirection: 'column', gap: 20, animation: 'fadeUp 0.25s ease' }}>
@@ -241,12 +366,13 @@ export function Invoicing() {
       {emitting && <EmitModal invoice={emitting} onClose={() => setEmitting(null)} />}
       {paying && <PaymentModal invoice={paying} onClose={() => setPaying(null)} />}
 
+      {/* KPIs (reflejan los filtros activos) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14 }}>
-        <KpiCard label="Borradores" value={String(count('DRAFT'))} sub="por emitir" />
-        <KpiCard label="Emitidas" value={String(count('ISSUED') + count('PARTIALLY_PAID'))} sub={`${formatCOP(pendingBalance)} por cobrar`} />
-        <KpiCard label="Vencidas" value={String(overdueInvoices.length)} sub={`${formatCOP(overdueBalance)} en riesgo`} />
-        <KpiCard label="Pagadas" value={String(count('PAID'))} sub={formatCOP(paidTotal)} />
-        <KpiCard label="Canceladas" value={String(count('CANCELLED'))} sub="con novedad" />
+        <KpiCard label="Borradores" value={String(summary?.drafts ?? 0)} sub="por emitir" />
+        <KpiCard label="Emitidas" value={String((summary?.issued ?? 0) + (summary?.partiallyPaid ?? 0))} sub={`${formatCOP(summary?.pendingBalance ?? 0)} por cobrar`} />
+        <KpiCard label="Vencidas" value={String(summary?.overdue ?? 0)} sub={`${formatCOP(summary?.overdueBalance ?? 0)} en riesgo`} />
+        <KpiCard label="Pagadas" value={String(summary?.paid ?? 0)} sub={formatCOP(summary?.paidTotal ?? 0)} />
+        <KpiCard label="Canceladas" value={String(summary?.cancelled ?? 0)} sub="con novedad" />
       </div>
 
       <Card>
@@ -254,35 +380,92 @@ export function Invoicing() {
           <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>Las facturas nacen como borrador desde el pedido en Ventas</span>
         } />
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 18px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
-          <FilterSelect value={statusFilter} onChange={setStatusFilter} options={[
-            { value: 'all', label: 'Todas' },
-            { value: 'DRAFT', label: 'Borradores' },
-            { value: 'ISSUED', label: 'Emitidas' },
-            { value: 'PARTIALLY_PAID', label: 'Pago parcial' },
-            { value: 'OVERDUE', label: 'Solo vencidas' },
-            { value: 'PAID', label: 'Pagadas' },
-            { value: 'CANCELLED', label: 'Canceladas' },
-          ]} />
+        {/* Barra de filtros combinables */}
+        <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <input style={{ ...inputStyle, width: 240 }} placeholder="Buscar factura, pedido o cliente…"
+              value={qInput} onChange={e => setQInput(e.target.value)} />
+            <select style={{ ...inputStyle, width: 160 }} value={filters.preset}
+              onChange={e => { setFilters(f => ({ ...f, preset: e.target.value, from: '', to: '' })); setPage(0) }}>
+              {DATE_PRESETS.map(d => <option key={d.key} value={d.key}>{d.label}</option>)}
+            </select>
+            {filters.preset === 'custom' && (
+              <>
+                <input style={{ ...inputStyle, width: 140 }} type="date" value={filters.from}
+                  onChange={e => setFilters(f => ({ ...f, from: e.target.value }))} />
+                <input style={{ ...inputStyle, width: 140 }} type="date" value={filters.to}
+                  onChange={e => setFilters(f => ({ ...f, to: e.target.value }))} />
+              </>
+            )}
+            <select style={{ ...inputStyle, width: 180 }} value={filters.customerId}
+              onChange={e => { setFilters(f => ({ ...f, customerId: e.target.value })); setPage(0) }}>
+              <option value="">Todos los clientes</option>
+              {customers.filter(c => !c.anonymous).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <input style={{ ...inputStyle, width: 110 }} type="number" placeholder="Monto mín."
+              value={filters.minTotal} onChange={e => { setFilters(f => ({ ...f, minTotal: e.target.value })); setPage(0) }} />
+            <input style={{ ...inputStyle, width: 110 }} type="number" placeholder="Monto máx."
+              value={filters.maxTotal} onChange={e => { setFilters(f => ({ ...f, maxTotal: e.target.value })); setPage(0) }} />
+            <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: 'var(--text)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              <input type="checkbox" checked={filters.overdueOnly}
+                onChange={e => { setFilters(f => ({ ...f, overdueOnly: e.target.checked })); setPage(0) }} />
+              Solo vencidas
+            </label>
+          </div>
+
+          {/* Estados como chips conmutables (multi-select) */}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontSize: 11.5, color: 'var(--muted)', fontWeight: 600 }}>ESTADOS:</span>
+            {STATUS_OPTIONS.map(st => (
+              <button key={st} type="button" onClick={() => toggleStatus(st)}
+                style={{
+                  border: filters.statuses.includes(st) ? '1.5px solid var(--accent)' : '1px solid var(--border)',
+                  background: filters.statuses.includes(st) ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'var(--surface)',
+                  borderRadius: 100, padding: '2px 4px', cursor: 'pointer',
+                }}>
+                <StatusChip status={STATUS_TO_CHIP[st]} label={STATUS_LABELS[st]} />
+              </button>
+            ))}
+          </div>
+
+          {/* Chips de filtros activos */}
+          {activeChips.length > 0 && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ fontSize: 11.5, color: 'var(--muted)' }}>Filtros:</span>
+              {activeChips.map((c, i) => (
+                <span key={i} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12,
+                  background: 'var(--surface-2)', borderRadius: 100, padding: '3px 10px', color: 'var(--text)',
+                }}>
+                  {c.label}
+                  <button onClick={c.clear} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', padding: 0, lineHeight: 1 }}>×</button>
+                </span>
+              ))}
+              <GhostBtn style={{ fontSize: 11.5, padding: '3px 9px' }}
+                onClick={() => { setQInput(''); setFilters(EMPTY_FILTERS); setPage(0) }}>
+                Limpiar todo
+              </GhostBtn>
+            </div>
+          )}
         </div>
 
         <div style={{ overflowX: 'auto' }}>
           <table style={tableStyle}>
             <thead>
               <tr>
-                <th style={thStyle}>Factura</th>
+                <th style={{ ...thStyle, cursor: 'pointer' }} onClick={() => sortBy('invoiceNumber')}>Factura{sortIndicator('invoiceNumber')}</th>
                 <th style={thStyle}>Pedido</th>
                 <th style={thStyle}>Cliente</th>
-                <th style={thStyle}>Emitida</th>
-                <th style={thStyle}>Vence</th>
-                <th style={thStyle}>Total</th>
+                <th style={{ ...thStyle, cursor: 'pointer' }} onClick={() => sortBy('issuedAt')}>Emitida{sortIndicator('issuedAt')}</th>
+                <th style={{ ...thStyle, cursor: 'pointer' }} onClick={() => sortBy('dueDate')}>Vence{sortIndicator('dueDate')}</th>
+                <th style={{ ...thStyle, cursor: 'pointer' }} onClick={() => sortBy('total')}>Total{sortIndicator('total')}</th>
                 <th style={thStyle}>Saldo</th>
-                <th style={thStyle}>Estado</th>
+                <th style={{ ...thStyle, cursor: 'pointer' }} onClick={() => sortBy('status')}>Estado{sortIndicator('status')}</th>
                 <th style={thStyle}></th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map(inv => (
+              {invoices.map(inv => (
                 <tr key={inv.id}
                   onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-2)')}
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
@@ -327,13 +510,26 @@ export function Invoicing() {
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && (
+              {invoices.length === 0 && (
                 <tr><td colSpan={9} style={{ ...tdStyle, textAlign: 'center', color: 'var(--muted)', padding: 30 }}>
-                  Sin facturas en este estado. Se generan desde el detalle de un pedido en Ventas.
+                  Sin facturas con estos filtros.
                 </td></tr>
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Paginación */}
+        <div style={{ padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>
+            {pageData?.totalElements ?? 0} facturas · página {page + 1} de {totalPages}
+          </span>
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+            <GhostBtn style={{ fontSize: 12, padding: '4px 12px' }} disabled={page === 0}
+              onClick={() => setPage(p => Math.max(0, p - 1))}>← Anterior</GhostBtn>
+            <GhostBtn style={{ fontSize: 12, padding: '4px 12px' }} disabled={page + 1 >= totalPages}
+              onClick={() => setPage(p => p + 1)}>Siguiente →</GhostBtn>
+          </div>
         </div>
       </Card>
     </div>
