@@ -1042,8 +1042,8 @@ function SupplierEditModal({ supplier, onClose }: { supplier: SupplierDto; onClo
           </button>
           <button
             onClick={() => updateMutation.mutate()}
-            disabled={updateMutation.isPending || !name.trim() || !taxId.trim()}
-            style={{ padding: '7px 18px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: updateMutation.isPending || !name.trim() || !taxId.trim() ? 0.6 : 1 }}
+            disabled={updateMutation.isPending || !name.trim()}
+            style={{ padding: '7px 18px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: updateMutation.isPending || !name.trim() ? 0.6 : 1 }}
           >
             {updateMutation.isPending ? 'Guardando…' : t.btn_save}
           </button>
