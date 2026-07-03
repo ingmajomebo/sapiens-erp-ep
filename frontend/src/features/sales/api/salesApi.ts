@@ -230,6 +230,27 @@ export const salesInvoiceApi = {
     const { data } = await client.patch(`/sales-invoices/${id}/cancel`, { reason })
     return data
   },
+
+  downloadPdf: async (id: string, fileName: string): Promise<void> => {
+    const { data } = await client.get(`/sales-invoices/${id}/pdf`, { responseType: 'blob' })
+    triggerDownload(data, fileName)
+  },
+
+  downloadCreditNotePdf: async (noteId: string, fileName: string): Promise<void> => {
+    const { data } = await client.get(`/credit-notes/${noteId}/pdf`, { responseType: 'blob' })
+    triggerDownload(data, fileName)
+  },
+}
+
+function triggerDownload(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = fileName
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
 }
 
 export const customerApi = {

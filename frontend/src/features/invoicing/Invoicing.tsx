@@ -260,6 +260,7 @@ function InvoiceDetail({ invoiceId, onBack, onEmit, onPay, onCancel }: {
           {(inv.status === 'ISSUED' || inv.status === 'PARTIALLY_PAID') && (
             <PrimaryBtn onClick={() => onPay(inv)}>+ Registrar pago</PrimaryBtn>
           )}
+          <GhostBtn onClick={() => salesInvoiceApi.downloadPdf(inv.id, `${inv.invoiceNumber}.pdf`)}>📄 Descargar PDF</GhostBtn>
           {inv.status !== 'CANCELLED' && (
             <GhostBtn style={{ color: 'var(--neg)' }} onClick={() => onCancel(inv)}>✕ Cancelar</GhostBtn>
           )}
@@ -352,7 +353,11 @@ function InvoiceDetail({ invoiceId, onBack, onEmit, onPay, onCancel }: {
               <div style={{ ...labelSm, marginBottom: 8 }}>NOTAS CRÉDITO</div>
               {d.creditNotes.map(nc => (
                 <div key={nc.id} style={{ background: 'var(--neg-bg)', borderRadius: 8, padding: '9px 12px', fontSize: 12.5 }}>
-                  <b style={{ color: 'var(--neg)' }}>{nc.noteNumber}</b> · {formatCOP(nc.total)} · {fmtDate(nc.issuedAt)}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span><b style={{ color: 'var(--neg)' }}>{nc.noteNumber}</b> · {formatCOP(nc.total)} · {fmtDate(nc.issuedAt)}</span>
+                    <GhostBtn style={{ fontSize: 11, padding: '2px 8px', marginLeft: 'auto' }} title="Descargar PDF de la nota crédito"
+                      onClick={() => salesInvoiceApi.downloadCreditNotePdf(nc.id, `${nc.noteNumber}.pdf`)}>📄 PDF</GhostBtn>
+                  </div>
                   <div style={{ color: 'var(--muted)', marginTop: 2 }}>{nc.reason}</div>
                 </div>
               ))}
@@ -704,6 +709,8 @@ export function Invoicing() {
                         <GhostBtn style={{ fontSize: 11.5, padding: '3px 9px', color: 'var(--pos)' }}
                           onClick={() => setPaying(inv)}>+ Pago</GhostBtn>
                       )}
+                      <GhostBtn style={{ fontSize: 11.5, padding: '3px 9px' }} title="Descargar PDF"
+                        onClick={() => salesInvoiceApi.downloadPdf(inv.id, `${inv.invoiceNumber}.pdf`)}>📄 PDF</GhostBtn>
                       {inv.status !== 'CANCELLED' && (
                         <GhostBtn style={{ fontSize: 11.5, padding: '3px 9px', color: 'var(--neg)' }}
                           onClick={() => setCancelling(inv)}>✕</GhostBtn>

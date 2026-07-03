@@ -6,8 +6,8 @@ import com.sapiens.erp.modules.sales.application.CustomerService;
 import com.sapiens.erp.modules.sales.application.SalesInvoiceService;
 import com.sapiens.erp.modules.sales.application.SalesOrderLinkService;
 import com.sapiens.erp.modules.sales.application.SalesOrderService;
+import com.sapiens.erp.modules.sales.application.SalesInvoicePdfService;
 import com.sapiens.erp.modules.sales.domain.SalesOrderStatus;
-import com.sapiens.erp.modules.sales.application.SalesInvoiceService;
 import com.sapiens.erp.modules.sales.domain.SalesInvoiceStatus;
 import com.sapiens.erp.shared.api.PagedResponse;
 import jakarta.validation.Valid;
@@ -33,6 +33,7 @@ public class SalesOrderController {
     private final SalesOrderLinkService linkService;
     private final CustomerService customerService;
     private final SalesInvoiceService invoiceService;
+    private final SalesInvoicePdfService pdfService;
 
     // ── Pedidos (canal administrativo) ────────────────────────────────────────
 
@@ -150,6 +151,26 @@ public class SalesOrderController {
     public ResponseEntity<InvoiceListResponse> cancelInvoice(@PathVariable UUID id,
                                                              @Valid @RequestBody CancelRequest request) {
         return ResponseEntity.ok(invoiceService.cancel(id, request.reason()));
+    }
+
+    // ── PDF (representación gráfica) ──────────────────────────────────────────
+
+    @GetMapping("/sales-invoices/{id}/pdf")
+    public ResponseEntity<byte[]> invoicePdf(@PathVariable UUID id) {
+        byte[] pdf = pdfService.invoicePdf(id);
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=\"factura-" + id + ".pdf\"")
+                .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
+                .body(pdf);
+    }
+
+    @GetMapping("/credit-notes/{id}/pdf")
+    public ResponseEntity<byte[]> creditNotePdf(@PathVariable UUID id) {
+        byte[] pdf = pdfService.creditNotePdf(id);
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=\"nota-credito-" + id + ".pdf\"")
+                .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
+                .body(pdf);
     }
 
     // ── Clientes ──────────────────────────────────────────────────────────────

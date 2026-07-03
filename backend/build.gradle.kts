@@ -23,6 +23,8 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-web")
 	implementation("org.flywaydb:flyway-core")
+	// PDF de facturas y notas crédito (licencia LGPL/MPL)
+	implementation("com.github.librepdf:openpdf:1.3.43")
 	implementation("org.flywaydb:flyway-database-postgresql")
 	implementation("io.jsonwebtoken:jjwt-api:0.12.6")
 	runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")
