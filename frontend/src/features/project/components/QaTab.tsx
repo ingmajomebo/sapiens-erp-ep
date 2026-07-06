@@ -24,6 +24,7 @@ export function AttachmentThumb({ att }: { att: QaAttachmentDto }) {
     queryKey: ['qa-attachment', att.id],
     queryFn: () => qaApi.getAttachmentBlob(att.id),
     staleTime: Infinity,
+    refetchOnMount: false,   // blob de imagen: cacheado para siempre, no re-descargar al montar
   })
   const url = blob ? URL.createObjectURL(blob) : null
   const isImage = att.contentType.startsWith('image/')
