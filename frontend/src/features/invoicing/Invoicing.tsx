@@ -8,6 +8,7 @@ import {
 import { toast } from '../../shared/toast'
 import { formatCOP } from '../../shared/currency'
 import { useAppStore } from '../../store/useAppStore'
+import { RegisterPaymentModal } from '../receivables/RegisterPaymentModal'
 import {
   salesInvoiceApi,
   type SalesInvoiceDto, type SalesInvoiceStatus,
@@ -563,7 +564,10 @@ export function Invoicing() {
       <>
         {cancelling && <CancelInvoiceModal invoice={cancelling} onClose={() => setCancelling(null)} />}
         {emitting && <EmitModal invoice={emitting} onClose={() => setEmitting(null)} />}
-        {paying && <PaymentModal invoice={paying} onClose={() => setPaying(null)} />}
+        {paying && (paying.customerId
+          ? <RegisterPaymentModal customerId={paying.customerId} customerName={paying.customerName}
+              focusInvoiceId={paying.id} onClose={() => setPaying(null)} />
+          : <PaymentModal invoice={paying} onClose={() => setPaying(null)} />)}
         <InvoiceDetail
           invoiceId={selectedId}
           onBack={() => { setSelectedId(null); window.history.replaceState(null, '', window.location.pathname) }}
@@ -579,7 +583,10 @@ export function Invoicing() {
     <div style={{ padding: '24px 26px 40px', display: 'flex', flexDirection: 'column', gap: 20, animation: 'fadeUp 0.25s ease' }}>
       {cancelling && <CancelInvoiceModal invoice={cancelling} onClose={() => setCancelling(null)} />}
       {emitting && <EmitModal invoice={emitting} onClose={() => setEmitting(null)} />}
-      {paying && <PaymentModal invoice={paying} onClose={() => setPaying(null)} />}
+      {paying && (paying.customerId
+          ? <RegisterPaymentModal customerId={paying.customerId} customerName={paying.customerName}
+              focusInvoiceId={paying.id} onClose={() => setPaying(null)} />
+          : <PaymentModal invoice={paying} onClose={() => setPaying(null)} />)}
 
       {/* KPIs (reflejan los filtros activos) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14 }}>

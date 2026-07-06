@@ -14,7 +14,7 @@ import { Invoicing } from './features/invoicing/Invoicing'
 import { Customers } from './features/customers/Customers'
 import { CashRegister } from './features/cash/CashRegister'
 import { AccountsPayablePage } from './features/finance/AccountsPayablePage'
-import { AccountsReceivable } from './features/finance/AccountsReceivable'
+import { Receivables } from './features/receivables/Receivables'
 import { CashBanks } from './features/finance/CashBanks'
 import { Expenses } from './features/finance/Expenses'
 import { Accounting } from './features/finance/Accounting'
@@ -42,7 +42,7 @@ function PageContent() {
     case 'customers':   return <Customers />
     case 'cash':                return <CashRegister />
     case 'accountsPayable':     return <AccountsPayablePage />
-    case 'accountsReceivable':  return <AccountsReceivable />
+    case 'accountsReceivable':  return <Receivables />
     case 'invoicing':           return <Invoicing />
     case 'cashBanks':           return <CashBanks />
     case 'expenses':            return <Expenses />
