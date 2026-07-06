@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PrimaryBtn, GhostBtn } from '../../shared/helpers'
-import { toast } from '../../shared/toast'
+import { toast, toastLoading, toastResolve } from '../../shared/toast'
 import { formatCOP } from '../../shared/currency'
 import { cashBanksApi } from '../finance/api/cashBanksApi'
-import { receivablesApi, type ReceivableDto, type ReceiptPaymentMethod } from './api/receivablesApi'
+import { receivablesApi, type PaymentReceiptDto, type ReceivableDto, type ReceiptPaymentMethod } from './api/receivablesApi'
 
 const METHOD_LABELS: Record<ReceiptPaymentMethod, string> = {
   CASH: 'Efectivo', CARD: 'Tarjeta', TRANSFER: 'Transferencia', OTHER: 'Otro',
@@ -26,22 +26,30 @@ const overlay: React.CSSProperties = {
 const fmtDate = (v: string) =>
   new Date(v + 'T00:00:00').toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })
 
-function useReceiptMutation(onClose: () => void, onSaved?: () => void) {
+/**
+ * Mutación del recibo con preload: muestra un toast con spinner mientras se
+ * registra y lo resuelve en el mismo toast con check verde (o error) al terminar.
+ */
+function useReceiptMutation(onClose: () => void, onSaved?: () => void,
+                            successMessage?: (rc: PaymentReceiptDto) => string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: receivablesApi.createReceipt,
-    onSuccess: (rc) => {
+    onMutate: () => ({ toastId: toastLoading('Registrando pago…') }),
+    onSuccess: (rc, _vars, ctx) => {
       queryClient.invalidateQueries({ queryKey: ['receivables'] })
       queryClient.invalidateQueries({ queryKey: ['sales-invoices'] })
       queryClient.invalidateQueries({ queryKey: ['sales-invoice-detail'] })
       queryClient.invalidateQueries({ queryKey: ['financial-accounts'] })
       queryClient.invalidateQueries({ queryKey: ['customers'] })
-      toast(`Recibo ${rc.number} registrado por ${formatCOP(rc.amount)}`, 'success')
+      toastResolve(ctx.toastId,
+        successMessage?.(rc) ?? `Recibo ${rc.number} registrado por ${formatCOP(rc.amount)}`,
+        'success')
       onSaved?.()
       onClose()
     },
-    onError: (e: { response?: { data?: { message?: string } } }) =>
-      toast(e.response?.data?.message ?? 'No se pudo registrar el abono', 'error'),
+    onError: (e: { response?: { data?: { message?: string } } }, _vars, ctx) =>
+      toastResolve(ctx?.toastId ?? -1, e.response?.data?.message ?? 'No se pudo registrar el abono', 'error'),
   })
 }
 
@@ -100,7 +108,10 @@ function SinglePaymentForm({ receivable, customerName, onClose, onSaved }: {
   const coversAll = mode === 'partial' && amount === pending
   const valid = amount > 0 && !exceeds && accountId !== ''
 
-  const mut = useReceiptMutation(onClose, onSaved)
+  const paysInFull = amount >= pending
+  const mut = useReceiptMutation(onClose, onSaved, rc => paysInFull
+    ? `Recibo ${rc.number} registrado · La factura ${receivable.invoiceNumber} se pagó correctamente`
+    : `Recibo ${rc.number} registrado · Abono de ${formatCOP(rc.amount)} aplicado correctamente`)
 
   return (
     <div style={overlay} onClick={onClose}>
