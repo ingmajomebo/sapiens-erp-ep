@@ -7,7 +7,13 @@ interface ToastItem {
   message: string
   type: ToastType
   exiting: boolean
+  loadingSince?: number
 }
+
+// Tiempo mínimo que el preload (spinner) permanece visible antes de resolverse
+// al check verde, para que la acción se alcance a apreciar aunque el backend
+// responda al instante.
+const MIN_PRELOAD_MS = 3000
 
 // Module-level singleton — call toast() from anywhere, no context needed
 let _toasts: ToastItem[] = []
@@ -47,19 +53,29 @@ export function toast(arg: string | { message: string; type?: ToastType }, typeA
  */
 export function toastLoading(message: string): number {
   const id = Date.now() + Math.random()
-  _toasts = [..._toasts, { id, message, type: 'loading', exiting: false }]
+  _toasts = [..._toasts, { id, message, type: 'loading', exiting: false, loadingSince: Date.now() }]
   notify()
   return id
 }
 
 export function toastResolve(id: number, message: string, type: ToastType = 'success') {
-  if (!_toasts.some((t) => t.id === id)) {
+  const current = _toasts.find((t) => t.id === id)
+  if (!current) {
     toast(message, type)
     return
   }
-  _toasts = _toasts.map((t) => (t.id === id ? { ...t, message, type } : t))
-  notify()
-  scheduleDismiss(id)
+
+  const apply = () => {
+    _toasts = _toasts.map((t) => (t.id === id ? { ...t, message, type, loadingSince: undefined } : t))
+    notify()
+    scheduleDismiss(id)
+  }
+
+  // Mantener el spinner al menos MIN_PRELOAD_MS antes de mostrar el resultado.
+  const elapsed = current.loadingSince ? Date.now() - current.loadingSince : MIN_PRELOAD_MS
+  const remaining = MIN_PRELOAD_MS - elapsed
+  if (remaining > 0) setTimeout(apply, remaining)
+  else apply()
 }
 
 export function useToasts() {
