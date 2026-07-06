@@ -6,6 +6,26 @@
 
 ---
 
+## [2026-07-06] ingest | Módulo Cuentas por Cobrar (V31)
+
+- **CxC** (`accounts_receivable`, en finance junto a accounts_payable): 1 por factura
+  (UNIQUE invoice_id), nace al emitir la factura y sale de cartera (CANCELLED) al
+  anularla — integración por eventos síncronos de Spring para evitar ciclo de beans
+  sales↔finance. Estados derivados PENDING/PARTIALLY_PAID/PAID, nunca asignados a mano.
+- **Recibos de caja** (`payment_receipts` RC-NNNNNN por secuencia BD +
+  `receipt_applications` multi-factura): documento de auditoría sin soft delete,
+  se anulan con VOIDED + motivo/usuario/fecha. Un pago parcial nunca modifica la
+  factura: el recibo se espeja vía SalesInvoiceService (única fuente de estados).
+  Anular revierte CxC + factura y crea movimiento financiero inverso.
+- Validaciones: suma de aplicaciones == monto, abono ≤ saldo
+  (`PaymentExceedsBalanceException` → 422 PAYMENT_EXCEEDS_BALANCE), mismo cliente.
+  Aging CURRENT/1-30/31-60/+60 sobre saldo pendiente y due_date original.
+- Backfill V31: CxC por factura emitida existente + un recibo legado por cada pago
+  previo (cartera 100% derivada de recibos ACTIVE desde el día uno).
+- Endpoints SUPERVISOR/ADMIN; los legados de pago de facturación ahora generan RC.
+- Frontend: página Cuentas por Cobrar (KPIs, cartera, aging) y RegisterPaymentModal
+  compartido con Facturación (distribución FIFO editable).
+
 ## [2026-07-03] ingest | Facturación completa (V29) + Módulo Clientes (V30)
 
 - **Facturación** (`sales_invoices` extendida): ciclo BORRADOR→EMITIDA→PAGO_PARCIAL→PAGADA,
