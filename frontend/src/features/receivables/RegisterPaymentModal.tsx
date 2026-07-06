@@ -4,7 +4,7 @@ import { PrimaryBtn, GhostBtn } from '../../shared/helpers'
 import { toast } from '../../shared/toast'
 import { formatCOP } from '../../shared/currency'
 import { cashBanksApi } from '../finance/api/cashBanksApi'
-import { receivablesApi, type ReceiptPaymentMethod } from './api/receivablesApi'
+import { receivablesApi, type ReceivableDto, type ReceiptPaymentMethod } from './api/receivablesApi'
 
 const METHOD_LABELS: Record<ReceiptPaymentMethod, string> = {
   CASH: 'Efectivo', CARD: 'Tarjeta', TRANSFER: 'Transferencia', OTHER: 'Otro',
@@ -26,69 +26,10 @@ const overlay: React.CSSProperties = {
 const fmtDate = (v: string) =>
   new Date(v + 'T00:00:00').toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })
 
-/**
- * Modal de abono reutilizable (CxC y Facturación): crea un Recibo de Caja aplicado
- * a una o varias facturas del cliente. Propone distribución FIFO por vencimiento
- * más antiguo, editable, con validación en vivo (suma == monto, renglón ≤ saldo).
- */
-export function RegisterPaymentModal({ customerId, customerName, focusInvoiceId, onClose, onSaved }: {
-  customerId: string
-  customerName: string
-  focusInvoiceId?: string
-  onClose: () => void
-  onSaved?: () => void
-}) {
+function useReceiptMutation(onClose: () => void, onSaved?: () => void) {
   const queryClient = useQueryClient()
-  const [amountInput, setAmountInput] = useState('')
-  const [method, setMethod] = useState<ReceiptPaymentMethod>('TRANSFER')
-  const [accountId, setAccountId] = useState('')
-  const [reference, setReference] = useState('')
-  const [rows, setRows] = useState<Record<string, string>>({})   // arId → monto digitado
-  const [touched, setTouched] = useState(false)                  // el usuario editó la distribución
-
-  const { data: openArs = [] } = useQuery({
-    queryKey: ['receivables', 'open', customerId],
-    queryFn: () => receivablesApi.openByCustomer(customerId),
-  })
-  const { data: accounts = [] } = useQuery({ queryKey: ['financial-accounts'], queryFn: cashBanksApi.listAll })
-  const activeAccounts = accounts.filter(a => a.status === 'ACTIVE')
-
-  const amount = parseFloat(amountInput) || 0
-
-  // Distribución FIFO propuesta: llena primero la factura con vencimiento más antiguo.
-  // El backend ya entrega las CxC ordenadas por due_date ASC.
-  const fifo = useMemo(() => {
-    const dist: Record<string, string> = {}
-    let left = amount
-    const sorted = focusInvoiceId
-      ? [...openArs].sort((a, b) => (a.invoiceId === focusInvoiceId ? -1 : b.invoiceId === focusInvoiceId ? 1 : 0))
-      : openArs
-    for (const ar of sorted) {
-      const applied = Math.min(left, ar.pending)
-      if (applied > 0) dist[ar.id] = String(applied)
-      left -= applied
-      if (left <= 0) break
-    }
-    return dist
-  }, [amount, openArs, focusInvoiceId])
-
-  useEffect(() => {
-    if (!touched) setRows(fifo)
-  }, [fifo, touched])
-
-  const applied = openArs.reduce((acc, ar) => acc + (parseFloat(rows[ar.id]) || 0), 0)
-  const overArs = openArs.filter(ar => (parseFloat(rows[ar.id]) || 0) > ar.pending)
-  const sumOk = amount > 0 && Math.abs(applied - amount) < 0.01
-  const valid = sumOk && overArs.length === 0 && accountId !== ''
-
-  const mut = useMutation({
-    mutationFn: () => receivablesApi.createReceipt({
-      customerId, amount, paymentMethod: method, financialAccountId: accountId,
-      reference: reference.trim() || undefined,
-      applications: openArs
-        .filter(ar => (parseFloat(rows[ar.id]) || 0) > 0)
-        .map(ar => ({ accountsReceivableId: ar.id, amount: parseFloat(rows[ar.id]) })),
-    }),
+  return useMutation({
+    mutationFn: receivablesApi.createReceipt,
     onSuccess: (rc) => {
       queryClient.invalidateQueries({ queryKey: ['receivables'] })
       queryClient.invalidateQueries({ queryKey: ['sales-invoices'] })
@@ -102,6 +43,170 @@ export function RegisterPaymentModal({ customerId, customerName, focusInvoiceId,
     onError: (e: { response?: { data?: { message?: string } } }) =>
       toast(e.response?.data?.message ?? 'No se pudo registrar el abono', 'error'),
   })
+}
+
+function CommonFields({ method, setMethod, accountId, setAccountId, reference, setReference }: {
+  method: ReceiptPaymentMethod; setMethod: (m: ReceiptPaymentMethod) => void
+  accountId: string; setAccountId: (v: string) => void
+  reference: string; setReference: (v: string) => void
+}) {
+  const { data: accounts = [] } = useQuery({ queryKey: ['financial-accounts'], queryFn: cashBanksApi.listAll })
+  const activeAccounts = accounts.filter(a => a.status === 'ACTIVE')
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div>
+        <label style={labelSm}>Medio de pago</label>
+        <select style={inputStyle} value={method} onChange={e => setMethod(e.target.value as ReceiptPaymentMethod)}>
+          {(['CASH', 'TRANSFER', 'CARD'] as ReceiptPaymentMethod[]).map(m => (
+            <option key={m} value={m}>{METHOD_LABELS[m]}</option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label style={labelSm}>Referencia (opcional)</label>
+        <input style={inputStyle} placeholder="nro. de comprobante" value={reference}
+          onChange={e => setReference(e.target.value)} />
+      </div>
+      <div style={{ gridColumn: '1 / -1' }}>
+        <label style={labelSm}>Cuenta que recibe *</label>
+        <select style={inputStyle} value={accountId} onChange={e => setAccountId(e.target.value)}>
+          <option value="">Seleccionar cuenta…</option>
+          {activeAccounts.map(a => (
+            <option key={a.id} value={a.id}>{a.name} · {formatCOP(a.currentBalance)}</option>
+          ))}
+        </select>
+      </div>
+    </div>
+  )
+}
+
+// ─── Modo factura puntual: toggle "Pagar total" | "Abono parcial" ─────────────
+
+function SinglePaymentForm({ receivable, customerName, onClose, onSaved }: {
+  receivable: ReceivableDto
+  customerName: string
+  onClose: () => void
+  onSaved?: () => void
+}) {
+  const [mode, setMode] = useState<'full' | 'partial'>('full')
+  const [amountInput, setAmountInput] = useState('')
+  const [method, setMethod] = useState<ReceiptPaymentMethod>('CASH')
+  const [accountId, setAccountId] = useState('')
+  const [reference, setReference] = useState('')
+
+  const pending = receivable.pending
+  const amount = mode === 'full' ? pending : parseFloat(amountInput) || 0
+  const exceeds = mode === 'partial' && amount > pending
+  const coversAll = mode === 'partial' && amount === pending
+  const valid = amount > 0 && !exceeds && accountId !== ''
+
+  const mut = useReceiptMutation(onClose, onSaved)
+
+  return (
+    <div style={overlay} onClick={onClose}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '22px 26px', width: '100%', maxWidth: 460 }}
+        onClick={e => e.stopPropagation()}>
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>
+          Registrar pago · {receivable.invoiceNumber}
+        </div>
+        <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 14 }}>
+          {customerName} · vence {fmtDate(receivable.dueDate)} · saldo <b>{formatCOP(pending)}</b>
+        </div>
+
+        {/* Toggle segmentado */}
+        <div style={{ display: 'flex', border: '1.5px solid var(--border)', borderRadius: 10, overflow: 'hidden', marginBottom: 14 }}>
+          {([['full', 'Pagar total'], ['partial', 'Abono parcial']] as const).map(([m, label]) => (
+            <button key={m} type="button" onClick={() => setMode(m)}
+              style={{
+                flex: 1, padding: '8px 0', fontSize: 13, fontWeight: mode === m ? 700 : 500, cursor: 'pointer',
+                fontFamily: 'inherit', border: 'none',
+                background: mode === m ? 'color-mix(in srgb, var(--accent) 12%, transparent)' : 'transparent',
+                color: mode === m ? 'var(--accent-text)' : 'var(--muted)',
+              }}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <label style={labelSm}>Monto {mode === 'full' ? '(saldo completo)' : 'del abono *'}</label>
+          <input style={{ ...inputStyle, borderColor: exceeds ? 'var(--neg)' : 'var(--border)', opacity: mode === 'full' ? 0.7 : 1 }}
+            type="number" min={0} disabled={mode === 'full'}
+            value={mode === 'full' ? pending : amountInput}
+            onChange={e => setAmountInput(e.target.value)} autoFocus={mode === 'partial'} />
+          {exceeds && (
+            <div style={{ fontSize: 11.5, color: 'var(--neg)', marginTop: 3 }}>
+              El abono supera el saldo pendiente ({formatCOP(pending)})
+            </div>
+          )}
+          {coversAll && (
+            <div style={{ fontSize: 11.5, color: 'var(--accent-text)', marginTop: 3 }}>
+              Este monto cubre todo el saldo — puedes usar "Pagar total"
+            </div>
+          )}
+        </div>
+
+        <CommonFields method={method} setMethod={setMethod} accountId={accountId}
+          setAccountId={setAccountId} reference={reference} setReference={setReference} />
+
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 18 }}>
+          <GhostBtn onClick={onClose}>Cancelar</GhostBtn>
+          <PrimaryBtn disabled={!valid || mut.isPending}
+            onClick={() => mut.mutate({
+              customerId: receivable.customerId, amount, paymentMethod: method,
+              financialAccountId: accountId, reference: reference.trim() || undefined,
+              applications: [{ accountsReceivableId: receivable.id, amount }],
+            })}>
+            {mut.isPending ? 'Registrando…' : mode === 'full' ? `Pagar ${formatCOP(pending)}` : 'Confirmar abono'}
+          </PrimaryBtn>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Modo cliente: distribución FIFO multi-factura editable ──────────────────
+
+function CustomerPaymentForm({ customerId, customerName, openArs, onClose, onSaved }: {
+  customerId: string
+  customerName: string
+  openArs: ReceivableDto[]
+  onClose: () => void
+  onSaved?: () => void
+}) {
+  const [amountInput, setAmountInput] = useState('')
+  const [method, setMethod] = useState<ReceiptPaymentMethod>('TRANSFER')
+  const [accountId, setAccountId] = useState('')
+  const [reference, setReference] = useState('')
+  const [rows, setRows] = useState<Record<string, string>>({})
+  const [touched, setTouched] = useState(false)
+
+  const amount = parseFloat(amountInput) || 0
+
+  // Distribución FIFO: llena primero la factura con vencimiento más antiguo
+  // (el backend entrega las CxC ordenadas por due_date ASC).
+  const fifo = useMemo(() => {
+    const dist: Record<string, string> = {}
+    let left = amount
+    for (const ar of openArs) {
+      const applied = Math.min(left, ar.pending)
+      if (applied > 0) dist[ar.id] = String(applied)
+      left -= applied
+      if (left <= 0) break
+    }
+    return dist
+  }, [amount, openArs])
+
+  useEffect(() => {
+    if (!touched) setRows(fifo)
+  }, [fifo, touched])
+
+  const applied = openArs.reduce((acc, ar) => acc + (parseFloat(rows[ar.id]) || 0), 0)
+  const overArs = openArs.filter(ar => (parseFloat(rows[ar.id]) || 0) > ar.pending)
+  const sumOk = amount > 0 && Math.abs(applied - amount) < 0.01
+  const valid = sumOk && overArs.length === 0 && accountId !== ''
+
+  const mut = useReceiptMutation(onClose, onSaved)
 
   return (
     <div style={overlay} onClick={onClose}>
@@ -109,41 +214,19 @@ export function RegisterPaymentModal({ customerId, customerName, focusInvoiceId,
         onClick={e => e.stopPropagation()}>
         <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Registrar abono</div>
         <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 14 }}>
-          Cliente: <b>{customerName}</b> · genera un Recibo de Caja con consecutivo propio
+          Cliente: <b>{customerName}</b> · un solo Recibo de Caja puede cubrir varias facturas
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-          <div>
-            <label style={labelSm}>Monto del abono *</label>
-            <input style={inputStyle} type="number" min={0} autoFocus value={amountInput}
-              onChange={e => { setAmountInput(e.target.value); setTouched(false) }} />
-          </div>
-          <div>
-            <label style={labelSm}>Medio de pago</label>
-            <select style={inputStyle} value={method} onChange={e => setMethod(e.target.value as ReceiptPaymentMethod)}>
-              {(['CASH', 'TRANSFER', 'CARD'] as ReceiptPaymentMethod[]).map(m => (
-                <option key={m} value={m}>{METHOD_LABELS[m]}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label style={labelSm}>Cuenta que recibe *</label>
-            <select style={inputStyle} value={accountId} onChange={e => setAccountId(e.target.value)}>
-              <option value="">Seleccionar cuenta…</option>
-              {activeAccounts.map(a => (
-                <option key={a.id} value={a.id}>{a.name} · {formatCOP(a.currentBalance)}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label style={labelSm}>Referencia (opcional)</label>
-            <input style={inputStyle} placeholder="nro. de comprobante" value={reference}
-              onChange={e => setReference(e.target.value)} />
-          </div>
+        <div style={{ marginBottom: 12 }}>
+          <label style={labelSm}>Monto del abono *</label>
+          <input style={inputStyle} type="number" min={0} autoFocus value={amountInput}
+            onChange={e => { setAmountInput(e.target.value); setTouched(false) }} />
         </div>
 
-        {/* Distribución */}
-        <label style={labelSm}>
+        <CommonFields method={method} setMethod={setMethod} accountId={accountId}
+          setAccountId={setAccountId} reference={reference} setReference={setReference} />
+
+        <label style={{ ...labelSm, marginTop: 14 }}>
           DISTRIBUCIÓN {touched ? '(editada)' : '(propuesta FIFO por vencimiento)'}
         </label>
         <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', marginBottom: 8 }}>
@@ -181,12 +264,56 @@ export function RegisterPaymentModal({ customerId, customerName, focusInvoiceId,
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           <GhostBtn onClick={onClose}>Cancelar</GhostBtn>
-          <PrimaryBtn disabled={!valid || mut.isPending} onClick={() => mut.mutate()}>
+          <PrimaryBtn disabled={!valid || mut.isPending}
+            onClick={() => mut.mutate({
+              customerId, amount, paymentMethod: method, financialAccountId: accountId,
+              reference: reference.trim() || undefined,
+              applications: openArs
+                .filter(ar => (parseFloat(rows[ar.id]) || 0) > 0)
+                .map(ar => ({ accountsReceivableId: ar.id, amount: parseFloat(rows[ar.id]) })),
+            })}>
             {mut.isPending ? 'Registrando…' : 'Confirmar abono'}
           </PrimaryBtn>
         </div>
       </div>
     </div>
+  )
+}
+
+// ─── Modal unificado ─────────────────────────────────────────────────────────
+
+/**
+ * Modal de pago reutilizable. Tres caminos, un solo recibo por el mismo endpoint:
+ * - `receivable` → factura puntual con toggle "Pagar total" | "Abono parcial"
+ * - `focusInvoiceId` → resuelve la CxC de esa factura (desde Facturación) y usa el modo puntual
+ * - solo `customerId` → abono a nivel de cliente con distribución FIFO multi-factura
+ */
+export function RegisterPaymentModal({ customerId, customerName, receivable, focusInvoiceId, onClose, onSaved }: {
+  customerId: string
+  customerName: string
+  receivable?: ReceivableDto
+  focusInvoiceId?: string
+  onClose: () => void
+  onSaved?: () => void
+}) {
+  const { data: openArs = [], isLoading } = useQuery({
+    queryKey: ['receivables', 'open', customerId],
+    queryFn: () => receivablesApi.openByCustomer(customerId),
+    enabled: !receivable,
+  })
+
+  if (receivable) {
+    return <SinglePaymentForm receivable={receivable} customerName={customerName} onClose={onClose} onSaved={onSaved} />
+  }
+  if (isLoading) return null
+
+  const focused = focusInvoiceId ? openArs.find(ar => ar.invoiceId === focusInvoiceId) : undefined
+  if (focused) {
+    return <SinglePaymentForm receivable={focused} customerName={customerName} onClose={onClose} onSaved={onSaved} />
+  }
+  return (
+    <CustomerPaymentForm customerId={customerId} customerName={customerName}
+      openArs={openArs} onClose={onClose} onSaved={onSaved} />
   )
 }
 

@@ -2,6 +2,7 @@ package com.sapiens.erp.shared.api;
 
 import com.sapiens.erp.modules.finance.domain.exception.ExpenseAlreadyReconciledException;
 import com.sapiens.erp.modules.finance.domain.exception.PaymentExceedsBalanceException;
+import com.sapiens.erp.modules.finance.domain.exception.ReceivableHasActivePaymentsException;
 import com.sapiens.erp.modules.inventory.domain.exception.InsufficientStockException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -42,6 +43,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleExpenseReconciled(ExpenseAlreadyReconciledException ex) {
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                 .body(ErrorResponse.of(422, "EXPENSE_RECONCILED", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ReceivableHasActivePaymentsException.class)
+    public ResponseEntity<ErrorResponse> handleReceivableHasActivePayments(ReceivableHasActivePaymentsException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of(409, "RECEIVABLE_HAS_ACTIVE_PAYMENTS", ex.getMessage()));
     }
 
     @ExceptionHandler(PaymentExceedsBalanceException.class)

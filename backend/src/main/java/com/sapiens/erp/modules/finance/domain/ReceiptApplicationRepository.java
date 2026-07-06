@@ -17,4 +17,12 @@ public interface ReceiptApplicationRepository extends JpaRepository<ReceiptAppli
         ORDER BY r.receiptDate DESC
         """)
     List<ReceiptApplication> findByReceivableId(@Param("receivableId") UUID receivableId);
+
+    /** Recibos ACTIVE aplicados a la CxC (bloquean la anulación de la factura). */
+    @Query("""
+        SELECT COUNT(a) FROM ReceiptApplication a
+        WHERE a.receivable.id = :receivableId
+          AND a.receipt.status = com.sapiens.erp.modules.finance.domain.ReceiptStatus.ACTIVE
+        """)
+    long countActiveByReceivableId(@Param("receivableId") UUID receivableId);
 }

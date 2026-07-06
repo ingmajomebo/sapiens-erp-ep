@@ -11,6 +11,7 @@ import com.sapiens.erp.modules.finance.domain.AgingBucket;
 import com.sapiens.erp.modules.finance.domain.ReceiptApplication;
 import com.sapiens.erp.modules.finance.domain.ReceiptApplicationRepository;
 import com.sapiens.erp.modules.finance.domain.ReceivableStatus;
+import com.sapiens.erp.modules.finance.domain.exception.ReceivableHasActivePaymentsException;
 import com.sapiens.erp.modules.sales.application.CustomerService;
 import com.sapiens.erp.modules.sales.domain.event.InvoiceCancelledEvent;
 import com.sapiens.erp.modules.sales.domain.event.InvoiceEmittedEvent;
@@ -67,10 +68,21 @@ public class AccountsReceivableService {
         log.info("CxC abierta para la factura {}", event.invoiceNumber());
     }
 
+    /**
+     * Precondición dura: si la CxC tiene recibos ACTIVE, la anulación de la factura
+     * se rechaza (409 RECEIVABLE_HAS_ACTIVE_PAYMENTS) hasta anular esos recibos.
+     * El listener es síncrono: la excepción revierte toda la transacción del cancel.
+     */
     @EventListener
     @Transactional
     public void onInvoiceCancelled(InvoiceCancelledEvent event) {
         receivableRepository.findByInvoiceId(event.invoiceId()).ifPresent(ar -> {
+            long activeReceipts = applicationRepository.countActiveByReceivableId(ar.getId());
+            if (activeReceipts > 0) {
+                throw new ReceivableHasActivePaymentsException(
+                        "La factura " + ar.getInvoiceNumber() + " tiene " + activeReceipts
+                                + " recibo(s) de caja activo(s): anúlelos primero para poder anular la factura");
+            }
             ar.cancelForVoidedInvoice();
             receivableRepository.save(ar);
             log.info("CxC de la factura {} sacada de cartera (factura anulada)", ar.getInvoiceNumber());

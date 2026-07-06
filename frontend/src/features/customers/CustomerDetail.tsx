@@ -6,6 +6,7 @@ import { formatCOP } from '../../shared/currency'
 import { useAppStore } from '../../store/useAppStore'
 import { customersApi } from './api/customersApi'
 import { SegmentBadge, CustomerFormModal, DOC_LABELS } from './Customers'
+import { RegisterPaymentModal } from '../receivables/RegisterPaymentModal'
 
 const fmtDate = (v: string | null | undefined) =>
   v ? new Date(v).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
@@ -31,6 +32,7 @@ const labelSm: React.CSSProperties = {
 export function CustomerDetail({ customerId, onBack }: { customerId: string; onBack: () => void }) {
   const setPage = useAppStore(s => s.setPage)
   const [editing, setEditing] = useState(false)
+  const [paying, setPaying] = useState(false)
 
   const { data: d, refetch } = useQuery({
     queryKey: ['customers', 'detail', customerId],
@@ -68,6 +70,9 @@ export function CustomerDetail({ customerId, onBack }: { customerId: string; onB
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          {c.pendingBalance > 0 && (
+            <GhostBtn style={{ color: 'var(--pos)' }} onClick={() => setPaying(true)}>$ Registrar abono</GhostBtn>
+          )}
           {c.email && <GhostBtn onClick={() => { window.location.href = `mailto:${c.email}` }}>✉ Enviar correo</GhostBtn>}
           <GhostBtn onClick={() => setEditing(true)}>✎ Editar</GhostBtn>
         </div>
@@ -174,6 +179,10 @@ export function CustomerDetail({ customerId, onBack }: { customerId: string; onB
           onClose={() => setEditing(false)}
           onSaved={() => refetch()}
         />
+      )}
+      {paying && (
+        <RegisterPaymentModal customerId={c.id} customerName={c.name}
+          onClose={() => setPaying(false)} onSaved={() => refetch()} />
       )}
     </div>
   )

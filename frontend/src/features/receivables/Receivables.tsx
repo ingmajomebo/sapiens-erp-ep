@@ -150,7 +150,7 @@ export function Receivables() {
   const [bucketFilter, setBucketFilter] = useState('')
   const [page, setPage] = useState(0)
   const [expanded, setExpanded] = useState<string | null>(null)
-  const [paying, setPaying] = useState<{ customerId: string; customerName: string; focusInvoiceId?: string } | null>(null)
+  const [paying, setPaying] = useState<ReceivableDto | null>(null)
   const [voiding, setVoiding] = useState<{ id: string; number: string } | null>(null)
 
   const { data: aging } = useQuery({ queryKey: ['receivables', 'aging'], queryFn: receivablesApi.aging })
@@ -268,8 +268,8 @@ export function Receivables() {
                         <td style={tdStyle} onClick={e => e.stopPropagation()}>
                           {open && (
                             <GhostBtn style={{ fontSize: 11.5, padding: '3px 9px', color: 'var(--pos)' }}
-                              onClick={() => setPaying({ customerId: ar.customerId, customerName: ar.customerName, focusInvoiceId: ar.invoiceId })}>
-                              + Abono
+                              onClick={() => setPaying(ar)}>
+                              Pagar
                             </GhostBtn>
                           )}
                         </td>
@@ -306,7 +306,7 @@ export function Receivables() {
 
       {paying && (
         <RegisterPaymentModal customerId={paying.customerId} customerName={paying.customerName}
-          focusInvoiceId={paying.focusInvoiceId} onClose={() => setPaying(null)} />
+          receivable={paying} onClose={() => setPaying(null)} />
       )}
       {voiding && (
         <VoidReceiptModal receiptId={voiding.id} receiptNumber={voiding.number} onClose={() => setVoiding(null)} />
