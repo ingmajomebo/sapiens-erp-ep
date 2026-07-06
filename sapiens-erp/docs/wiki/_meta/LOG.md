@@ -6,6 +6,19 @@
 
 ---
 
+## [2026-07-06] update | CxC: gate de anulación y modal de pago con toggle
+
+- **Regla 10 (nueva):** anular una factura cuya CxC tiene recibos ACTIVE se rechaza con
+  409 `RECEIVABLE_HAS_ACTIVE_PAYMENTS` — el listener síncrono de finance lanza la
+  excepción y revierte toda la transacción del cancel (incluida la nota crédito).
+  Los recibos deben anularse primero con su rastro. `CANCELLED` en la CxC solo lo
+  asigna el sistema al anularse la factura; no existe cancelación directa de CxC.
+- **Modal unificado:** fila "Pagar" (única acción en PENDING/PARTIALLY_PAID) abre modo
+  puntual con toggle "Pagar total" (default, monto bloqueado) | "Abono parcial"
+  (validación en vivo; == saldo sugiere sin bloquear; > saldo bloquea). El flujo FIFO
+  multi-factura se movió a la ficha del cliente ("$ Registrar abono"). Tres caminos,
+  un solo recibo por el mismo endpoint — PAID/PARTIALLY_PAID se deriva solo del monto.
+
 ## [2026-07-06] ingest | Módulo Cuentas por Cobrar (V31)
 
 - **CxC** (`accounts_receivable`, en finance junto a accounts_payable): 1 por factura
