@@ -300,7 +300,7 @@ function ProductDetailModal({ product, currentStock, onClose, onDeleted }: {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
                     <thead>
                       <tr>
-                        {['Fecha recepción', 'Precio pagado', 'Cant. recibida', 'Disponible', 'Vence', 'Factura'].map((h) => (
+                        {['Fecha recepción', 'Precio unit.', 'Cant. recibida', 'Total pagado', 'Disponible', 'Vence', 'Factura'].map((h) => (
                           <th key={h} style={{ ...thStyle, fontSize: 11 }}>{h}</th>
                         ))}
                       </tr>
@@ -314,10 +314,13 @@ function ProductDetailModal({ product, currentStock, onClose, onDeleted }: {
                             onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-2)')}
                             onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
                             <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{formatDate(lot.receivedAt)}</td>
-                            <td style={{ ...tdStyle, fontWeight: 700, color: 'var(--accent-text)', whiteSpace: 'nowrap' }}>
+                            <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
                               {formatCOP(lot.purchasePrice)}
                             </td>
                             <td style={{ ...tdStyle, textAlign: 'right' }}>{lot.originalQuantity.toFixed(3)}</td>
+                            <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 700, color: 'var(--accent-text)', whiteSpace: 'nowrap' }}>
+                              {formatCOP(lot.purchasePrice * lot.originalQuantity)}
+                            </td>
                             <td style={{ ...tdStyle, textAlign: 'right', color: isLow ? 'var(--warn)' : 'var(--text)' }}>
                               {lot.availableQuantity.toFixed(3)}
                             </td>
@@ -348,7 +351,7 @@ function ProductDetailModal({ product, currentStock, onClose, onDeleted }: {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
                   <thead>
                     <tr>
-                      {['Tipo', 'Cantidad', 'Costo', 'Notas', 'Fecha'].map((h) => (
+                      {['Tipo', 'Cantidad', 'Costo unit.', 'Total', 'Notas', 'Fecha'].map((h) => (
                         <th key={h} style={{ ...thStyle, fontSize: 11 }}>{h}</th>
                       ))}
                     </tr>
@@ -366,6 +369,9 @@ function ProductDetailModal({ product, currentStock, onClose, onDeleted }: {
                         </td>
                         <td style={{ ...tdStyle, fontWeight: 700 }}>{m.quantity.toFixed(3)}</td>
                         <td style={tdStyle}>{m.unitCost != null ? formatCOP(m.unitCost) : '—'}</td>
+                        <td style={{ ...tdStyle, fontWeight: 600, color: 'var(--text)' }}>
+                          {m.unitCost != null ? formatCOP(m.unitCost * m.quantity) : '—'}
+                        </td>
                         <td style={{ ...tdStyle, color: 'var(--muted)', fontSize: 11.5 }}>{m.notes ?? m.reason ?? '—'}</td>
                         <td style={{ ...tdStyle, fontSize: 11, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{formatDate(m.createdAt)}</td>
                       </tr>
