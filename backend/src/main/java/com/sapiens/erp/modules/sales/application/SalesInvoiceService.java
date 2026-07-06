@@ -1,6 +1,10 @@
 package com.sapiens.erp.modules.sales.application;
 
 import com.sapiens.erp.modules.identity.domain.UserRepository;
+import com.sapiens.erp.modules.inventory.api.dto.AdjustmentRequest;
+import com.sapiens.erp.modules.inventory.api.dto.ExitRequest;
+import com.sapiens.erp.modules.inventory.application.InventoryService;
+import com.sapiens.erp.modules.inventory.domain.MovementType;
 import com.sapiens.erp.modules.sales.api.dto.SalesInvoiceDtos.*;
 import com.sapiens.erp.shared.api.PagedResponse;
 import org.springframework.data.domain.Page;
@@ -44,6 +48,7 @@ public class SalesInvoiceService {
     private final CreditNoteRepository creditNoteRepository;
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final InventoryService inventoryService;
 
     // ── Consultas ─────────────────────────────────────────────────────────────
 
@@ -192,6 +197,8 @@ public class SalesInvoiceService {
         SalesInvoiceStatus from = inv.getStatus();
         inv.emit(req.paymentForm(), req.creditTermDays() != null ? req.creditTermDays() : 0, req.paymentMethod());
         invoiceRepository.save(inv);
+        // Descuenta inventario en la misma transacción: si falta stock lanza 422 y todo revierte
+        decrementStockForSale(inv);
         recordHistory(inv, from, inv.getStatus(), null);
         // Finance abre la CxC en la misma transacción (listener síncrono)
         eventPublisher.publishEvent(new InvoiceEmittedEvent(inv.getId(), inv.getInvoiceNumber(),
@@ -251,6 +258,8 @@ public class SalesInvoiceService {
                 || from == SalesInvoiceStatus.PAID) {
             creditNoteRepository.save(CreditNote.issue(nextNoteNumber(), inv, reason.trim()));
             // TODO(contabilidad): registrar el asiento inverso cuando exista el módulo de asientos
+            // La factura estaba emitida: el stock se había descontado, se repone (reversa de la venta)
+            restoreStockForSale(inv, reason.trim());
         }
         // Finance saca la CxC de cartera en la misma transacción
         eventPublisher.publishEvent(new InvoiceCancelledEvent(inv.getId()));
@@ -311,6 +320,36 @@ public class SalesInvoiceService {
 
     private void recordHistory(SalesInvoice inv, SalesInvoiceStatus from, SalesInvoiceStatus to, String reason) {
         historyRepository.save(SalesInvoiceHistory.record(inv, from, to, reason, currentPrincipal()));
+    }
+
+    /**
+     * Egreso de inventario por la venta (una EXIT FIFO por línea con producto que
+     * controla stock). Delega en InventoryService, que valida stock no negativo y
+     * lanza InsufficientStockException (→ 422) si no alcanza, revirtiendo la emisión.
+     */
+    private void decrementStockForSale(SalesInvoice inv) {
+        String principal = currentPrincipal();
+        for (SalesInvoiceLine line : inv.getLines()) {
+            if (line.getDeletedAt() != null) continue;
+            var product = line.getProduct();
+            if (product == null || !product.isInventoryTrackingEnabled()) continue;
+            inventoryService.registerExit(new ExitRequest(
+                    product.getId(), line.getQuantity(),
+                    "Venta " + inv.getInvoiceNumber(), null, principal));
+        }
+    }
+
+    /** Reposición de inventario al anular una factura emitida (ajuste positivo con motivo). */
+    private void restoreStockForSale(SalesInvoice inv, String reason) {
+        String principal = currentPrincipal();
+        for (SalesInvoiceLine line : inv.getLines()) {
+            if (line.getDeletedAt() != null) continue;
+            var product = line.getProduct();
+            if (product == null || !product.isInventoryTrackingEnabled()) continue;
+            inventoryService.registerAdjustment(new AdjustmentRequest(
+                    product.getId(), MovementType.POSITIVE_ADJUSTMENT, line.getQuantity(),
+                    null, "Anulación venta " + inv.getInvoiceNumber() + ": " + reason, null, principal));
+        }
     }
 
     private SalesInvoice findActive(UUID id) {
