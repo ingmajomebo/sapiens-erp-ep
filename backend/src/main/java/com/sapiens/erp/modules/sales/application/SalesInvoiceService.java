@@ -7,8 +7,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import com.sapiens.erp.modules.sales.domain.*;
+import com.sapiens.erp.modules.sales.domain.event.InvoiceCancelledEvent;
+import com.sapiens.erp.modules.sales.domain.event.InvoiceEmittedEvent;
 import com.sapiens.erp.modules.sales.domain.exception.SalesOrderNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +43,7 @@ public class SalesInvoiceService {
     private final SalesInvoiceHistoryRepository historyRepository;
     private final CreditNoteRepository creditNoteRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     // ── Consultas ─────────────────────────────────────────────────────────────
 
@@ -189,6 +193,10 @@ public class SalesInvoiceService {
         inv.emit(req.paymentForm(), req.creditTermDays() != null ? req.creditTermDays() : 0, req.paymentMethod());
         invoiceRepository.save(inv);
         recordHistory(inv, from, inv.getStatus(), null);
+        // Finance abre la CxC en la misma transacción (listener síncrono)
+        eventPublisher.publishEvent(new InvoiceEmittedEvent(inv.getId(), inv.getInvoiceNumber(),
+                inv.getCustomer() != null ? inv.getCustomer().getId() : null,
+                inv.getTotal(), inv.getDueDate()));
         return InvoiceListResponse.from(inv, paymentRepository.sumByInvoiceId(id));
     }
 
@@ -227,7 +235,7 @@ public class SalesInvoiceService {
         if (balance.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("La factura no tiene saldo pendiente");
         }
-        return registerPayment(id, new PaymentRequest(balance, InvoicePaymentMethod.CASH, null, null, null));
+        return registerPayment(id, new PaymentRequest(balance, InvoicePaymentMethod.CASH, null, null, null, null));
     }
 
     /** Cancela con novedad; si estaba emitida, con pago parcial o pagada, genera nota crédito. */
@@ -244,7 +252,49 @@ public class SalesInvoiceService {
             creditNoteRepository.save(CreditNote.issue(nextNoteNumber(), inv, reason.trim()));
             // TODO(contabilidad): registrar el asiento inverso cuando exista el módulo de asientos
         }
+        // Finance saca la CxC de cartera en la misma transacción
+        eventPublisher.publishEvent(new InvoiceCancelledEvent(inv.getId()));
         return InvoiceListResponse.from(inv, paymentRepository.sumByInvoiceId(id));
+    }
+
+    // ── API pública para el módulo de Cuentas por Cobrar ─────────────────────
+
+    /**
+     * Espeja en la factura un abono aplicado vía recibo de caja (reference = RC-NNNNNN).
+     * Mantiene una sola fuente de estados de la factura.
+     */
+    @Transactional
+    public void registerExternalPayment(UUID invoiceId, BigDecimal amount,
+                                        InvoicePaymentMethod method, String reference) {
+        registerPayment(invoiceId, new PaymentRequest(amount, method, null, reference, null, null));
+    }
+
+    /** Respuesta liviana de una factura (para endpoints que delegan en otros módulos). */
+    @Transactional(readOnly = true)
+    public InvoiceListResponse listResponse(UUID invoiceId) {
+        SalesInvoice inv = findActive(invoiceId);
+        return InvoiceListResponse.from(inv, paymentRepository.sumByInvoiceId(invoiceId));
+    }
+
+    /** Revierte los pagos espejados de un recibo anulado y re-deriva el estado. */
+    @Transactional
+    public void revertExternalPayments(UUID invoiceId, String reference, String voidReason) {
+        SalesInvoice inv = findActive(invoiceId);
+        List<SalesInvoicePayment> mirrored =
+                paymentRepository.findActiveByInvoiceIdAndReference(invoiceId, reference);
+        if (mirrored.isEmpty()) return;
+
+        for (SalesInvoicePayment p : mirrored) {
+            p.softDelete();
+            paymentRepository.save(p);
+        }
+        SalesInvoiceStatus from = inv.getStatus();
+        BigDecimal newPaid = paymentRepository.sumByInvoiceId(invoiceId);
+        inv.revertPaymentProgress(newPaid);
+        invoiceRepository.save(inv);
+        if (inv.getStatus() != from) {
+            recordHistory(inv, from, inv.getStatus(), "Recibo " + reference + " anulado: " + voidReason);
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

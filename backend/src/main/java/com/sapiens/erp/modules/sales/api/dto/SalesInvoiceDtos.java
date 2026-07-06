@@ -30,7 +30,8 @@ public final class SalesInvoiceDtos {
             @NotNull InvoicePaymentMethod paymentMethod,
             LocalDate paidOn,
             String reference,
-            String notes
+            String notes,
+            UUID financialAccountId   // opcional: cuenta que recibe el dinero (genera recibo de caja con movimiento)
     ) {}
 
     // ── Responses ─────────────────────────────────────────────────────────────

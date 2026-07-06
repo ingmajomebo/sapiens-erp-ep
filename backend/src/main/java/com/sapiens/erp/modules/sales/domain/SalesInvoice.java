@@ -159,6 +159,23 @@ public class SalesInvoice extends AuditableEntity {
         }
     }
 
+    /** Revierte el progreso de pago tras anular un recibo: el estado vuelve a derivarse de la suma. */
+    public void revertPaymentProgress(BigDecimal paidSum) {
+        if (status != SalesInvoiceStatus.ISSUED && status != SalesInvoiceStatus.PARTIALLY_PAID
+                && status != SalesInvoiceStatus.PAID) {
+            throw new IllegalArgumentException("No se puede revertir un pago en estado " + status);
+        }
+        if (paidSum.compareTo(total) >= 0) {
+            this.status = SalesInvoiceStatus.PAID;
+        } else if (paidSum.compareTo(BigDecimal.ZERO) > 0) {
+            this.status = SalesInvoiceStatus.PARTIALLY_PAID;
+            this.paidAt = null;
+        } else {
+            this.status = SalesInvoiceStatus.ISSUED;
+            this.paidAt = null;
+        }
+    }
+
     /** Cancelable en cualquier estado no cancelado; el servicio decide si genera nota crédito. */
     public void cancel(String reason) {
         if (status == SalesInvoiceStatus.CANCELLED) {

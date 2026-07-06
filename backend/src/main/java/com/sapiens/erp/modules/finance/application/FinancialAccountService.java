@@ -58,4 +58,20 @@ public class FinancialAccountService {
         movementRepository.save(movement);
         accountRepository.save(account);
     }
+
+    /**
+     * Espejo de registerExpense: usado por Cuentas por Cobrar al aplicar un recibo de caja.
+     * Aumenta el saldo de la cuenta y registra el movimiento INCOME.
+     */
+    @Transactional
+    public void registerIncome(UUID accountId, BigDecimal amount, String concept,
+                               String relatedDocument, UUID relatedEntityId) {
+        FinancialAccount account = accountRepository.findByIdAndDeletedAtIsNull(accountId)
+                .filter(a -> a.getStatus() == FinancialAccountStatus.ACTIVE)
+                .orElseThrow(() -> new IllegalArgumentException("Cuenta financiera no encontrada o inactiva: " + accountId));
+        FinancialMovement movement = FinancialMovement.createIncome(
+                account, amount, concept, relatedDocument, relatedEntityId);
+        movementRepository.save(movement);
+        accountRepository.save(account);
+    }
 }

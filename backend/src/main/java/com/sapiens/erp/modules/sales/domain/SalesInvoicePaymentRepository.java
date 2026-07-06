@@ -30,6 +30,14 @@ public interface SalesInvoicePaymentRepository extends JpaRepository<SalesInvoic
         """)
     List<Object[]> sumByInvoiceIds(@Param("invoiceIds") List<UUID> invoiceIds);
 
+    /** Pagos activos de una factura con una referencia dada (espejo de un recibo de caja). */
+    @Query("""
+        SELECT p FROM SalesInvoicePayment p
+        WHERE p.deletedAt IS NULL AND p.invoice.id = :invoiceId AND p.reference = :reference
+        """)
+    List<SalesInvoicePayment> findActiveByInvoiceIdAndReference(@Param("invoiceId") UUID invoiceId,
+                                                                @Param("reference") String reference);
+
     /** Pagos aplicados a facturas abiertas, agrupados por cliente (para saldo pendiente). */
     @Query("""
         SELECT p.invoice.customer.id, COALESCE(SUM(p.amount), 0) FROM SalesInvoicePayment p

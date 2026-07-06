@@ -46,6 +46,17 @@ public class CustomerService {
     private final SalesOrderRepository orderRepository;
     private final SalesInvoiceRepository invoiceRepository;
 
+    /** Lookup liviano para otros módulos (p. ej. Cuentas por Cobrar): id → nombre. */
+    @Transactional(readOnly = true)
+    public Map<UUID, String> namesByIds(java.util.Collection<UUID> ids) {
+        Map<UUID, String> names = new HashMap<>();
+        if (ids == null || ids.isEmpty()) return names;
+        for (Customer c : customerRepository.findAllById(ids)) {
+            names.put(c.getId(), c.getName());
+        }
+        return names;
+    }
+
     @Transactional(readOnly = true)
     public List<CustomerResponse> listAll() {
         return customerRepository.findAllByDeletedAtIsNullOrderByNameAsc().stream()

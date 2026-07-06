@@ -7,6 +7,7 @@ import com.sapiens.erp.modules.sales.application.SalesInvoiceService;
 import com.sapiens.erp.modules.sales.application.SalesOrderLinkService;
 import com.sapiens.erp.modules.sales.application.SalesOrderService;
 import com.sapiens.erp.modules.sales.application.SalesInvoicePdfService;
+import com.sapiens.erp.modules.sales.domain.InvoicePaymentMethod;
 import com.sapiens.erp.modules.sales.domain.SalesOrderStatus;
 import com.sapiens.erp.modules.sales.domain.SalesInvoiceStatus;
 import com.sapiens.erp.shared.api.PagedResponse;
@@ -34,6 +35,7 @@ public class SalesOrderController {
     private final CustomerService customerService;
     private final SalesInvoiceService invoiceService;
     private final SalesInvoicePdfService pdfService;
+    private final com.sapiens.erp.modules.finance.application.PaymentReceiptService paymentReceiptService;
 
     // ── Pedidos (canal administrativo) ────────────────────────────────────────
 
@@ -132,18 +134,22 @@ public class SalesOrderController {
         return ResponseEntity.ok(invoiceService.emit(id, request));
     }
 
+    /** Registra un abono: crea un recibo de caja (RC) aplicado a la CxC de la factura. */
     @PostMapping("/sales-invoices/{id}/payments")
     @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN')")
     public ResponseEntity<InvoiceListResponse> registerPayment(@PathVariable UUID id,
                                                                @Valid @RequestBody PaymentRequest request) {
-        return ResponseEntity.ok(invoiceService.registerPayment(id, request));
+        paymentReceiptService.payInvoice(id, request.amount(), request.paymentMethod(),
+                request.financialAccountId(), request.reference());
+        return ResponseEntity.ok(invoiceService.listResponse(id));
     }
 
-    /** Compatibilidad con el flujo simple: paga el saldo completo en efectivo. */
+    /** Compatibilidad con el flujo simple: paga el saldo completo en efectivo (también genera RC). */
     @PatchMapping("/sales-invoices/{id}/pay")
     @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN')")
     public ResponseEntity<InvoiceListResponse> payInvoice(@PathVariable UUID id) {
-        return ResponseEntity.ok(invoiceService.payRemaining(id));
+        paymentReceiptService.payInvoice(id, null, InvoicePaymentMethod.CASH, null, null);
+        return ResponseEntity.ok(invoiceService.listResponse(id));
     }
 
     @PatchMapping("/sales-invoices/{id}/cancel")
