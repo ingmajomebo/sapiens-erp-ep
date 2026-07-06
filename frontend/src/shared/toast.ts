@@ -13,7 +13,7 @@ interface ToastItem {
 // Tiempo mínimo que el preload (spinner) permanece visible antes de resolverse
 // al check verde, para que la acción se alcance a apreciar aunque el backend
 // responda al instante.
-const MIN_PRELOAD_MS = 3000
+const MIN_PRELOAD_MS = 2000
 
 // Module-level singleton — call toast() from anywhere, no context needed
 let _toasts: ToastItem[] = []
