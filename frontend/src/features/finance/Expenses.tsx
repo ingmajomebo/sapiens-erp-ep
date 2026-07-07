@@ -256,10 +256,26 @@ function DeleteModal({ expense, onClose }: { expense: ExpenseDto; onClose: () =>
 
 // ── Componente principal ─────────────────────────────────────────────────────
 
+const CURRENT_MONTH = new Date().toISOString().slice(0, 7)
+
+/** Etiqueta legible de un mes 'YYYY-MM' → "julio 2026". */
+function monthLabel(month: string): string {
+  const [y, m] = month.split('-').map(Number)
+  return new Date(y, m - 1, 1).toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })
+}
+
 export function Expenses() {
   const [formModal, setFormModal] = useState<{ open: boolean; expense: ExpenseDto | null }>({ open: false, expense: null })
   const [deleteTarget, setDeleteTarget] = useState<ExpenseDto | null>(null)
   const [filterCategory, setFilterCategory] = useState<string>('')
+  const [selectedMonth, setSelectedMonth] = useState<string>(CURRENT_MONTH)
+  const [expandedDesc, setExpandedDesc] = useState<Set<string>>(new Set())
+
+  const toggleDesc = (id: string) => setExpandedDesc(prev => {
+    const next = new Set(prev)
+    next.has(id) ? next.delete(id) : next.add(id)
+    return next
+  })
 
   const { data: expenses = [], isLoading } = useQuery({
     queryKey: ['expenses'],
@@ -277,10 +293,8 @@ export function Expenses() {
     ? expenses.filter(e => e.category === filterCategory)
     : expenses
 
-  const currentMonth = new Date().toISOString().slice(0, 7)
-  const totalMonth = expenses
-    .filter(e => e.expenseDate.startsWith(currentMonth))
-    .reduce((s, e) => s + e.amount, 0)
+  const monthExpenses = expenses.filter(e => e.expenseDate.startsWith(selectedMonth))
+  const totalMonth = monthExpenses.reduce((s, e) => s + e.amount, 0)
 
   const totalAll = expenses.reduce((s, e) => s + e.amount, 0)
 
@@ -306,7 +320,40 @@ export function Expenses() {
 
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
-        <KpiCard label="Gasto este mes" value={formatCOP(totalMonth)} color="red" />
+        {/* Gasto del mes con selector de mes */}
+        <Card style={{ padding: '18px 20px', animation: 'fadeUp 0.3s ease' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--muted)' }}>
+              Gasto de {monthLabel(selectedMonth)}
+            </span>
+            <input
+              type="month"
+              value={selectedMonth}
+              max={CURRENT_MONTH}
+              onChange={e => setSelectedMonth(e.target.value || CURRENT_MONTH)}
+              aria-label="Elegir mes"
+              style={{
+                fontSize: 11.5, padding: '3px 6px', borderRadius: 6, colorScheme: 'light dark',
+                border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)',
+                fontFamily: 'inherit', cursor: 'pointer',
+              }}
+            />
+          </div>
+          <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.5px', fontVariantNumeric: 'tabular-nums' }}>
+            {formatCOP(totalMonth)}
+          </div>
+          <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, color: 'var(--muted)' }}>
+              {monthExpenses.length} {monthExpenses.length === 1 ? 'gasto' : 'gastos'}
+            </span>
+            {selectedMonth !== CURRENT_MONTH && (
+              <button onClick={() => setSelectedMonth(CURRENT_MONTH)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-text)', fontSize: 11.5, fontWeight: 600, fontFamily: 'inherit', padding: 0 }}>
+                Volver al mes actual
+              </button>
+            )}
+          </div>
+        </Card>
         <KpiCard label="Gasto total" value={formatCOP(totalAll)} color="orange" />
         <KpiCard label="Registros activos" value={String(expenses.length)} color="blue" />
       </div>
@@ -392,10 +439,21 @@ export function Expenses() {
                         {CATEGORY_LABELS[e.category]}
                       </span>
                     </td>
-                    <td style={{ ...tdStyle, maxWidth: 240 }}>
-                      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {e.description}
-                      </div>
+                    <td style={{ ...tdStyle, maxWidth: 260 }}>
+                      {e.description ? (
+                        <div
+                          onClick={() => toggleDesc(e.id)}
+                          title={expandedDesc.has(e.id) ? 'Clic para contraer' : e.description}
+                          style={{
+                            cursor: 'pointer',
+                            ...(expandedDesc.has(e.id)
+                              ? { whiteSpace: 'normal', wordBreak: 'break-word' }
+                              : { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }),
+                          }}
+                        >
+                          {e.description}
+                        </div>
+                      ) : <span style={{ color: 'var(--muted)' }}>—</span>}
                     </td>
                     <td style={{ ...tdStyle, color: 'var(--muted)', fontSize: 12.5 }}>
                       {e.financialAccountName}
