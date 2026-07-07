@@ -30,7 +30,7 @@ const EyeIcon = ({ open }: { open: boolean }) =>
   )
 
 export function LoginPage() {
-  const { theme, lang, companyName } = useAppStore()
+  const { theme, lang, companyName, brandLogo } = useAppStore()
   const login = useAuthStore((s) => s.login)
   const t = translations[lang]
 
@@ -96,22 +96,29 @@ export function LoginPage() {
       }}>
         {/* Logo / brand */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{
-            width: 52,
-            height: 52,
-            borderRadius: 14,
-            background: 'var(--accent)',
-            color: '#fff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 14px',
-          }}>
-            <FishIcon />
-          </div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.3px' }}>
-            {companyName}
-          </div>
+          {brandLogo ? (
+            <img src={brandLogo} alt={companyName}
+              style={{ maxWidth: 240, maxHeight: 88, objectFit: 'contain', margin: '0 auto 14px', display: 'block' }} />
+          ) : (
+            <>
+              <div style={{
+                width: 52,
+                height: 52,
+                borderRadius: 14,
+                background: 'var(--accent)',
+                color: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 14px',
+              }}>
+                <FishIcon />
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.3px' }}>
+                {companyName}
+              </div>
+            </>
+          )}
           <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>
             {t.login_subtitle}
           </div>

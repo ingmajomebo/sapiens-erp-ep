@@ -13,36 +13,21 @@ interface ColorField {
   defaultDark: string
 }
 
+// Defaults = paleta de marca "Encanto Pacífico" (definida en index.css)
 const COLOR_FIELDS: ColorField[] = [
-  { key: 'accent',    labelKey: 'set_color_accent',  defaultLight: '#0e7490', defaultDark: '#22d3ee' },
-  { key: 'pos',       labelKey: 'set_color_pos',     defaultLight: '#0a7c6b', defaultDark: '#2dd4bf' },
-  { key: 'neg',       labelKey: 'set_color_neg',     defaultLight: '#c9303f', defaultDark: '#fb7185' },
-  { key: 'warn',      labelKey: 'set_color_warn',    defaultLight: '#a85c00', defaultDark: '#f0aa55' },
-  { key: 'sidebarBg', labelKey: 'set_color_sidebar', defaultLight: '#f0f6f8', defaultDark: '#050c17' },
+  { key: 'accent',    labelKey: 'set_color_accent',  defaultLight: '#1e8a8a', defaultDark: '#45b8ae' },
+  { key: 'pos',       labelKey: 'set_color_pos',     defaultLight: '#1b8f6a', defaultDark: '#8acfb4' },
+  { key: 'neg',       labelKey: 'set_color_neg',     defaultLight: '#8c2b2e', defaultDark: '#e0837a' },
+  { key: 'warn',      labelKey: 'set_color_warn',    defaultLight: '#b36a10', defaultDark: '#e89a2e' },
+  { key: 'sidebarBg', labelKey: 'set_color_sidebar', defaultLight: '#f7f4ea', defaultDark: '#051d25' },
 ]
 
-// Paletas de marca predefinidas: aplican los colores del negocio de un solo clic.
-// La paleta completa se muestra como referencia; el mapeo asigna cada color a su
-// rol semántico en la interfaz (los tonos claros como crema o menta van en el
-// logo, no en texto, por legibilidad).
-interface BrandPreset {
-  name: string
-  swatches: string[]     // paleta completa, para mostrar como referencia
-  colors: BrandColors    // mapeo a los roles de la interfaz
+// La paleta de la marca ES el tema por defecto (index.css). Esta tarjeta la
+// muestra como referencia y permite volver a ella si se personalizaron colores.
+const BRAND_PALETTE = {
+  name: 'Encanto Pacífico',
+  swatches: ['#8c2b2e', '#be4a24', '#e89a2e', '#e6d6a9', '#8acfb4', '#1e8a8a', '#082630'],
 }
-
-const BRAND_PRESETS: BrandPreset[] = [
-  {
-    name: 'Encanto Pacífico',
-    swatches: ['#8c2b2e', '#be4a24', '#e89a2e', '#e6d6a9', '#8acfb4', '#1e8a8a', '#082630'],
-    colors: {
-      accent: '#1e8a8a',   // teal — acciones principales
-      pos: '#1b8f6a',      // verde — éxito
-      neg: '#8c2b2e',      // vino tinto — errores
-      warn: '#e89a2e',     // ámbar — alertas
-    },
-  },
-]
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -301,15 +286,14 @@ export function Settings() {
             <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 18, lineHeight: 1.6 }}>
               {t.set_presets_hint}
             </div>
-            {BRAND_PRESETS.map((preset) => {
-              const applied = (Object.keys(preset.colors) as (keyof BrandColors)[])
-                .every(k => brandColors[k] === preset.colors[k])
+            {(() => {
+              const applied = Object.keys(brandColors).length === 0
               return (
-                <div key={preset.name} style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: 200 }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>{preset.name}</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>{BRAND_PALETTE.name}</div>
                     <div style={{ display: 'flex', gap: 6 }}>
-                      {preset.swatches.map((c) => (
+                      {BRAND_PALETTE.swatches.map((c) => (
                         <span key={c} title={c} style={{
                           width: 30, height: 30, borderRadius: 8, background: c,
                           border: '1px solid var(--border)', flexShrink: 0,
@@ -318,19 +302,20 @@ export function Settings() {
                     </div>
                   </div>
                   <button
-                    onClick={() => setBrandColors(preset.colors)}
+                    onClick={resetBrandColors}
+                    disabled={applied}
                     style={{
                       padding: '9px 18px', borderRadius: 9, border: 'none',
                       background: applied ? 'var(--pos)' : 'var(--accent)', color: '#fff',
-                      fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                      display: 'flex', alignItems: 'center', gap: 7,
+                      fontSize: 13, fontWeight: 600, cursor: applied ? 'default' : 'pointer', fontFamily: 'inherit',
+                      display: 'flex', alignItems: 'center', gap: 7, opacity: applied ? 0.9 : 1,
                     }}
                   >
                     {applied ? `✓ ${t.set_preset_applied}` : t.set_preset_apply}
                   </button>
                 </div>
               )
-            })}
+            })()}
           </Card>
 
           <Card style={{ padding: '24px 26px' }}>

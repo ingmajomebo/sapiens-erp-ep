@@ -5,6 +5,9 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Paleta de marca "Encanto Pacífico":
+   vino #8c2b2e · terracota #be4a24 · ámbar #e89a2e · crema #e6d6a9
+   menta #8acfb4 · teal #1e8a8a · marino #082630 */
 :root {
   --bg: #f5f8fa;
   --surface: #ffffff;
@@ -13,52 +16,52 @@ body {
   --border: #e3eaef;
   --border-2: #edf2f5;
   --line: #eef3f6;
-  --text: #0d1f2d;
-  --text-2: #2e4a5a;
-  --muted: #607d8e;
-  --faint: #8fa8b8;
-  --accent: #0e7490;
+  --text: #0d2229;
+  --text-2: #2e4a55;
+  --muted: #5f7d87;
+  --faint: #8fa8b2;
+  --accent: #1e8a8a;
   --accent-weak: color-mix(in srgb, var(--accent) 9%, #ffffff);
   --accent-line: color-mix(in srgb, var(--accent) 18%, #ffffff);
   --accent-text: var(--accent);
-  --pos: #0a7c6b;
-  --pos-bg: #e4f4f2;
-  --neg: #c9303f;
-  --neg-bg: #fce9eb;
-  --warn: #a85c00;
-  --warn-bg: #fdf0e0;
-  --sidebar: #f0f6f8;
-  --sidebar-text: #2e4a5a;
-  --sidebar-border: #dde8ed;
-  --shadow-sm: 0 1px 1px rgba(14,116,144,.04), 0 1px 2px rgba(14,116,144,.06);
-  --shadow: 0 1px 2px rgba(14,116,144,.04), 0 4px 12px rgba(14,116,144,.08);
+  --pos: #1b8f6a;
+  --pos-bg: #e4f2ec;
+  --neg: #8c2b2e;
+  --neg-bg: #f8e9e8;
+  --warn: #b36a10;
+  --warn-bg: #fbf0dc;
+  --sidebar: #f7f4ea;
+  --sidebar-text: #3d5449;
+  --sidebar-border: #e9e3d2;
+  --shadow-sm: 0 1px 1px rgba(30,138,138,.04), 0 1px 2px rgba(30,138,138,.06);
+  --shadow: 0 1px 2px rgba(30,138,138,.04), 0 4px 12px rgba(30,138,138,.08);
 }
 
 [data-theme="dark"] {
-  --bg: #060e18;
-  --surface: #0c1824;
-  --surface-2: #091320;
-  --raise: #102030;
-  --border: #1a2e40;
-  --border-2: #142538;
-  --line: #172c3c;
-  --text: #e2eaf0;
-  --text-2: #a8bfcc;
-  --muted: #6a8a9a;
-  --faint: #4a6878;
-  --accent: #22d3ee;
-  --accent-weak: color-mix(in srgb, var(--accent) 18%, #091320);
-  --accent-line: color-mix(in srgb, var(--accent) 30%, #091320);
+  --bg: #051a21;
+  --surface: #0a2731;
+  --surface-2: #08222c;
+  --raise: #0e303c;
+  --border: #16404b;
+  --border-2: #123642;
+  --line: #133a46;
+  --text: #e2eceb;
+  --text-2: #a8c4c2;
+  --muted: #6a908f;
+  --faint: #4a6d6e;
+  --accent: #45b8ae;
+  --accent-weak: color-mix(in srgb, var(--accent) 18%, #08222c);
+  --accent-line: color-mix(in srgb, var(--accent) 30%, #08222c);
   --accent-text: color-mix(in srgb, var(--accent) 72%, #ffffff);
-  --pos: #2dd4bf;
-  --pos-bg: #08231e;
-  --neg: #fb7185;
-  --neg-bg: #2a1018;
-  --warn: #f0aa55;
-  --warn-bg: #28180a;
-  --sidebar: #050c17;
-  --sidebar-text: #8fb0c0;
-  --sidebar-border: #122030;
+  --pos: #8acfb4;
+  --pos-bg: #0a2e26;
+  --neg: #e0837a;
+  --neg-bg: #2f1414;
+  --warn: #e89a2e;
+  --warn-bg: #2b1d07;
+  --sidebar: #051d25;
+  --sidebar-text: #93b8b3;
+  --sidebar-border: #10333d;
   --shadow-sm: 0 1px 2px rgba(0,0,0,.5);
   --shadow: 0 1px 2px rgba(0,0,0,.5), 0 8px 24px rgba(0,0,0,.4);
 }
