@@ -13,13 +13,13 @@ interface ColorField {
   defaultDark: string
 }
 
-// Defaults = paleta de marca "Encanto Pacífico" (definida en index.css)
+// Defaults = sistema de color de la marca "Encanto Pacífico" (definido en index.css)
 const COLOR_FIELDS: ColorField[] = [
-  { key: 'accent',    labelKey: 'set_color_accent',  defaultLight: '#1e8a8a', defaultDark: '#45b8ae' },
-  { key: 'pos',       labelKey: 'set_color_pos',     defaultLight: '#1b8f6a', defaultDark: '#8acfb4' },
-  { key: 'neg',       labelKey: 'set_color_neg',     defaultLight: '#8c2b2e', defaultDark: '#e0837a' },
-  { key: 'warn',      labelKey: 'set_color_warn',    defaultLight: '#b36a10', defaultDark: '#e89a2e' },
-  { key: 'sidebarBg', labelKey: 'set_color_sidebar', defaultLight: '#f7f4ea', defaultDark: '#051d25' },
+  { key: 'accent',    labelKey: 'set_color_accent',  defaultLight: '#0f7c74', defaultDark: '#3fbdb2' },
+  { key: 'pos',       labelKey: 'set_color_pos',     defaultLight: '#177a55', defaultDark: '#5cc99a' },
+  { key: 'neg',       labelKey: 'set_color_neg',     defaultLight: '#99373a', defaultDark: '#e57e73' },
+  { key: 'warn',      labelKey: 'set_color_warn',    defaultLight: '#9a5b00', defaultDark: '#e3a44a' },
+  { key: 'sidebarBg', labelKey: 'set_color_sidebar', defaultLight: '#f4f3ec', defaultDark: '#0a1012' },
 ]
 
 // La paleta de la marca ES el tema por defecto (index.css). Esta tarjeta la

@@ -5,65 +5,70 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Paleta de marca "Encanto Pacífico":
-   vino #8c2b2e · terracota #be4a24 · ámbar #e89a2e · crema #e6d6a9
-   menta #8acfb4 · teal #1e8a8a · marino #082630 */
+/* Sistema de color derivado de la marca "Encanto Pacífico"
+   (vino #8c2b2e · terracota #be4a24 · ámbar #e89a2e · crema #e6d6a9
+    menta #8acfb4 · teal #1e8a8a · marino #082630)
+
+   Principios: superficies casi neutras con un tinte sutil de la marca
+   (una app densa en datos no soporta fondos saturados); el acento y los
+   semánticos se ajustan para contraste AA como texto; el modo oscuro
+   eleva por pasos de luminosidad, no por color. */
 :root {
-  --bg: #f5f8fa;
+  --bg: #f6f8f8;
   --surface: #ffffff;
-  --surface-2: #f9fbfc;
+  --surface-2: #fafbfb;
   --raise: #ffffff;
-  --border: #e3eaef;
-  --border-2: #edf2f5;
-  --line: #eef3f6;
-  --text: #0d2229;
-  --text-2: #2e4a55;
-  --muted: #5f7d87;
-  --faint: #8fa8b2;
-  --accent: #1e8a8a;
+  --border: #e3e9e9;
+  --border-2: #edf1f1;
+  --line: #eff3f3;
+  --text: #17282d;
+  --text-2: #3c5158;
+  --muted: #64797f;
+  --faint: #94a6ab;
+  --accent: #0f7c74;   /* teal de marca, profundizado para AA sobre blanco */
   --accent-weak: color-mix(in srgb, var(--accent) 9%, #ffffff);
   --accent-line: color-mix(in srgb, var(--accent) 18%, #ffffff);
   --accent-text: var(--accent);
-  --pos: #1b8f6a;
-  --pos-bg: #e4f2ec;
-  --neg: #8c2b2e;
-  --neg-bg: #f8e9e8;
-  --warn: #b36a10;
-  --warn-bg: #fbf0dc;
-  --sidebar: #f7f4ea;
-  --sidebar-text: #3d5449;
-  --sidebar-border: #e9e3d2;
-  --shadow-sm: 0 1px 1px rgba(30,138,138,.04), 0 1px 2px rgba(30,138,138,.06);
-  --shadow: 0 1px 2px rgba(30,138,138,.04), 0 4px 12px rgba(30,138,138,.08);
+  --pos: #177a55;
+  --pos-bg: #e6f3ed;
+  --neg: #99373a;      /* vino de marca, legible sobre claro */
+  --neg-bg: #f9ecec;
+  --warn: #9a5b00;     /* ámbar oscurecido para AA */
+  --warn-bg: #fcf1de;
+  --sidebar: #f4f3ec;  /* crema de marca, casi neutro */
+  --sidebar-text: #47564f;
+  --sidebar-border: #e7e4d8;
+  --shadow-sm: 0 1px 1px rgba(23,40,45,.04), 0 1px 2px rgba(23,40,45,.06);
+  --shadow: 0 1px 2px rgba(23,40,45,.04), 0 4px 12px rgba(23,40,45,.08);
 }
 
 [data-theme="dark"] {
-  --bg: #051a21;
-  --surface: #0a2731;
-  --surface-2: #08222c;
-  --raise: #0e303c;
-  --border: #16404b;
-  --border-2: #123642;
-  --line: #133a46;
-  --text: #e2eceb;
-  --text-2: #a8c4c2;
-  --muted: #6a908f;
-  --faint: #4a6d6e;
-  --accent: #45b8ae;
-  --accent-weak: color-mix(in srgb, var(--accent) 18%, #08222c);
-  --accent-line: color-mix(in srgb, var(--accent) 30%, #08222c);
-  --accent-text: color-mix(in srgb, var(--accent) 72%, #ffffff);
-  --pos: #8acfb4;
-  --pos-bg: #0a2e26;
-  --neg: #e0837a;
-  --neg-bg: #2f1414;
-  --warn: #e89a2e;
-  --warn-bg: #2b1d07;
-  --sidebar: #051d25;
-  --sidebar-text: #93b8b3;
-  --sidebar-border: #10333d;
+  --bg: #0c1214;
+  --surface: #121b1e;
+  --surface-2: #101719;
+  --raise: #1a2528;
+  --border: #26363a;
+  --border-2: #1f2c30;
+  --line: #223034;
+  --text: #e7edee;
+  --text-2: #b2c2c5;
+  --muted: #7d9196;
+  --faint: #57696e;
+  --accent: #3fbdb2;   /* teal brillante desaturado: no vibra sobre oscuro */
+  --accent-weak: color-mix(in srgb, var(--accent) 16%, #101719);
+  --accent-line: color-mix(in srgb, var(--accent) 28%, #101719);
+  --accent-text: color-mix(in srgb, var(--accent) 75%, #ffffff);
+  --pos: #5cc99a;      /* menta de marca, ajustada */
+  --pos-bg: #102b23;
+  --neg: #e57e73;      /* terracota suave (el vino puro se pierde en oscuro) */
+  --neg-bg: #331b19;
+  --warn: #e3a44a;
+  --warn-bg: #33250f;
+  --sidebar: #0a1012;
+  --sidebar-text: #8fa5a8;
+  --sidebar-border: #1c282c;
   --shadow-sm: 0 1px 2px rgba(0,0,0,.5);
-  --shadow: 0 1px 2px rgba(0,0,0,.5), 0 8px 24px rgba(0,0,0,.4);
+  --shadow: 0 1px 2px rgba(0,0,0,.5), 0 8px 24px rgba(0,0,0,.45);
 }
 
 @keyframes fadeUp {
