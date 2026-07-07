@@ -21,6 +21,29 @@ const COLOR_FIELDS: ColorField[] = [
   { key: 'sidebarBg', labelKey: 'set_color_sidebar', defaultLight: '#f0f6f8', defaultDark: '#050c17' },
 ]
 
+// Paletas de marca predefinidas: aplican los colores del negocio de un solo clic.
+// La paleta completa se muestra como referencia; el mapeo asigna cada color a su
+// rol semántico en la interfaz (los tonos claros como crema o menta van en el
+// logo, no en texto, por legibilidad).
+interface BrandPreset {
+  name: string
+  swatches: string[]     // paleta completa, para mostrar como referencia
+  colors: BrandColors    // mapeo a los roles de la interfaz
+}
+
+const BRAND_PRESETS: BrandPreset[] = [
+  {
+    name: 'Encanto Pacífico',
+    swatches: ['#8c2b2e', '#be4a24', '#e89a2e', '#e6d6a9', '#8acfb4', '#1e8a8a', '#082630'],
+    colors: {
+      accent: '#1e8a8a',   // teal — acciones principales
+      pos: '#1b8f6a',      // verde — éxito
+      neg: '#8c2b2e',      // vino tinto — errores
+      warn: '#e89a2e',     // ámbar — alertas
+    },
+  },
+]
+
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginBottom: 20 }}>
@@ -272,6 +295,44 @@ export function Settings() {
       {/* ── COLORS TAB ── */}
       {tab === 'colors' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {/* Presets de marca: aplican toda la paleta de un clic */}
+          <Card style={{ padding: '24px 26px' }}>
+            <SectionTitle>{t.set_presets_title}</SectionTitle>
+            <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 18, lineHeight: 1.6 }}>
+              {t.set_presets_hint}
+            </div>
+            {BRAND_PRESETS.map((preset) => {
+              const applied = (Object.keys(preset.colors) as (keyof BrandColors)[])
+                .every(k => brandColors[k] === preset.colors[k])
+              return (
+                <div key={preset.name} style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>{preset.name}</div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      {preset.swatches.map((c) => (
+                        <span key={c} title={c} style={{
+                          width: 30, height: 30, borderRadius: 8, background: c,
+                          border: '1px solid var(--border)', flexShrink: 0,
+                        }} />
+                      ))}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setBrandColors(preset.colors)}
+                    style={{
+                      padding: '9px 18px', borderRadius: 9, border: 'none',
+                      background: applied ? 'var(--pos)' : 'var(--accent)', color: '#fff',
+                      fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                      display: 'flex', alignItems: 'center', gap: 7,
+                    }}
+                  >
+                    {applied ? `✓ ${t.set_preset_applied}` : t.set_preset_apply}
+                  </button>
+                </div>
+              )
+            })}
+          </Card>
+
           <Card style={{ padding: '24px 26px' }}>
             <SectionTitle>{t.set_colors_title}</SectionTitle>
             <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 24, lineHeight: 1.6 }}>

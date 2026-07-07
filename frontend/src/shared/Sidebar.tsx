@@ -235,37 +235,42 @@ export function Sidebar() {
         padding: '20px 18px 16px',
         borderBottom: '1px solid var(--sidebar-border)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{
-            width: 34,
-            height: 34,
-            borderRadius: 9,
-            background: brandLogo ? 'transparent' : 'var(--accent)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-            overflow: 'hidden',
-          }}>
-            {brandLogo ? (
-              <img
-                src={brandLogo}
-                alt={companyName}
-                style={{ width: 34, height: 34, objectFit: 'contain', borderRadius: 9 }}
-              />
-            ) : (
+        {brandLogo ? (
+          // Logo con marca propia (típicamente un logotipo horizontal con el nombre):
+          // se muestra tal cual, ajustado al ancho, sin recortar en una caja pequeña.
+          <div>
+            <img
+              src={brandLogo}
+              alt={companyName}
+              style={{ maxWidth: '100%', maxHeight: 52, objectFit: 'contain', display: 'block' }}
+            />
+            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6 }}>{t.tenant_plan}</div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 34,
+              height: 34,
+              borderRadius: 9,
+              background: 'var(--accent)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              overflow: 'hidden',
+            }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                 <path d="M2 12C5 5 19 5 22 12C19 19 5 19 2 12Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 <ellipse cx="12" cy="12" rx="4" ry="3" fill="white" opacity="0.9"/>
                 <circle cx="12" cy="12" r="2" fill="white"/>
               </svg>
-            )}
+            </div>
+            <div>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2 }}>{companyName}</div>
+              <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>{t.tenant_plan}</div>
+            </div>
           </div>
-          <div>
-            <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2 }}>{companyName}</div>
-            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>{t.tenant_plan}</div>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Nav */}
