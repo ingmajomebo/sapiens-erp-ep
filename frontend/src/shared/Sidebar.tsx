@@ -1,5 +1,7 @@
+import { useQuery } from '@tanstack/react-query'
 import { useAppStore, type Page } from '../store/useAppStore'
 import { translations } from '../i18n/translations'
+import { inventoryApi } from '../features/inventory/api/inventoryApi'
 
 type NavItem = {
   key: Page
@@ -111,7 +113,7 @@ const navGroups: { labelKey: keyof typeof translations.en; items: NavDef[] }[] =
   {
     labelKey: 'nav_operations',
     items: [
-      { key: 'inventory', icon: <BoxIcon />, badge: '4' },
+      { key: 'inventory', icon: <BoxIcon /> },
       { key: 'purchases', icon: <ShoppingCartIcon /> },
       { key: 'sales', icon: <TagIcon /> },
       { key: 'customers', icon: <UsersIcon /> },
@@ -204,6 +206,17 @@ export function Sidebar() {
   const { page, setPage, lang, brandLogo, companyName } = useAppStore()
   const t = translations[lang]
 
+  // Alertas reales de inventario: productos en nivel bajo, crítico o agotados
+  const { data: stockPage } = useQuery({
+    queryKey: ['inventory-stock', 'alerts'],
+    queryFn: () => inventoryApi.listStock(0, 500),
+  })
+  const inventoryAlerts = (stockPage?.content ?? [])
+    .filter(s => s.stockStatus === 'LOW' || s.stockStatus === 'CRITICAL' || s.stockStatus === 'OUT_OF_STOCK')
+    .length
+  const badgeFor = (key: Page): string | undefined =>
+    key === 'inventory' && inventoryAlerts > 0 ? String(inventoryAlerts) : undefined
+
   return (
     <aside style={{
       width: 248,
@@ -272,7 +285,7 @@ export function Sidebar() {
             {group.items.map((item: NavDef) => (
               <NavButton
                 key={item.key}
-                item={{ ...item, label: t[navLabelKeys[item.key]] as string }}
+                item={{ ...item, label: t[navLabelKeys[item.key]] as string, badge: badgeFor(item.key) }}
                 isActive={page === item.key}
                 onClick={() => setPage(item.key)}
               />
