@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { expensesApi, type ExpenseDto, type ExpenseCategory, type ExpenseRequestDto } from './api/expensesApi'
 import { cashBanksApi, type FinancialAccountDto } from './api/cashBanksApi'
 import {
-  Card, CardHeader, KpiCard, GhostBtn, PrimaryBtn,
+  Card, CardHeader, KpiCard, GhostBtn, PrimaryBtn, PaginationFooter,
   tableStyle, thStyle, tdStyle,
 } from '../../shared/helpers'
 import { formatCOP } from '../../shared/currency'
@@ -284,6 +284,10 @@ export function Expenses() {
   const [selectedYear, setSelectedYear] = useState<string>(CURRENT_YEAR)
   const [selectedMonth, setSelectedMonth] = useState<string>(CURRENT_MONTH_NUM)
   const [expandedDesc, setExpandedDesc] = useState<Set<string>>(new Set())
+  const [expSearch, setExpSearch] = useState('')
+  const [tableUsePeriod, setTableUsePeriod] = useState(false)
+  const [expPage, setExpPage] = useState(0)
+  const PAGE_SIZE = 12
 
   const toggleDesc = (id: string) => setExpandedDesc(prev => {
     const next = new Set(prev)
@@ -303,9 +307,6 @@ export function Expenses() {
 
   const activeAccounts = accounts.filter(a => a.status === 'ACTIVE')
 
-  const filtered = filterCategory
-    ? expenses.filter(e => e.category === filterCategory)
-    : expenses
 
   // Años disponibles según los datos, más el año actual, de más reciente a más antiguo
   const availableYears = Array.from(
@@ -316,6 +317,13 @@ export function Expenses() {
   const periodPrefix = selectedMonth === 'all' ? selectedYear : `${selectedYear}-${selectedMonth}`
   const periodExpenses = expenses.filter(e => e.expenseDate.startsWith(periodPrefix))
   const totalPeriod = periodExpenses.reduce((s, e) => s + e.amount, 0)
+
+  const eq = expSearch.trim().toLowerCase()
+  const filtered = expenses.filter(e =>
+    (!filterCategory || e.category === filterCategory) &&
+    (!eq || (e.description ?? '').toLowerCase().includes(eq)) &&
+    (!tableUsePeriod || e.expenseDate.startsWith(periodPrefix)))
+  const paged = filtered.slice(expPage * PAGE_SIZE, (expPage + 1) * PAGE_SIZE)
   const periodLabel = selectedMonth === 'all'
     ? `del año ${selectedYear}`
     : `de ${MONTH_OPTIONS.find(m => m.value === selectedMonth)?.label ?? ''} de ${selectedYear}`
@@ -389,7 +397,7 @@ export function Expenses() {
           <div style={{ padding: '0 20px 16px', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {byCategory.map(x => (
               <button key={x.category} type="button"
-                onClick={() => setFilterCategory(filterCategory === x.category ? '' : x.category)}
+                onClick={() => { setFilterCategory(filterCategory === x.category ? '' : x.category); setExpPage(0) }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 7, padding: '5px 12px', borderRadius: 20,
                   border: `1.5px solid ${filterCategory === x.category ? CATEGORY_COLORS[x.category] : 'transparent'}`,
@@ -418,6 +426,24 @@ export function Expenses() {
           title={filterCategory
             ? `${CATEGORY_LABELS[filterCategory as ExpenseCategory]} (${filtered.length})`
             : `Todos los gastos (${filtered.length})`}
+          action={
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--muted)', cursor: 'pointer' }}>
+                <input type="checkbox" checked={tableUsePeriod}
+                  onChange={e => { setTableUsePeriod(e.target.checked); setExpPage(0) }} />
+                Solo el período elegido
+              </label>
+              <input
+                value={expSearch}
+                onChange={e => { setExpSearch(e.target.value); setExpPage(0) }}
+                placeholder="Buscar en descripción…"
+                style={{
+                  width: 200, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)',
+                  background: 'var(--surface-2)', color: 'var(--text)', fontSize: 12.5, fontFamily: 'inherit',
+                }}
+              />
+            </div>
+          }
         />
         <div style={{ overflowX: 'auto' }}>
           {isLoading ? (
@@ -445,7 +471,7 @@ export function Expenses() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(e => (
+                {paged.map(e => (
                   <tr key={e.id}>
                     <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
                       {new Date(e.expenseDate + 'T00:00:00').toLocaleDateString('es-CO', {
@@ -512,6 +538,8 @@ export function Expenses() {
             </table>
           )}
         </div>
+        <PaginationFooter total={filtered.length} page={expPage} pageSize={PAGE_SIZE}
+          onPage={setExpPage} unit="gastos" />
       </Card>
 
       {formModal.open && (

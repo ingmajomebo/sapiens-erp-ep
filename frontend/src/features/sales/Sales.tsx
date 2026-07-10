@@ -4,7 +4,7 @@ import { useAppStore } from '../../store/useAppStore'
 import { translations } from '../../i18n/translations'
 import {
   Card, KpiCard, CardHeader, StatusChip,
-  PrimaryBtn, GhostBtn, FilterSelect,
+  PrimaryBtn, GhostBtn, FilterSelect, PaginationFooter,
   tableStyle, thStyle, tdStyle,
 } from '../../shared/helpers'
 import { toast } from '../../shared/toast'
@@ -347,6 +347,8 @@ export function Sales() {
   const t = translations[lang]
   const qc = useQueryClient()
   const [statusFilter, setStatusFilter] = useState('all')
+  const [orderSearch, setOrderSearch] = useState('')
+  const [orderPage, setOrderPage] = useState(0)
   const [showNewOrder, setShowNewOrder] = useState(false)
   const [detail, setDetail] = useState<SalesOrderDto | null>(null)
 
@@ -363,7 +365,14 @@ export function Sales() {
     onSuccess: l => { qc.invalidateQueries({ queryKey: ['sales-order-links'] }); toast(l.active ? 'Enlace activado' : 'Enlace desactivado', 'success') },
   })
 
-  const filtered = orders.filter(o => statusFilter === 'all' || o.status === statusFilter)
+  const PAGE_SIZE = 12
+  const oq = orderSearch.trim().toLowerCase()
+  const filtered = orders.filter(o =>
+    (statusFilter === 'all' || o.status === statusFilter) &&
+    (!oq || o.orderNumber.toLowerCase().includes(oq)
+      || o.customerName.toLowerCase().includes(oq)
+      || (o.invoiceNumber ?? '').toLowerCase().includes(oq)))
+  const paged = filtered.slice(orderPage * PAGE_SIZE, (orderPage + 1) * PAGE_SIZE)
   const count = (s: SalesOrderStatus) => orders.filter(o => o.status === s).length
   const revenue = orders.filter(o => ['PREPARING', 'DISPATCHED', 'DELIVERED'].includes(o.status))
     .reduce((acc, o) => acc + o.total, 0)
@@ -423,7 +432,16 @@ export function Sales() {
         } />
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 18px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
-          <FilterSelect value={statusFilter} onChange={setStatusFilter} options={[
+          <input
+            value={orderSearch}
+            onChange={e => { setOrderSearch(e.target.value); setOrderPage(0) }}
+            placeholder="Buscar por pedido, cliente o factura…"
+            style={{
+              width: 250, padding: '7px 11px', borderRadius: 8, border: '1px solid var(--border)',
+              background: 'var(--surface-2)', color: 'var(--text)', fontSize: 12.5, fontFamily: 'inherit',
+            }}
+          />
+          <FilterSelect value={statusFilter} onChange={v => { setStatusFilter(v); setOrderPage(0) }} options={[
             { value: 'all', label: 'Todos los estados' },
             { value: 'PENDING', label: 'Pendientes' },
             { value: 'PREPARING', label: 'En preparación' },
@@ -448,7 +466,7 @@ export function Sales() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(o => (
+              {paged.map(o => (
                 <tr key={o.id}
                   style={{ cursor: 'pointer' }}
                   onClick={() => setDetail(o)}
@@ -472,11 +490,13 @@ export function Sales() {
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={8} style={{ ...tdStyle, textAlign: 'center', color: 'var(--muted)', padding: 30 }}>Sin pedidos en este estado.</td></tr>
+                <tr><td colSpan={8} style={{ ...tdStyle, textAlign: 'center', color: 'var(--muted)', padding: 30 }}>Sin pedidos con estos filtros.</td></tr>
               )}
             </tbody>
           </table>
         </div>
+        <PaginationFooter total={filtered.length} page={orderPage} pageSize={PAGE_SIZE}
+          onPage={setOrderPage} unit="pedidos" />
 
         <div style={{ padding: '12px 18px' }}>
           <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>

@@ -4,7 +4,7 @@ import { accountsPayableApi, type AccountsPayableDto, type SupplierPaymentDto } 
 import { cashBanksApi, type FinancialAccountDto } from './api/cashBanksApi'
 import {
   Card, CardHeader, KpiCard, StatusChip, GhostBtn, PrimaryBtn,
-  FilterSelect, tableStyle, thStyle, tdStyle,
+  FilterSelect, PaginationFooter, tableStyle, thStyle, tdStyle,
 } from '../../shared/helpers'
 import { formatCOP } from '../../shared/currency'
 import { toast } from '../../shared/toast'
@@ -309,6 +309,9 @@ function APModal({ ap, mode: initMode, onClose }: {
 export function AccountsPayablePage() {
   const [statusFilter, setStatusFilter]     = useState('all')
   const [supplierFilter, setSupplierFilter] = useState('')
+  const [apSearch, setApSearch]             = useState('')
+  const [apPage, setApPage]                 = useState(0)
+  const PAGE_SIZE = 12
   const [selectedAp, setSelectedAp]         = useState<AccountsPayableDto | null>(null)
   const [modalMode, setModalMode]           = useState<ModalMode>('detail')
 
@@ -319,11 +322,17 @@ export function AccountsPayablePage() {
 
   const supplierNames = Array.from(new Set(invoices.map(a => a.supplierName))).sort()
 
+  const apq = apSearch.trim().toLowerCase()
   const filtered = invoices.filter(ap => {
     const matchStatus   = statusFilter === 'all' || ap.status === statusFilter
     const matchSupplier = supplierFilter === '' || ap.supplierName === supplierFilter
-    return matchStatus && matchSupplier
+    const matchSearch   = !apq
+      || (ap.invoiceNumber ?? '').toLowerCase().includes(apq)
+      || ap.orderNumber.toLowerCase().includes(apq)
+      || ap.supplierName.toLowerCase().includes(apq)
+    return matchStatus && matchSupplier && matchSearch
   })
+  const paged = filtered.slice(apPage * PAGE_SIZE, (apPage + 1) * PAGE_SIZE)
 
   const totalPending  = invoices.reduce((s, a) => s + (a.status !== 'PAID' && a.status !== 'CANCELLED' ? a.pendingAmount : 0), 0)
   const totalPaid     = invoices.reduce((s, a) => s + a.paidAmount, 0)
@@ -356,7 +365,16 @@ export function AccountsPayablePage() {
 
         {/* Filters */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 18px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
-          <FilterSelect value={statusFilter} onChange={setStatusFilter} options={[
+          <input
+            value={apSearch}
+            onChange={e => { setApSearch(e.target.value); setApPage(0) }}
+            placeholder="Buscar por factura, OC o proveedor…"
+            style={{
+              width: 250, padding: '7px 11px', borderRadius: 8, border: '1px solid var(--border)',
+              background: 'var(--surface-2)', color: 'var(--text)', fontSize: 12.5, fontFamily: 'inherit',
+            }}
+          />
+          <FilterSelect value={statusFilter} onChange={v => { setStatusFilter(v); setApPage(0) }} options={[
             { value: 'all',             label: 'Todos los estados' },
             { value: 'PENDING',         label: 'Pendiente' },
             { value: 'PARTIALLY_PAID',  label: 'Parcialmente pagada' },
@@ -366,15 +384,15 @@ export function AccountsPayablePage() {
           ]} />
           <FilterSelect
             value={supplierFilter}
-            onChange={setSupplierFilter}
+            onChange={v => { setSupplierFilter(v); setApPage(0) }}
             options={[
               { value: '', label: 'Todos los proveedores' },
               ...supplierNames.map(n => ({ value: n, label: n })),
             ]}
           />
-          {(statusFilter !== 'all' || supplierFilter !== '') && (
+          {(statusFilter !== 'all' || supplierFilter !== '' || apSearch !== '') && (
             <button
-              onClick={() => { setStatusFilter('all'); setSupplierFilter('') }}
+              onClick={() => { setStatusFilter('all'); setSupplierFilter(''); setApSearch(''); setApPage(0) }}
               style={{
                 padding: '6px 11px', borderRadius: 8, border: '1px solid var(--border)',
                 background: 'var(--surface)', color: 'var(--muted)', fontSize: 12,
@@ -416,7 +434,7 @@ export function AccountsPayablePage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(ap => (
+                {paged.map(ap => (
                   <tr key={ap.id}
                     style={{ cursor: 'pointer' }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-2)')}
@@ -466,6 +484,8 @@ export function AccountsPayablePage() {
             </table>
           )}
         </div>
+        <PaginationFooter total={filtered.length} page={apPage} pageSize={PAGE_SIZE}
+          onPage={setApPage} unit="facturas" />
       </Card>
 
       {selectedAp && (

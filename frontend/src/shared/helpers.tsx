@@ -135,6 +135,30 @@ export function KpiCard({
   )
 }
 
+// Pie de paginación para tablas con datos en el cliente (volúmenes bajos):
+// muestra el conteo y navega por páginas. Usar junto con items.slice(page*size, ...).
+export function PaginationFooter({ total, page, pageSize, onPage, unit = 'registros' }: {
+  total: number
+  page: number
+  pageSize: number
+  onPage: (page: number) => void
+  unit?: string
+}) {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  if (total === 0) return null
+  return (
+    <div style={{ padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 10, borderTop: '1px solid var(--line)' }}>
+      <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>
+        {total} {unit} · página {Math.min(page + 1, totalPages)} de {totalPages}
+      </span>
+      <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+        <GhostBtn disabled={page === 0} onClick={() => onPage(page - 1)}>← Anterior</GhostBtn>
+        <GhostBtn disabled={page + 1 >= totalPages} onClick={() => onPage(page + 1)}>Siguiente →</GhostBtn>
+      </div>
+    </div>
+  )
+}
+
 // Ghost button — thin wrapper so existing call sites need no changes
 export function GhostBtn({ onClick, children, style, disabled }: { onClick?: () => void; children: React.ReactNode; style?: React.CSSProperties; disabled?: boolean }) {
   return (

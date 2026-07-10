@@ -4,7 +4,7 @@ import { useAppStore } from '../../store/useAppStore'
 import { translations } from '../../i18n/translations'
 import {
   Card, KpiCard, CardHeader, Tile, StatusChip,
-  PrimaryBtn, GhostBtn,
+  PrimaryBtn, GhostBtn, FilterSelect, PaginationFooter,
   tableStyle, thStyle, tdStyle,
 } from '../../shared/helpers'
 import { supplierApi, type SupplierDto } from '../procurement/api/supplierApi'
@@ -1062,6 +1062,12 @@ export function Purchases() {
   const [activeTab, setActiveTab] = useState<'orders' | 'suppliers'>('orders')
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
   const [editingSupplier, setEditingSupplier] = useState<SupplierDto | null>(null)
+  const [orderSearch, setOrderSearch] = useState('')
+  const [orderStatus, setOrderStatus] = useState('all')
+  const [orderPage, setOrderPage] = useState(0)
+  const [supplierSearch, setSupplierSearch] = useState('')
+  const [supplierPage, setSupplierPage] = useState(0)
+  const PAGE_SIZE = 12
 
   const { data: suppliers = [], isLoading: loadingSuppliers } = useQuery({
     queryKey: ['suppliers'],
@@ -1072,6 +1078,19 @@ export function Purchases() {
     queryKey: ['purchase-orders'],
     queryFn: purchaseOrderApi.listAll,
   })
+
+  const q = orderSearch.trim().toLowerCase()
+  const filteredOrders = orders.filter(o =>
+    (orderStatus === 'all' || o.status === orderStatus) &&
+    (!q || o.orderNumber.toLowerCase().includes(q) || o.supplierName.toLowerCase().includes(q)))
+  const pagedOrders = filteredOrders.slice(orderPage * PAGE_SIZE, (orderPage + 1) * PAGE_SIZE)
+
+  const sq = supplierSearch.trim().toLowerCase()
+  const filteredSuppliers = suppliers.filter(sp =>
+    !sq || sp.name.toLowerCase().includes(sq)
+    || (sp.taxId ?? '').toLowerCase().includes(sq)
+    || (sp.contactName ?? '').toLowerCase().includes(sq))
+  const pagedSuppliers = filteredSuppliers.slice(supplierPage * PAGE_SIZE, (supplierPage + 1) * PAGE_SIZE)
 
   const totalValue = orders.reduce((s, o) => s + o.total, 0)
   const pendingOrders = orders.filter((o) => o.status === 'DRAFT' || o.status === 'CONFIRMED').length
@@ -1137,13 +1156,30 @@ export function Purchases() {
           <CardHeader title="Órdenes de compra" action={
             <GhostBtn style={{ fontSize: 11.5, padding: '5px 10px' }}>{t.btn_export}</GhostBtn>
           } />
+          <div style={{ padding: '12px 18px 0', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <input
+              value={orderSearch}
+              onChange={e => { setOrderSearch(e.target.value); setOrderPage(0) }}
+              placeholder="Buscar por OC o proveedor…"
+              style={{
+                width: 240, padding: '7px 11px', borderRadius: 8, border: '1px solid var(--border)',
+                background: 'var(--surface-2)', color: 'var(--text)', fontSize: 12.5, fontFamily: 'inherit',
+              }}
+            />
+            <FilterSelect value={orderStatus} onChange={v => { setOrderStatus(v); setOrderPage(0) }} options={[
+              { value: 'all', label: 'Todos los estados' },
+              ...Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label })),
+            ]} />
+          </div>
           <div style={{ overflowX: 'auto' }}>
             {loadingOrders ? (
               <div style={{ padding: '40px 18px', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>Cargando…</div>
-            ) : orders.length === 0 ? (
+            ) : filteredOrders.length === 0 ? (
               <div style={{ padding: '48px 18px', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
                 <div style={{ fontSize: 32, marginBottom: 10 }}>📋</div>
-                No hay órdenes de compra aún. Crea una con el botón de arriba.
+                {orders.length === 0
+                  ? 'No hay órdenes de compra aún. Crea una con el botón de arriba.'
+                  : 'Sin órdenes que coincidan con los filtros.'}
               </div>
             ) : (
               <table style={tableStyle}>
@@ -1160,7 +1196,7 @@ export function Purchases() {
                   </tr>
                 </thead>
                 <tbody>
-                  {orders.map((o) => (
+                  {pagedOrders.map((o) => (
                     <tr
                       key={o.id}
                       onClick={() => setSelectedOrderId(o.id)}
@@ -1203,15 +1239,8 @@ export function Purchases() {
               </table>
             )}
           </div>
-          {orders.length > 0 && (
-            <div style={{ padding: '12px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>
-                <b style={{ color: 'var(--text-2)' }}>{orders.length}</b> órdenes ·{' '}
-                <b style={{ color: 'var(--pos)' }}>{receivedOrders}</b> recibidas ·{' '}
-                <span style={{ fontSize: 11, color: 'var(--muted)' }}>Clic en una fila para ver el detalle</span>
-              </span>
-            </div>
-          )}
+          <PaginationFooter total={filteredOrders.length} page={orderPage} pageSize={PAGE_SIZE}
+            onPage={setOrderPage} unit="órdenes" />
         </Card>
       )}
 
@@ -1219,11 +1248,24 @@ export function Purchases() {
       {activeTab === 'suppliers' && (
         <Card>
           <CardHeader title={t.tab_suppliers} />
+          <div style={{ padding: '12px 18px 0' }}>
+            <input
+              value={supplierSearch}
+              onChange={e => { setSupplierSearch(e.target.value); setSupplierPage(0) }}
+              placeholder="Buscar por nombre, NIT o contacto…"
+              style={{
+                width: 260, padding: '7px 11px', borderRadius: 8, border: '1px solid var(--border)',
+                background: 'var(--surface-2)', color: 'var(--text)', fontSize: 12.5, fontFamily: 'inherit',
+              }}
+            />
+          </div>
           <div style={{ overflowX: 'auto' }}>
             {loadingSuppliers ? (
               <div style={{ padding: '40px 18px', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>Cargando…</div>
-            ) : suppliers.length === 0 ? (
-              <div style={{ padding: '40px 18px', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>{t.no_suppliers}</div>
+            ) : filteredSuppliers.length === 0 ? (
+              <div style={{ padding: '40px 18px', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
+                {suppliers.length === 0 ? t.no_suppliers : 'Sin proveedores que coincidan con la búsqueda.'}
+              </div>
             ) : (
               <table style={tableStyle}>
                 <thead>
@@ -1238,7 +1280,7 @@ export function Purchases() {
                   </tr>
                 </thead>
                 <tbody>
-                  {suppliers.map((s) => (
+                  {pagedSuppliers.map((s) => (
                     <tr key={s.id}
                       onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-2)')}
                       onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
@@ -1278,11 +1320,8 @@ export function Purchases() {
               </table>
             )}
           </div>
-          {suppliers.length > 0 && (
-            <div style={{ padding: '12px 18px' }}>
-              <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>{suppliers.length} {t.tab_suppliers.toLowerCase()}</span>
-            </div>
-          )}
+          <PaginationFooter total={filteredSuppliers.length} page={supplierPage} pageSize={PAGE_SIZE}
+            onPage={setSupplierPage} unit="proveedores" />
         </Card>
       )}
 

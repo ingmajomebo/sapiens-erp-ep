@@ -7,7 +7,7 @@ import {
   type FinancialAccountType,
 } from './api/cashBanksApi'
 import {
-  Card, CardHeader, KpiCard, GhostBtn, PrimaryBtn,
+  Card, CardHeader, KpiCard, GhostBtn, PrimaryBtn, PaginationFooter,
   tableStyle, thStyle, tdStyle,
 } from '../../shared/helpers'
 import { formatCOP } from '../../shared/currency'
@@ -136,6 +136,16 @@ function MovementsModal({ account, onClose }: { account: FinancialAccountDto; on
     queryKey: ['movements', account.id],
     queryFn: () => cashBanksApi.getMovements(account.id),
   })
+  const [movType, setMovType] = useState<'all' | 'INCOME' | 'EXPENSE'>('all')
+  const [movSearch, setMovSearch] = useState('')
+  const [movPage, setMovPage] = useState(0)
+  const MOV_PAGE_SIZE = 10
+
+  const mq = movSearch.trim().toLowerCase()
+  const filteredMovs = movements.filter(m =>
+    (movType === 'all' || m.movementType === movType) &&
+    (!mq || m.concept.toLowerCase().includes(mq) || (m.relatedDocument ?? '').toLowerCase().includes(mq)))
+  const pagedMovs = filteredMovs.slice(movPage * MOV_PAGE_SIZE, (movPage + 1) * MOV_PAGE_SIZE)
 
   const typeColors = TYPE_COLOR[account.accountType]
 
@@ -166,13 +176,40 @@ function MovementsModal({ account, onClose }: { account: FinancialAccountDto; on
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--muted)', lineHeight: 1 }}>×</button>
         </div>
 
+        {/* Filtros */}
+        <div style={{ display: 'flex', gap: 8, padding: '10px 22px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
+          <input
+            value={movSearch}
+            onChange={e => { setMovSearch(e.target.value); setMovPage(0) }}
+            placeholder="Buscar por concepto o documento…"
+            style={{
+              width: 240, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)',
+              background: 'var(--surface-2)', color: 'var(--text)', fontSize: 12.5, fontFamily: 'inherit',
+            }}
+          />
+          {([['all', 'Todos'], ['INCOME', 'Ingresos'], ['EXPENSE', 'Egresos']] as const).map(([v, label]) => (
+            <button key={v} onClick={() => { setMovType(v); setMovPage(0) }}
+              style={{
+                padding: '5px 12px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                fontFamily: 'inherit',
+                border: movType === v ? '1.5px solid var(--accent)' : '1.5px solid var(--border)',
+                background: movType === v ? 'var(--accent-weak)' : 'transparent',
+                color: movType === v ? 'var(--accent-text)' : 'var(--muted)',
+              }}>
+              {label}
+            </button>
+          ))}
+        </div>
+
         {/* Movements table */}
         <div style={{ overflowY: 'auto', flex: 1 }}>
           {isLoading ? (
             <div style={{ padding: '32px 22px', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>Cargando movimientos…</div>
-          ) : movements.length === 0 ? (
+          ) : filteredMovs.length === 0 ? (
             <div style={{ padding: '48px 22px', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
-              Sin movimientos aún. Los pagos realizados desde esta cuenta aparecerán aquí.
+              {movements.length === 0
+                ? 'Sin movimientos aún. Los pagos realizados desde esta cuenta aparecerán aquí.'
+                : 'Sin movimientos que coincidan con los filtros.'}
             </div>
           ) : (
             <table style={{ ...tableStyle, fontSize: 12.5 }}>
@@ -188,7 +225,7 @@ function MovementsModal({ account, onClose }: { account: FinancialAccountDto; on
                 </tr>
               </thead>
               <tbody>
-                {movements.map(m => (
+                {pagedMovs.map(m => (
                   <tr key={m.id}
                     onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-2)')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
@@ -223,6 +260,8 @@ function MovementsModal({ account, onClose }: { account: FinancialAccountDto; on
           )}
         </div>
 
+        <PaginationFooter total={filteredMovs.length} page={movPage} pageSize={MOV_PAGE_SIZE}
+          onPage={setMovPage} unit="movimientos" />
         <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '14px 22px', borderTop: '1px solid var(--border)' }}>
           <GhostBtn onClick={onClose}>Cerrar</GhostBtn>
         </div>
