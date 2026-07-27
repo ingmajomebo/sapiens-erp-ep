@@ -10,6 +10,7 @@ import java.util.UUID;
 public record WasteRequest(
         @NotNull UUID productId,
         @NotNull @DecimalMin("0.001") BigDecimal quantity,
+        UUID fromLocationId,   // nullable; defaults to the default storage location
         @NotBlank String reason,
         String notes,
         String createdBy

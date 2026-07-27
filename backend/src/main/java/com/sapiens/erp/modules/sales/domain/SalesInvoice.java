@@ -28,7 +28,7 @@ public class SalesInvoice extends AuditableEntity {
     @Id
     private UUID id;
 
-    @Column(name = "invoice_number", length = 20, nullable = false, unique = true)
+    @Column(name = "invoice_number", length = 20, nullable = true, unique = false)
     private String invoiceNumber;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -99,11 +99,10 @@ public class SalesInvoice extends AuditableEntity {
 
     // ── Fábrica y ciclo de vida ────────────────────────────────────────────────
 
-    /** El primer estado del flujo es BORRADOR (decisión de negocio). */
-    public static SalesInvoice draft(String invoiceNumber, SalesOrder order, String notes) {
+    /** El primer estado del flujo es BORRADOR (decisión de negocio). El número fiscal queda NULL hasta emitir. */
+    public static SalesInvoice draft(SalesOrder order, String notes) {
         SalesInvoice inv = new SalesInvoice();
         inv.id = UUID.randomUUID();
-        inv.invoiceNumber = invoiceNumber;
         inv.salesOrder = order;
         inv.customer = order.getCustomer();
         inv.status = SalesInvoiceStatus.DRAFT;
@@ -133,11 +132,12 @@ public class SalesInvoice extends AuditableEntity {
         this.total = sub.subtract(disc).add(tax);
     }
 
-    /** BORRADOR → EMITIDA: fija emisión y vencimiento según la forma de pago. */
-    public void emit(PaymentForm form, int termDays, InvoicePaymentMethod method) {
+    /** BORRADOR → EMITIDA: asigna el número fiscal y fija emisión/vencimiento según la forma de pago. */
+    public void emit(String invoiceNumber, PaymentForm form, int termDays, InvoicePaymentMethod method) {
         if (status != SalesInvoiceStatus.DRAFT) {
             throw new IllegalArgumentException("Solo un borrador puede emitirse (estado actual: " + status + ")");
         }
+        this.invoiceNumber = invoiceNumber;
         this.paymentForm = form != null ? form : PaymentForm.CASH;
         this.creditTermDays = this.paymentForm == PaymentForm.CREDIT ? Math.max(termDays, 0) : 0;
         this.paymentMethod = method;

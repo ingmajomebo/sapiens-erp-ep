@@ -93,7 +93,8 @@ public class AccountsReceivableService {
 
     @Transactional(readOnly = true)
     public PagedResponse<ReceivableResponse> listFiltered(UUID customerId, ReceivableStatus status,
-                                                          AgingBucket bucket, int page, int size) {
+                                                          AgingBucket bucket, boolean openOnly,
+                                                          int page, int size) {
         LocalDate today = LocalDate.now();
         LocalDate dueFrom = null;
         LocalDate dueTo = null;
@@ -106,7 +107,7 @@ public class AccountsReceivableService {
             }
         }
         Page<AccountsReceivable> result = receivableRepository.findFiltered(
-                customerId, status, dueFrom, dueTo, bucket != null, PageRequest.of(page, size));
+                customerId, status, dueFrom, dueTo, openOnly || bucket != null, PageRequest.of(page, size));
 
         Map<UUID, String> names = customerNames(result.getContent());
         List<ReceivableResponse> content = result.getContent().stream()

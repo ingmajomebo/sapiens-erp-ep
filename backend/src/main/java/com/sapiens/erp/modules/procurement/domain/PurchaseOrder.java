@@ -1,5 +1,6 @@
 package com.sapiens.erp.modules.procurement.domain;
 
+import com.sapiens.erp.modules.catalog.domain.Warehouse;
 import com.sapiens.erp.shared.domain.AuditableEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -39,6 +40,10 @@ public class PurchaseOrder extends AuditableEntity {
     @Column(length = 100)
     private String warehouse;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "warehouse_id")
+    private Warehouse warehouseRef;
+
     @Column(name = "payment_terms", length = 50)
     private String paymentTerms;
 
@@ -55,7 +60,7 @@ public class PurchaseOrder extends AuditableEntity {
     private List<PurchaseOrderLine> lines = new ArrayList<>();
 
     public static PurchaseOrder create(String orderNumber, Supplier supplier, LocalDate expectedDelivery,
-                                        String warehouse, String paymentTerms, String notes) {
+                                        String warehouse, Warehouse warehouseRef, String paymentTerms, String notes) {
         PurchaseOrder po = new PurchaseOrder();
         po.id = UUID.randomUUID();
         po.orderNumber = orderNumber;
@@ -63,6 +68,7 @@ public class PurchaseOrder extends AuditableEntity {
         po.status = PurchaseOrderStatus.DRAFT;
         po.expectedDelivery = expectedDelivery;
         po.warehouse = warehouse;
+        po.warehouseRef = warehouseRef;
         po.paymentTerms = paymentTerms;
         po.notes = notes;
         return po;

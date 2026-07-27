@@ -45,6 +45,7 @@ public class PaymentReceiptService {
     private final SalesInvoiceService salesInvoiceService;
     private final CustomerService customerService;
     private final UserRepository userRepository;
+    private final CashSessionService cashSessionService;
 
     @Transactional
     public PaymentReceiptResponse create(PaymentReceiptRequest req) {
@@ -104,6 +105,14 @@ public class PaymentReceiptService {
                 "Recibo de caja " + receipt.getNumber() + " · " + customerName,
                 receipt.getNumber(), receipt.getId());
 
+        com.sapiens.erp.modules.finance.domain.CashPaymentMethod cpm = toCashPaymentMethod(req.paymentMethod());
+        if (cpm != null) {
+            cashSessionService.autoMovement(
+                    com.sapiens.erp.modules.finance.domain.CashMovementType.SALE,
+                    com.sapiens.erp.modules.finance.domain.CashMovementDirection.IN,
+                    cpm, req.amount(), receipt.getNumber(), "Venta · " + customerName);
+        }
+
         log.info("Recibo {} creado por {} aplicado a {} factura(s)",
                 receipt.getNumber(), req.amount(), receivables.size());
         return toResponse(receipt);
@@ -147,6 +156,15 @@ public class PaymentReceiptService {
             financialAccountService.registerIncome(financialAccountId, amount,
                     "Recibo de caja " + receipt.getNumber() + " · " + customerName(ar.getCustomerId()),
                     receipt.getNumber(), receipt.getId());
+        }
+
+        com.sapiens.erp.modules.finance.domain.CashPaymentMethod cpm = toCashPaymentMethodFromInvoice(method);
+        if (cpm != null) {
+            cashSessionService.autoMovement(
+                    com.sapiens.erp.modules.finance.domain.CashMovementType.SALE,
+                    com.sapiens.erp.modules.finance.domain.CashMovementDirection.IN,
+                    cpm, amount, receipt.getNumber(),
+                    "Venta · " + customerName(ar.getCustomerId()));
         }
     }
 
@@ -215,6 +233,26 @@ public class PaymentReceiptService {
                 ? userRepository.findById(r.getVoidedBy()).map(u -> u.getEmail()).orElse(null)
                 : null;
         return PaymentReceiptResponse.from(r, customerName(r.getCustomerId()), voidedByEmail, apps);
+    }
+
+    private com.sapiens.erp.modules.finance.domain.CashPaymentMethod toCashPaymentMethod(ReceiptPaymentMethod m) {
+        return switch (m) {
+            case CASH -> com.sapiens.erp.modules.finance.domain.CashPaymentMethod.CASH;
+            case CARD -> com.sapiens.erp.modules.finance.domain.CashPaymentMethod.CARD;
+            case TRANSFER -> com.sapiens.erp.modules.finance.domain.CashPaymentMethod.TRANSFER;
+            default -> null;
+        };
+    }
+
+    private com.sapiens.erp.modules.finance.domain.CashPaymentMethod toCashPaymentMethodFromInvoice(
+            com.sapiens.erp.modules.sales.domain.InvoicePaymentMethod m) {
+        if (m == null) return null;
+        return switch (m) {
+            case CASH -> com.sapiens.erp.modules.finance.domain.CashPaymentMethod.CASH;
+            case CARD -> com.sapiens.erp.modules.finance.domain.CashPaymentMethod.CARD;
+            case TRANSFER -> com.sapiens.erp.modules.finance.domain.CashPaymentMethod.TRANSFER;
+            default -> null;
+        };
     }
 
     /** UUID del usuario autenticado (el JWT usa el id como subject). */

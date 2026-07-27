@@ -60,7 +60,7 @@ public class InventoryController {
     // ── Write operations ──────────────────────────────────────────────────────
 
     @PostMapping("/entries")
-    @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('INVENTORY_MOVEMENT_CREATE')")
     public ResponseEntity<MovementResponse> registerEntry(@Valid @RequestBody EntryRequest request) {
         MovementResponse response = inventoryService.registerEntry(request);
         return ResponseEntity
@@ -69,23 +69,47 @@ public class InventoryController {
     }
 
     @PostMapping("/exits")
-    @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('INVENTORY_MOVEMENT_CREATE')")
     public ResponseEntity<MovementResponse> registerExit(@Valid @RequestBody ExitRequest request) {
         MovementResponse response = inventoryService.registerExit(request);
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/wastes")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('INVENTORY_SHRINKAGE')")
     public ResponseEntity<MovementResponse> registerWaste(@Valid @RequestBody WasteRequest request) {
         MovementResponse response = inventoryService.registerWaste(request);
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/adjustments")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('INVENTORY_ADJUSTMENT')")
     public ResponseEntity<MovementResponse> registerAdjustment(@Valid @RequestBody AdjustmentRequest request) {
         MovementResponse response = inventoryService.registerAdjustment(request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/transfers")
+    @PreAuthorize("hasAuthority('INVENTORY_MOVEMENT_CREATE')")
+    public ResponseEntity<MovementResponse> registerTransfer(@Valid @RequestBody TransferRequest request) {
+        MovementResponse response = inventoryService.registerTransfer(request);
+        return ResponseEntity
+                .created(URI.create("/api/v1/inventory/movements/" + response.id()))
+                .body(response);
+    }
+
+    @GetMapping("/transfers")
+    public Page<MovementResponse> getTransfers(
+            @PageableDefault(size = 30, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        return inventoryService.getTransfers(pageable);
+    }
+
+    @PostMapping("/lots/{lotId}/assign-location")
+    @PreAuthorize("hasAuthority('INVENTORY_ADJUSTMENT')")
+    public ResponseEntity<LotResponse> assignLotLocation(
+            @PathVariable UUID lotId,
+            @Valid @RequestBody AssignLotLocationRequest request) {
+        LotResponse response = inventoryService.assignLotLocation(lotId, request.targetLocationId(), request.reason());
         return ResponseEntity.ok(response);
     }
 }

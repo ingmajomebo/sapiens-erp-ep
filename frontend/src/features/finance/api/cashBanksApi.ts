@@ -44,6 +44,15 @@ export const cashBanksApi = {
     return data
   },
 
+  update: async (id: string, req: FinancialAccountRequestDto): Promise<FinancialAccountDto> => {
+    const { data } = await client.put(`/financial-accounts/${id}`, req)
+    return data
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await client.delete(`/financial-accounts/${id}`)
+  },
+
   getMovements: async (id: string): Promise<FinancialMovementDto[]> => {
     const { data } = await client.get(`/financial-accounts/${id}/movements`)
     return data

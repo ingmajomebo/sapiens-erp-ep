@@ -38,7 +38,7 @@ public class PurchaseOrderController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('PROCUREMENT_ORDER_CREATE')")
     public ResponseEntity<PurchaseOrderResponse> create(@Valid @RequestBody PurchaseOrderRequest req) {
         PurchaseOrderResponse created = purchaseOrderService.create(req);
         return ResponseEntity
@@ -47,13 +47,13 @@ public class PurchaseOrderController {
     }
 
     @PostMapping("/{id}/confirm")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('PROCUREMENT_ORDER_APPROVE')")
     public ResponseEntity<PurchaseOrderResponse> confirm(@PathVariable UUID id) {
         return ResponseEntity.ok(purchaseOrderService.confirm(id));
     }
 
     @PostMapping("/{id}/receive")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('PROCUREMENT_RECEIVE')")
     public ResponseEntity<PurchaseOrderResponse> receive(
             @PathVariable UUID id,
             @Valid @RequestBody ReceiveRequest req) {
@@ -61,7 +61,7 @@ public class PurchaseOrderController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('PROCUREMENT_ORDER_APPROVE')")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         purchaseOrderService.delete(id);
         return ResponseEntity.noContent().build();

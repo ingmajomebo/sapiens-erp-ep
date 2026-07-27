@@ -13,6 +13,7 @@ import {
   type AiContextDto,
 } from './api/projectApi'
 import { toast } from '../../shared/toast'
+import { Select } from '../../shared/helpers'
 import { QaTab, AttachmentThumb } from './components/QaTab'
 import { DashboardTab } from './components/DashboardTab'
 import { ConfigTab } from './components/ConfigTab'
@@ -98,52 +99,70 @@ function TaskModal({
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
               <label style={labelStyle}>Tipo</label>
-              <select style={inputStyle} value={taskType} onChange={e => setTaskType(e.target.value as TaskType)}>
-                {(['DEV', 'QA', 'BUG', 'PLANNING', 'INFRA', 'DESIGN'] as TaskType[]).map(t => (
-                  <option key={t} value={t}>{TASK_TYPE_LABELS[t]}</option>
-                ))}
-              </select>
+              <Select
+                style={{ width: '100%' }}
+                value={taskType}
+                onChange={v => setTaskType(v as TaskType)}
+                options={(['DEV', 'QA', 'BUG', 'PLANNING', 'INFRA', 'DESIGN'] as TaskType[]).map(t => ({ value: t, label: TASK_TYPE_LABELS[t] }))}
+              />
             </div>
             <div>
               <label style={labelStyle}>Asignado a</label>
-              <select style={inputStyle} value={assignee} onChange={e => setAssignee(e.target.value)}>
-                <option value="">Sin asignar</option>
-                <option value="MANUEL">Manuel (DEV)</option>
-                <option value="ISKIAN">Iskian (QA)</option>
-              </select>
+              <Select
+                style={{ width: '100%' }}
+                value={assignee}
+                onChange={v => setAssignee(v)}
+                options={[
+                  { value: '', label: 'Sin asignar' },
+                  { value: 'MANUEL', label: 'Manuel (DEV)' },
+                  { value: 'ISKIAN', label: 'Iskian (QA)' },
+                ]}
+              />
             </div>
             <div>
               <label style={labelStyle}>Prioridad</label>
-              <select style={inputStyle} value={priority} onChange={e => setPriority(e.target.value as TaskPriority)}>
-                {(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as TaskPriority[]).map(p => (
-                  <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>
-                ))}
-              </select>
+              <Select
+                style={{ width: '100%' }}
+                value={priority}
+                onChange={v => setPriority(v as TaskPriority)}
+                options={(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as TaskPriority[]).map(p => ({ value: p, label: PRIORITY_LABELS[p] }))}
+              />
             </div>
             <div>
               <label style={labelStyle}>Sprint</label>
-              <select style={inputStyle} value={sprintId} onChange={e => setSprintId(e.target.value)}>
-                <option value="">Sin sprint</option>
-                {sprints.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
+              <Select
+                style={{ width: '100%' }}
+                value={sprintId}
+                onChange={v => setSprintId(v)}
+                options={[
+                  { value: '', label: 'Sin sprint' },
+                  ...sprints.map(s => ({ value: s.id, label: s.name })),
+                ]}
+              />
             </div>
             <div>
               <label style={labelStyle}>Módulo</label>
-              <select style={inputStyle} value={module} onChange={e => setModule(e.target.value)}>
-                <option value="">Sin módulo</option>
-                {MODULES.map(m => <option key={m} value={m}>{MODULE_LABELS[m]}</option>)}
-              </select>
+              <Select
+                style={{ width: '100%' }}
+                value={module}
+                onChange={v => setModule(v)}
+                options={[
+                  { value: '', label: 'Sin módulo' },
+                  ...MODULES.map(m => ({ value: m, label: MODULE_LABELS[m] })),
+                ]}
+              />
             </div>
             <div>
               <label style={labelStyle}>Historia vinculada</label>
-              <select style={inputStyle} value={userStoryId} onChange={e => setUserStoryId(e.target.value)}>
-                <option value="">Sin historia</option>
-                {stories.map(s => (
-                  <option key={s.id} value={s.id}>
-                    {s.reqId} — {(s.actionStatement ?? s.description ?? '').slice(0, 50)}
-                  </option>
-                ))}
-              </select>
+              <Select
+                style={{ width: '100%' }}
+                value={userStoryId}
+                onChange={v => setUserStoryId(v)}
+                options={[
+                  { value: '', label: 'Sin historia' },
+                  ...stories.map(s => ({ value: s.id, label: `${s.reqId} — ${(s.actionStatement ?? s.description ?? '').slice(0, 50)}` })),
+                ]}
+              />
             </div>
             <div>
               <label style={labelStyle}>Horas estimadas</label>
@@ -628,18 +647,24 @@ Módulo: ${moduleLabel}`)
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
               <label style={labelStyle}>Tipo de requisito</label>
-              <select style={inputStyle} value={category} onChange={e => setCategory(e.target.value as PromptCategory)}>
-                {(Object.keys(PROMPT_CAT_LABELS) as PromptCategory[]).map(c => (
-                  <option key={c} value={c}>{PROMPT_CAT_LABELS[c]}</option>
-                ))}
-              </select>
+              <Select
+                style={{ width: '100%' }}
+                value={category}
+                onChange={v => setCategory(v as PromptCategory)}
+                options={(Object.keys(PROMPT_CAT_LABELS) as PromptCategory[]).map(c => ({ value: c, label: PROMPT_CAT_LABELS[c] }))}
+              />
             </div>
             <div>
               <label style={labelStyle}>Módulo donde se implementará</label>
-              <select style={inputStyle} value={module} onChange={e => setModule(e.target.value)}>
-                <option value="">Sin módulo</option>
-                {MODULES.map(m => <option key={m} value={m}>{MODULE_LABELS[m]}</option>)}
-              </select>
+              <Select
+                style={{ width: '100%' }}
+                value={module}
+                onChange={v => setModule(v)}
+                options={[
+                  { value: '', label: 'Sin módulo' },
+                  ...MODULES.map(m => ({ value: m, label: MODULE_LABELS[m] })),
+                ]}
+              />
             </div>
           </div>
 
@@ -652,18 +677,15 @@ Módulo: ${moduleLabel}`)
             {/* §2 Historia de usuario */}
             <div>
               <label style={labelStyle}>§2 Historia de usuario</label>
-              <select
-                style={inputStyle}
+              <Select
+                style={{ width: '100%' }}
                 value={linkedStoryId}
-                onChange={e => setLinkedStoryId(e.target.value)}
-              >
-                <option value="">Sin historia vinculada</option>
-                {stories.map(s => (
-                  <option key={s.id} value={s.id}>
-                    {s.reqId} — {s.persona ? `Como ${s.persona}...` : s.description?.slice(0, 60) ?? s.reqId}
-                  </option>
-                ))}
-              </select>
+                onChange={v => setLinkedStoryId(v)}
+                options={[
+                  { value: '', label: 'Sin historia vinculada' },
+                  ...stories.map(s => ({ value: s.id, label: `${s.reqId} — ${s.persona ? `Como ${s.persona}...` : s.description?.slice(0, 60) ?? s.reqId}` })),
+                ]}
+              />
               {selectedStory && (
                 <div style={{ marginTop: 6, padding: '8px 10px', background: '#eef2ff', borderRadius: 6, fontSize: 12.5, color: '#4338ca', lineHeight: 1.6 }}>
                   <strong>{selectedStory.reqId}</strong>
@@ -1104,15 +1126,25 @@ function BoardTab({
   return (
     <div>
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, alignItems: 'center' }}>
-        <select style={{ ...inputStyle, width: 200 }} value={selectedSprint} onChange={e => setSelectedSprint(e.target.value)}>
-          <option value="">Todos los sprints</option>
-          {sprints.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
-        <select style={{ ...inputStyle, width: 160 }} value={selectedAssignee} onChange={e => setSelectedAssignee(e.target.value)}>
-          <option value="">Todos</option>
-          <option value="MANUEL">Manuel</option>
-          <option value="ISKIAN">Iskian</option>
-        </select>
+        <Select
+          style={{ width: 200 }}
+          value={selectedSprint}
+          onChange={v => setSelectedSprint(v)}
+          options={[
+            { value: '', label: 'Todos los sprints' },
+            ...sprints.map(s => ({ value: s.id, label: s.name })),
+          ]}
+        />
+        <Select
+          style={{ width: 160 }}
+          value={selectedAssignee}
+          onChange={v => setSelectedAssignee(v)}
+          options={[
+            { value: '', label: 'Todos' },
+            { value: 'MANUEL', label: 'Manuel' },
+            { value: 'ISKIAN', label: 'Iskian' },
+          ]}
+        />
         {(selectedSprint || selectedAssignee) && (
           <button style={btnSecondaryStyle} onClick={() => { setSelectedSprint(''); setSelectedAssignee('') }}>
             Limpiar ×
@@ -1211,27 +1243,43 @@ function TasksTab({
   return (
     <div>
       <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-        <select style={{ ...inputStyle, width: 180 }} value={filterSprint} onChange={e => setFilterSprint(e.target.value)}>
-          <option value="">Todos los sprints</option>
-          {sprints.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
-        <select style={{ ...inputStyle, width: 140 }} value={filterAssignee} onChange={e => setFilterAssignee(e.target.value)}>
-          <option value="">Todos</option>
-          <option value="MANUEL">Manuel</option>
-          <option value="ISKIAN">Iskian</option>
-        </select>
-        <select style={{ ...inputStyle, width: 150 }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-          <option value="">Todos los estados</option>
-          {(['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE'] as TaskStatus[]).map(s => (
-            <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-          ))}
-        </select>
-        <select style={{ ...inputStyle, width: 150 }} value={filterType} onChange={e => setFilterType(e.target.value)}>
-          <option value="">Todos los tipos</option>
-          {(['DEV', 'QA', 'BUG', 'PLANNING', 'INFRA', 'DESIGN'] as TaskType[]).map(t => (
-            <option key={t} value={t}>{TASK_TYPE_LABELS[t]}</option>
-          ))}
-        </select>
+        <Select
+          style={{ width: 180 }}
+          value={filterSprint}
+          onChange={v => setFilterSprint(v)}
+          options={[
+            { value: '', label: 'Todos los sprints' },
+            ...sprints.map(s => ({ value: s.id, label: s.name })),
+          ]}
+        />
+        <Select
+          style={{ width: 140 }}
+          value={filterAssignee}
+          onChange={v => setFilterAssignee(v)}
+          options={[
+            { value: '', label: 'Todos' },
+            { value: 'MANUEL', label: 'Manuel' },
+            { value: 'ISKIAN', label: 'Iskian' },
+          ]}
+        />
+        <Select
+          style={{ width: 150 }}
+          value={filterStatus}
+          onChange={v => setFilterStatus(v)}
+          options={[
+            { value: '', label: 'Todos los estados' },
+            ...(['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE'] as TaskStatus[]).map(s => ({ value: s, label: STATUS_LABELS[s] })),
+          ]}
+        />
+        <Select
+          style={{ width: 150 }}
+          value={filterType}
+          onChange={v => setFilterType(v)}
+          options={[
+            { value: '', label: 'Todos los tipos' },
+            ...(['DEV', 'QA', 'BUG', 'PLANNING', 'INFRA', 'DESIGN'] as TaskType[]).map(t => ({ value: t, label: TASK_TYPE_LABELS[t] })),
+          ]}
+        />
         {hasFilters && (
           <button style={btnSecondaryStyle} onClick={() => { setFilterSprint(''); setFilterAssignee(''); setFilterStatus(''); setFilterType('') }}>
             Limpiar ×
@@ -1285,20 +1333,11 @@ function TasksTab({
                     : <span style={{ color: 'var(--muted)', fontSize: 12 }}>—</span>}
                 </td>
                 <td style={{ padding: '10px 12px' }}>
-                  <select
+                  <Select
                     value={t.status}
-                    onChange={e => onStatusChange(t.id, e.target.value as TaskStatus)}
-                    onClick={e => e.stopPropagation()}
-                    style={{
-                      fontSize: 11.5, fontWeight: 600, borderRadius: 6, border: 'none',
-                      padding: '3px 8px', cursor: 'pointer', fontFamily: 'inherit',
-                      background: STATUS_BG[t.status], color: STATUS_COLORS[t.status],
-                    }}
-                  >
-                    {(['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE'] as TaskStatus[]).map(s => (
-                      <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-                    ))}
-                  </select>
+                    onChange={v => onStatusChange(t.id, v as TaskStatus)}
+                    options={(['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE'] as TaskStatus[]).map(s => ({ value: s, label: STATUS_LABELS[s] }))}
+                  />
                 </td>
                 <td style={{ padding: '10px 8px' }}>
                   <div style={{ display: 'flex', gap: 4 }}>
@@ -1360,18 +1399,24 @@ function PromptsTab({
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, alignItems: 'center' }}>
         <button style={btnPrimaryStyle} onClick={onCreatePrompt}>+ Nuevo prompt</button>
         <button style={{ ...btnSecondaryStyle, color: '#6366f1', borderColor: '#6366f1' }} onClick={onOpenAiChat}>🤖 Asistente IA</button>
-        <select style={{ ...inputStyle, width: 160 }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-          <option value="">Todos los estados</option>
-          {(['DRAFT', 'READY', 'USED', 'ARCHIVED'] as PromptStatus[]).map(s => (
-            <option key={s} value={s}>{PROMPT_STATUS_LABELS[s]}</option>
-          ))}
-        </select>
-        <select style={{ ...inputStyle, width: 180 }} value={filterCat} onChange={e => setFilterCat(e.target.value)}>
-          <option value="">Todas las categorías</option>
-          {(Object.keys(PROMPT_CAT_LABELS) as PromptCategory[]).map(c => (
-            <option key={c} value={c}>{PROMPT_CAT_LABELS[c]}</option>
-          ))}
-        </select>
+        <Select
+          style={{ width: 160 }}
+          value={filterStatus}
+          onChange={v => setFilterStatus(v)}
+          options={[
+            { value: '', label: 'Todos los estados' },
+            ...(['DRAFT', 'READY', 'USED', 'ARCHIVED'] as PromptStatus[]).map(s => ({ value: s, label: PROMPT_STATUS_LABELS[s] })),
+          ]}
+        />
+        <Select
+          style={{ width: 180 }}
+          value={filterCat}
+          onChange={v => setFilterCat(v)}
+          options={[
+            { value: '', label: 'Todas las categorías' },
+            ...(Object.keys(PROMPT_CAT_LABELS) as PromptCategory[]).map(c => ({ value: c, label: PROMPT_CAT_LABELS[c] })),
+          ]}
+        />
         {(filterStatus || filterCat) && (
           <button style={btnSecondaryStyle} onClick={() => { setFilterStatus(''); setFilterCat('') }}>Limpiar ×</button>
         )}
@@ -1510,26 +1555,33 @@ function EpicModal({
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <div>
               <label style={labelStyle}>Módulo</label>
-              <select style={inputStyle} value={module} onChange={e => setModule(e.target.value)}>
-                <option value="">Sin módulo</option>
-                {MODULES.map(m => <option key={m} value={m}>{MODULE_LABELS[m]}</option>)}
-              </select>
+              <Select
+                style={{ width: '100%' }}
+                value={module}
+                onChange={v => setModule(v)}
+                options={[
+                  { value: '', label: 'Sin módulo' },
+                  ...MODULES.map(m => ({ value: m, label: MODULE_LABELS[m] })),
+                ]}
+              />
             </div>
             <div>
               <label style={labelStyle}>Prioridad</label>
-              <select style={inputStyle} value={priority} onChange={e => setPriority(e.target.value as TaskPriority)}>
-                {(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as TaskPriority[]).map(p => (
-                  <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>
-                ))}
-              </select>
+              <Select
+                style={{ width: '100%' }}
+                value={priority}
+                onChange={v => setPriority(v as TaskPriority)}
+                options={(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as TaskPriority[]).map(p => ({ value: p, label: PRIORITY_LABELS[p] }))}
+              />
             </div>
             <div>
               <label style={labelStyle}>Estado</label>
-              <select style={inputStyle} value={status} onChange={e => setStatus(e.target.value as EpicStatus)}>
-                {(Object.keys(EPIC_STATUS_LABELS) as EpicStatus[]).map(s => (
-                  <option key={s} value={s}>{EPIC_STATUS_LABELS[s]}</option>
-                ))}
-              </select>
+              <Select
+                style={{ width: '100%' }}
+                value={status}
+                onChange={v => setStatus(v as EpicStatus)}
+                options={(Object.keys(EPIC_STATUS_LABELS) as EpicStatus[]).map(s => ({ value: s, label: EPIC_STATUS_LABELS[s] }))}
+              />
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
@@ -1606,40 +1658,57 @@ function UserStoryModal({
             </div>
             <div>
               <label style={labelStyle}>Tipo</label>
-              <select style={inputStyle} value={storyType} onChange={e => setStoryType(e.target.value as StoryType)}>
-                <option value="FUNCTIONAL">Funcional</option>
-                <option value="NON_FUNCTIONAL">No Funcional</option>
-              </select>
+              <Select
+                style={{ width: '100%' }}
+                value={storyType}
+                onChange={v => setStoryType(v as StoryType)}
+                options={[
+                  { value: 'FUNCTIONAL', label: 'Funcional' },
+                  { value: 'NON_FUNCTIONAL', label: 'No Funcional' },
+                ]}
+              />
             </div>
             <div>
               <label style={labelStyle}>Épica</label>
-              <select style={inputStyle} value={epicId} onChange={e => setEpicId(e.target.value)}>
-                <option value="">Sin épica</option>
-                {epics.map(ep => <option key={ep.id} value={ep.id}>{ep.code} — {ep.name}</option>)}
-              </select>
+              <Select
+                style={{ width: '100%' }}
+                value={epicId}
+                onChange={v => setEpicId(v)}
+                options={[
+                  { value: '', label: 'Sin épica' },
+                  ...epics.map(ep => ({ value: ep.id, label: `${ep.code} — ${ep.name}` })),
+                ]}
+              />
             </div>
             <div>
               <label style={labelStyle}>Módulo</label>
-              <select style={inputStyle} value={module} onChange={e => setModule(e.target.value)}>
-                <option value="">Sin módulo</option>
-                {MODULES.map(m => <option key={m} value={m}>{MODULE_LABELS[m]}</option>)}
-              </select>
+              <Select
+                style={{ width: '100%' }}
+                value={module}
+                onChange={v => setModule(v)}
+                options={[
+                  { value: '', label: 'Sin módulo' },
+                  ...MODULES.map(m => ({ value: m, label: MODULE_LABELS[m] })),
+                ]}
+              />
             </div>
             <div>
               <label style={labelStyle}>Prioridad</label>
-              <select style={inputStyle} value={priority} onChange={e => setPriority(e.target.value)}>
-                {(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).map(p => (
-                  <option key={p} value={p}>{PRIORITY_LABELS[p as never]}</option>
-                ))}
-              </select>
+              <Select
+                style={{ width: '100%' }}
+                value={priority}
+                onChange={v => setPriority(v)}
+                options={(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).map(p => ({ value: p, label: PRIORITY_LABELS[p as never] }))}
+              />
             </div>
             <div>
               <label style={labelStyle}>Estado</label>
-              <select style={inputStyle} value={status} onChange={e => setStatus(e.target.value as StoryStatus)}>
-                {(Object.keys(STORY_STATUS_LABELS) as StoryStatus[]).map(s => (
-                  <option key={s} value={s}>{STORY_STATUS_LABELS[s]}</option>
-                ))}
-              </select>
+              <Select
+                style={{ width: '100%' }}
+                value={status}
+                onChange={v => setStatus(v as StoryStatus)}
+                options={(Object.keys(STORY_STATUS_LABELS) as StoryStatus[]).map(s => ({ value: s, label: STORY_STATUS_LABELS[s] }))}
+              />
             </div>
           </div>
 
@@ -1669,12 +1738,15 @@ function UserStoryModal({
             <>
               <div>
                 <label style={labelStyle}>Categoría RNF</label>
-                <select style={inputStyle} value={nfrCat} onChange={e => setNfrCat(e.target.value)}>
-                  <option value="">Sin categoría</option>
-                  {(Object.keys(NFR_CAT_LABELS) as NfrCategory[]).map(c => (
-                    <option key={c} value={c}>{NFR_CAT_LABELS[c]}</option>
-                  ))}
-                </select>
+                <Select
+                  style={{ width: '100%' }}
+                  value={nfrCat}
+                  onChange={v => setNfrCat(v)}
+                  options={[
+                    { value: '', label: 'Sin categoría' },
+                    ...(Object.keys(NFR_CAT_LABELS) as NfrCategory[]).map(c => ({ value: c, label: NFR_CAT_LABELS[c] })),
+                  ]}
+                />
               </div>
               <div>
                 <label style={labelStyle}>Criterio de aceptación medible</label>
@@ -1747,11 +1819,12 @@ function ScenarioModal({
             </div>
             <div>
               <label style={labelStyle}>Tipo</label>
-              <select style={inputStyle} value={type} onChange={e => setType(e.target.value as ScenarioType)}>
-                {(Object.keys(SCENARIO_TYPE_LABELS) as ScenarioType[]).map(t => (
-                  <option key={t} value={t}>{SCENARIO_TYPE_LABELS[t]}</option>
-                ))}
-              </select>
+              <Select
+                style={{ width: '100%' }}
+                value={type}
+                onChange={v => setType(v as ScenarioType)}
+                options={(Object.keys(SCENARIO_TYPE_LABELS) as ScenarioType[]).map(t => ({ value: t, label: SCENARIO_TYPE_LABELS[t] }))}
+              />
             </div>
           </div>
           <div>
@@ -2311,21 +2384,34 @@ function RequirementsTab({
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, alignItems: 'center', flexWrap: 'wrap' }}>
         <button style={{ ...btnPrimaryStyle, background: '#6366f1' }} onClick={onCreateEpic}>+ Nueva épica</button>
         <button style={btnPrimaryStyle} onClick={onCreateStory}>+ Nueva historia</button>
-        <select style={{ ...inputStyle, width: 180 }} value={filterType} onChange={e => setFilterType(e.target.value)}>
-          <option value="">Todos los tipos</option>
-          <option value="FUNCTIONAL">Funcionales (RF)</option>
-          <option value="NON_FUNCTIONAL">No funcionales (RNF)</option>
-        </select>
-        <select style={{ ...inputStyle, width: 160 }} value={filterModule} onChange={e => setFilterModule(e.target.value)}>
-          <option value="">Todos los módulos</option>
-          {MODULES.map(m => <option key={m} value={m}>{MODULE_LABELS[m]}</option>)}
-        </select>
-        <select style={{ ...inputStyle, width: 170 }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-          <option value="">Todos los estados</option>
-          {(Object.keys(STORY_STATUS_LABELS) as StoryStatus[]).map(s => (
-            <option key={s} value={s}>{STORY_STATUS_LABELS[s]}</option>
-          ))}
-        </select>
+        <Select
+          style={{ width: 180 }}
+          value={filterType}
+          onChange={v => setFilterType(v)}
+          options={[
+            { value: '', label: 'Todos los tipos' },
+            { value: 'FUNCTIONAL', label: 'Funcionales (RF)' },
+            { value: 'NON_FUNCTIONAL', label: 'No funcionales (RNF)' },
+          ]}
+        />
+        <Select
+          style={{ width: 160 }}
+          value={filterModule}
+          onChange={v => setFilterModule(v)}
+          options={[
+            { value: '', label: 'Todos los módulos' },
+            ...MODULES.map(m => ({ value: m, label: MODULE_LABELS[m] })),
+          ]}
+        />
+        <Select
+          style={{ width: 170 }}
+          value={filterStatus}
+          onChange={v => setFilterStatus(v)}
+          options={[
+            { value: '', label: 'Todos los estados' },
+            ...(Object.keys(STORY_STATUS_LABELS) as StoryStatus[]).map(s => ({ value: s, label: STORY_STATUS_LABELS[s] })),
+          ]}
+        />
         {hasFilters && (
           <button style={btnSecondaryStyle} onClick={() => { setFilterType(''); setFilterModule(''); setFilterStatus('') }}>
             Limpiar ×

@@ -1,6 +1,9 @@
 import React from 'react'
 import { Button } from './Button'
 import type { ButtonProps } from './Button'
+import { Select } from './Select'
+export { Select }
+export type { SelectOption, SelectProps } from './Select'
 
 // Tile color map
 const tileColors: Record<string, { bg: string; color: string }> = {
@@ -207,31 +210,7 @@ export function FilterSelect({ value, onChange, options }: {
   onChange: (v: string) => void
   options: { value: string; label: string }[]
 }) {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 7,
-        padding: '7px 12px',
-        borderRadius: 8,
-        border: '1px solid var(--border)',
-        background: 'var(--surface)',
-        color: 'var(--text-2)',
-        fontSize: 12.5,
-        fontWeight: 550,
-        cursor: 'pointer',
-        fontFamily: 'inherit',
-        outline: 'none',
-      }}
-    >
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>{o.label}</option>
-      ))}
-    </select>
-  )
+  return <Select value={value} onChange={onChange} options={options} />
 }
 
 // Simple bar chart (CSS-only)

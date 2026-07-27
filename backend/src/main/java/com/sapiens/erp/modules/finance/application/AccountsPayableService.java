@@ -20,6 +20,7 @@ public class AccountsPayableService {
     private final AccountsPayableRepository repository;
     private final SupplierPaymentRepository paymentRepository;
     private final FinancialAccountService financialAccountService;
+    private final CashSessionService cashSessionService;
 
     @Transactional(readOnly = true)
     public List<AccountsPayableResponse> listAll() {
@@ -93,6 +94,12 @@ public class AccountsPayableService {
             financialAccountService.registerExpense(
                     req.financialAccountId(), req.amount(), concept,
                     ap.getInvoiceNumber(), payment.getId());
+            cashSessionService.autoMovementIfCashAccount(
+                    req.financialAccountId(),
+                    com.sapiens.erp.modules.finance.domain.CashMovementType.AP_PAYMENT,
+                    com.sapiens.erp.modules.finance.domain.CashMovementDirection.OUT,
+                    req.amount(), ap.getInvoiceNumber(),
+                    "Pago proveedor " + ap.getSupplier().getName());
         }
 
         ap.registerPayment(req.amount());

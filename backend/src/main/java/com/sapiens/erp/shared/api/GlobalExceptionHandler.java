@@ -1,9 +1,14 @@
 package com.sapiens.erp.shared.api;
 
 import com.sapiens.erp.modules.finance.domain.exception.ExpenseAlreadyReconciledException;
+import com.sapiens.erp.modules.finance.domain.exception.InsufficientCashException;
 import com.sapiens.erp.modules.finance.domain.exception.PaymentExceedsBalanceException;
 import com.sapiens.erp.modules.finance.domain.exception.ReceivableHasActivePaymentsException;
 import com.sapiens.erp.modules.inventory.domain.exception.InsufficientStockException;
+import com.sapiens.erp.modules.inventory.domain.exception.InsufficientStockAtLocationException;
+import com.sapiens.erp.modules.inventory.domain.exception.LocationHasStockException;
+import com.sapiens.erp.modules.inventory.domain.exception.LocationNotFoundException;
+import com.sapiens.erp.modules.inventory.domain.exception.SameLocationTransferException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -39,6 +44,30 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(422, "INSUFFICIENT_STOCK", ex.getMessage()));
     }
 
+    @ExceptionHandler(InsufficientStockAtLocationException.class)
+    public ResponseEntity<ErrorResponse> handleInsufficientStockAtLocation(InsufficientStockAtLocationException ex) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(ErrorResponse.of(422, "INSUFFICIENT_STOCK_AT_LOCATION", ex.getMessage()));
+    }
+
+    @ExceptionHandler(LocationNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleLocationNotFound(LocationNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ErrorResponse.of(404, "LOCATION_NOT_FOUND", ex.getMessage()));
+    }
+
+    @ExceptionHandler(LocationHasStockException.class)
+    public ResponseEntity<ErrorResponse> handleLocationHasStock(LocationHasStockException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of(409, "LOCATION_HAS_STOCK", ex.getMessage()));
+    }
+
+    @ExceptionHandler(SameLocationTransferException.class)
+    public ResponseEntity<ErrorResponse> handleSameLocationTransfer(SameLocationTransferException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.of(400, "SAME_LOCATION_TRANSFER", ex.getMessage()));
+    }
+
     @ExceptionHandler(ExpenseAlreadyReconciledException.class)
     public ResponseEntity<ErrorResponse> handleExpenseReconciled(ExpenseAlreadyReconciledException ex) {
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
@@ -49,6 +78,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleReceivableHasActivePayments(ReceivableHasActivePaymentsException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ErrorResponse.of(409, "RECEIVABLE_HAS_ACTIVE_PAYMENTS", ex.getMessage()));
+    }
+
+    @ExceptionHandler(InsufficientCashException.class)
+    public ResponseEntity<ErrorResponse> handleInsufficientCash(InsufficientCashException ex) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(ErrorResponse.of(422, "INSUFFICIENT_CASH", ex.getMessage()));
     }
 
     @ExceptionHandler(PaymentExceedsBalanceException.class)

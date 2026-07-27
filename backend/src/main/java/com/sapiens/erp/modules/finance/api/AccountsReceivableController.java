@@ -25,30 +25,31 @@ public class AccountsReceivableController {
     private final AccountsReceivableService service;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('FINANCE_RECEIVABLES_MANAGE')")
     public ResponseEntity<PagedResponse<ReceivableResponse>> list(
             @RequestParam(required = false) UUID customerId,
             @RequestParam(required = false) ReceivableStatus status,
             @RequestParam(required = false) AgingBucket agingBucket,
+            @RequestParam(defaultValue = "true") boolean openOnly,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(service.listFiltered(customerId, status, agingBucket, page, size));
+        return ResponseEntity.ok(service.listFiltered(customerId, status, agingBucket, openOnly, page, size));
     }
 
     @GetMapping("/aging")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('FINANCE_RECEIVABLES_MANAGE')")
     public ResponseEntity<AgingReportResponse> aging() {
         return ResponseEntity.ok(service.aging());
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('FINANCE_RECEIVABLES_MANAGE')")
     public ResponseEntity<ReceivableDetailResponse> detail(@PathVariable UUID id) {
         return ResponseEntity.ok(service.getDetail(id));
     }
 
     @GetMapping("/{id}/payments")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('FINANCE_RECEIVABLES_MANAGE')")
     public ResponseEntity<List<AppliedReceiptResponse>> payments(@PathVariable UUID id) {
         return ResponseEntity.ok(service.paymentsFor(id));
     }

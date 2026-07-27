@@ -2,10 +2,13 @@ package com.sapiens.erp.modules.inventory.application;
 
 import com.sapiens.erp.modules.catalog.domain.Product;
 import com.sapiens.erp.modules.catalog.domain.ProductRepository;
+import com.sapiens.erp.modules.catalog.domain.Warehouse;
+import com.sapiens.erp.modules.catalog.domain.WarehouseRepository;
 import com.sapiens.erp.modules.catalog.domain.exception.ProductNotFoundException;
 import com.sapiens.erp.modules.inventory.api.dto.*;
 import com.sapiens.erp.modules.inventory.domain.*;
-import com.sapiens.erp.modules.inventory.domain.exception.InsufficientStockException;
+import com.sapiens.erp.modules.inventory.domain.exception.*;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,6 +19,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +29,10 @@ public class InventoryService {
     private final LotRepository lotRepository;
     private final InventoryMovementRepository movementRepository;
     private final MovementLotRepository movementLotRepository;
+    private final WarehouseRepository warehouseRepository;
+    private final StorageLocationService storageLocationService;
+    private final LotLocationCorrectionService lotLocationCorrectionService;
+    private final EntityManager entityManager;
 
     // ── Stock queries ──────────────────────────────────────────────────────────
 
@@ -32,13 +40,23 @@ public class InventoryService {
     public StockResponse getStock(UUID productId) {
         Product product = requireProduct(productId);
         BigDecimal stock = movementRepository.calculateCurrentStock(productId);
-        return StockResponse.of(product, stock);
+        return StockResponse.of(product, stock, warehouseStocksFor(productId));
     }
 
     @Transactional(readOnly = true)
     public Page<StockResponse> listStock(Pageable pageable) {
         return productRepository.findAllByDeletedAtIsNull(pageable)
-                .map(p -> StockResponse.of(p, movementRepository.calculateCurrentStock(p.getId())));
+                .map(p -> StockResponse.of(p, movementRepository.calculateCurrentStock(p.getId()),
+                        warehouseStocksFor(p.getId())));
+    }
+
+    private List<StockResponse.WarehouseStock> warehouseStocksFor(UUID productId) {
+        return movementRepository.stockAllLocations(productId).stream()
+                .map(row -> new StockResponse.WarehouseStock(
+                        UUID.fromString(row[0].toString()),
+                        row[1].toString(),
+                        new BigDecimal(row[2].toString())))
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
@@ -76,11 +94,21 @@ public class InventoryService {
                 .map(MovementResponse::of);
     }
 
+    @Transactional(readOnly = true)
+    public Page<MovementResponse> getTransfers(Pageable pageable) {
+        return movementRepository.findByMovementTypeOrderByCreatedAtDesc(MovementType.TRANSFER, pageable)
+                .map(MovementResponse::of);
+    }
+
     // ── ENTRY: receive goods, create lot, recalculate average cost ───────────
 
     @Transactional
     public MovementResponse registerEntry(EntryRequest req) {
         Product product = requireProduct(req.productId());
+
+        Warehouse warehouse = req.warehouseId() != null
+                ? warehouseRepository.findById(req.warehouseId()).orElse(null)
+                : null;
 
         Lot lot = Lot.create(
                 product,
@@ -89,7 +117,8 @@ public class InventoryService {
                 req.receivedAt(),
                 req.expiresAt(),
                 req.invoiceNumber(),
-                req.notes()
+                req.notes(),
+                warehouse
         );
         lotRepository.save(lot);
 
@@ -101,6 +130,7 @@ public class InventoryService {
                 product, MovementType.ENTRY,
                 req.quantity(), req.purchasePrice(),
                 prevAvg, product.getAverageCost(),
+                null, warehouse,
                 null, req.notes(), req.createdBy()
         );
         movementRepository.save(movement);
@@ -113,12 +143,17 @@ public class InventoryService {
     @Transactional
     public MovementResponse registerExit(ExitRequest req) {
         Product product = requireProduct(req.productId());
+        Warehouse fromLocation = resolveFromLocation(req.fromLocationId());
 
-        List<LotConsumption> consumptions = consumeFIFO(product, req.quantity());
+        List<LotConsumption> consumptions = fromLocation != null
+                ? consumeFIFOAtLocation(product, req.quantity(), fromLocation)
+                : consumeFIFO(product, req.quantity());
 
         InventoryMovement movement = InventoryMovement.create(
                 product, MovementType.EXIT,
                 req.quantity(), null,
+                null, null,
+                fromLocation, null,
                 req.reason(), req.notes(), req.createdBy()
         );
         movementRepository.save(movement);
@@ -132,12 +167,17 @@ public class InventoryService {
     @Transactional
     public MovementResponse registerWaste(WasteRequest req) {
         Product product = requireProduct(req.productId());
+        Warehouse fromLocation = resolveFromLocation(req.fromLocationId());
 
-        List<LotConsumption> consumptions = consumeFIFO(product, req.quantity());
+        List<LotConsumption> consumptions = fromLocation != null
+                ? consumeFIFOAtLocation(product, req.quantity(), fromLocation)
+                : consumeFIFO(product, req.quantity());
 
         InventoryMovement movement = InventoryMovement.create(
                 product, MovementType.WASTE,
                 req.quantity(), null,
+                null, null,
+                fromLocation, null,
                 req.reason(), req.notes(), req.createdBy()
         );
         movementRepository.save(movement);
@@ -152,11 +192,18 @@ public class InventoryService {
     public MovementResponse registerAdjustment(AdjustmentRequest req) {
         Product product = requireProduct(req.productId());
 
+        Warehouse fromLocation = null;
+        Warehouse toLocation = null;
+
         if (req.type() == MovementType.NEGATIVE_ADJUSTMENT) {
             BigDecimal current = movementRepository.calculateCurrentStock(req.productId());
             if (current.compareTo(req.quantity()) < 0) {
                 throw new InsufficientStockException(req.productId(), current, req.quantity());
             }
+            fromLocation = resolveFromLocation(req.fromLocationId());
+        } else if (req.type() == MovementType.POSITIVE_ADJUSTMENT && req.toLocationId() != null) {
+            toLocation = warehouseRepository.findByIdAndDeletedAtIsNull(req.toLocationId())
+                    .orElseThrow(() -> new LocationNotFoundException(req.toLocationId()));
         }
 
         BigDecimal prevAvg = null;
@@ -170,14 +217,87 @@ public class InventoryService {
                 product, req.type(),
                 req.quantity(), req.unitCost(),
                 prevAvg, prevAvg != null ? product.getAverageCost() : null,
+                fromLocation, toLocation,
                 req.reason(), req.notes(), req.createdBy()
         );
         movementRepository.save(movement);
         return MovementResponse.of(movement);
     }
 
+    // ── ASSIGN LOT LOCATION (historical correction) ───────────────────────────
+
+    @Transactional
+    public LotResponse assignLotLocation(UUID lotId, UUID targetLocationId, String reason) {
+        Lot lot = lotRepository.findById(lotId)
+                .orElseThrow(() -> new IllegalArgumentException("Lote no encontrado: " + lotId));
+
+        if (lot.getWarehouse() != null) {
+            throw new IllegalArgumentException(
+                    "El lote ya tiene ubicación asignada: " + lot.getWarehouse().getName());
+        }
+
+        Warehouse location = warehouseRepository.findByIdAndDeletedAtIsNull(targetLocationId)
+                .orElseThrow(() -> new LocationNotFoundException(targetLocationId));
+
+        String invoiceNumber = lot.getInvoiceNumber();
+        if (invoiceNumber == null) {
+            throw new IllegalArgumentException("El lote no tiene número de factura para vincular el movimiento");
+        }
+
+        UUID productId = lot.getProduct().getId();
+        lotLocationCorrectionService.correctLotAndMovement(
+                lotId, location.getId(), productId, invoiceNumber);
+
+        // JdbcTemplate bypasses Hibernate's first-level cache; refresh to see the updated state
+        entityManager.refresh(lot);
+        BigDecimal available = lotRepository.calculateAvailableQuantity(lotId);
+        return LotResponse.of(lot, available != null ? available : BigDecimal.ZERO);
+    }
+
+    // ── TRANSFER ──────────────────────────────────────────────────────────────
+
+    @Transactional
+    public MovementResponse registerTransfer(TransferRequest req) {
+        if (req.fromLocationId().equals(req.toLocationId())) {
+            throw new SameLocationTransferException();
+        }
+
+        Product product = requireProduct(req.productId());
+
+        Warehouse fromLocation = warehouseRepository.findByIdAndDeletedAtIsNull(req.fromLocationId())
+                .orElseThrow(() -> new LocationNotFoundException(req.fromLocationId()));
+        Warehouse toLocation = warehouseRepository.findByIdAndDeletedAtIsNull(req.toLocationId())
+                .orElseThrow(() -> new LocationNotFoundException(req.toLocationId()));
+
+        List<LotConsumption> consumptions;
+        if (req.lotId() != null) {
+            // Specific lot requested
+            Lot lot = lotRepository.findById(req.lotId())
+                    .orElseThrow(() -> new IllegalArgumentException("Lot not found: " + req.lotId()));
+            BigDecimal available = lotRepository.calculateAvailableAtLocation(req.lotId(), req.fromLocationId());
+            if (available == null || available.compareTo(req.quantity()) < 0) {
+                BigDecimal avail = available != null ? available : BigDecimal.ZERO;
+                throw new InsufficientStockAtLocationException(
+                        product.getId(), fromLocation.getName(), avail, req.quantity());
+            }
+            consumptions = List.of(new LotConsumption(lot, req.quantity()));
+        } else {
+            consumptions = consumeFIFOAtLocation(product, req.quantity(), fromLocation);
+        }
+
+        InventoryMovement movement = InventoryMovement.createTransfer(
+                product, req.quantity(), fromLocation, toLocation,
+                req.reason(), req.notes(), req.createdBy()
+        );
+        movementRepository.save(movement);
+        saveMovementLots(movement, consumptions);
+
+        return MovementResponse.of(movement);
+    }
+
     // ── FIFO helpers ───────────────────────────────────────────────────────────
 
+    /** Global FIFO across all locations (backward-compatible). */
     private List<LotConsumption> consumeFIFO(Product product, BigDecimal required) {
         BigDecimal currentStock = movementRepository.calculateCurrentStock(product.getId());
         if (currentStock.compareTo(required) < 0) {
@@ -190,16 +310,53 @@ public class InventoryService {
 
         for (Lot lot : lots) {
             if (remaining.compareTo(BigDecimal.ZERO) <= 0) break;
-
             BigDecimal available = lotRepository.calculateAvailableQuantity(lot.getId());
             if (available == null || available.compareTo(BigDecimal.ZERO) <= 0) continue;
-
             BigDecimal toConsume = available.min(remaining);
             consumptions.add(new LotConsumption(lot, toConsume));
             remaining = remaining.subtract(toConsume);
         }
 
         return consumptions;
+    }
+
+    /** Location-aware FIFO — only consumes lots available at the given location. */
+    private List<LotConsumption> consumeFIFOAtLocation(Product product, BigDecimal required,
+                                                        Warehouse location) {
+        BigDecimal stockAtLocation = movementRepository.calculateStockAtLocation(
+                product.getId(), location.getId());
+        if (stockAtLocation.compareTo(required) < 0) {
+            throw new InsufficientStockAtLocationException(
+                    product.getId(), location.getName(), stockAtLocation, required);
+        }
+
+        List<Object[]> rows = lotRepository.findAvailableByProductAndLocationFIFO(
+                product.getId(), location.getId());
+        List<LotConsumption> consumptions = new ArrayList<>();
+        BigDecimal remaining = required;
+
+        for (Object[] row : rows) {
+            if (remaining.compareTo(BigDecimal.ZERO) <= 0) break;
+            UUID lotId = row[0] instanceof UUID ? (UUID) row[0] : UUID.fromString(row[0].toString());
+            BigDecimal available = new BigDecimal(row[3].toString());
+            if (available.compareTo(BigDecimal.ZERO) <= 0) continue;
+            Lot lot = lotRepository.findById(lotId)
+                    .orElseThrow(() -> new IllegalStateException("Lot not found: " + lotId));
+            BigDecimal toConsume = available.min(remaining);
+            consumptions.add(new LotConsumption(lot, toConsume));
+            remaining = remaining.subtract(toConsume);
+        }
+
+        return consumptions;
+    }
+
+    /** Resolve fromLocationId: explicit > default > null (falls back to global FIFO). */
+    private Warehouse resolveFromLocation(UUID fromLocationId) {
+        if (fromLocationId != null) {
+            return warehouseRepository.findByIdAndDeletedAtIsNull(fromLocationId)
+                    .orElseThrow(() -> new LocationNotFoundException(fromLocationId));
+        }
+        return storageLocationService.findDefault().orElse(null);
     }
 
     private void saveMovementLots(InventoryMovement movement, List<LotConsumption> consumptions) {

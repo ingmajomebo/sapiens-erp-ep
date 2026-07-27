@@ -22,19 +22,19 @@ public class PaymentReceiptController {
     private final PaymentReceiptService service;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('FINANCE_PAYMENT_REGISTER')")
     public ResponseEntity<PaymentReceiptResponse> create(@Valid @RequestBody PaymentReceiptRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(request));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('FINANCE_PAYMENT_REGISTER')")
     public ResponseEntity<PaymentReceiptResponse> detail(@PathVariable UUID id) {
         return ResponseEntity.ok(service.getById(id));
     }
 
     @PostMapping("/{id}/void")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('FINANCE_PAYMENT_REGISTER')")
     public ResponseEntity<PaymentReceiptResponse> voidReceipt(@PathVariable UUID id,
                                                               @Valid @RequestBody VoidRequest request) {
         return ResponseEntity.ok(service.voidReceipt(id, request.reason()));

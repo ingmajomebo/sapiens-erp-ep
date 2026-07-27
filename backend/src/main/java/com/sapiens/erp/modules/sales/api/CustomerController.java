@@ -48,13 +48,13 @@ public class CustomerController {
     }
 
     @PostMapping("/full")
-    @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('SALES_CUSTOMER_MANAGE')")
     public ResponseEntity<CustomerListItem> create(@Valid @RequestBody UpsertRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(customerService.createFull(request));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('SALES_CUSTOMER_MANAGE')")
     public ResponseEntity<CustomerListItem> update(@PathVariable UUID id,
                                                    @Valid @RequestBody UpsertRequest request) {
         return ResponseEntity.ok(customerService.update(id, request));

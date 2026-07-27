@@ -44,6 +44,33 @@ public class FinancialAccountService {
                 .toList();
     }
 
+    @Transactional
+    public FinancialAccountResponse update(UUID id, FinancialAccountRequest req) {
+        FinancialAccount account = accountRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Cuenta no encontrada"));
+        account.setName(req.name().trim());
+        account.setAccountType(req.accountType());
+        account.setNotes(req.notes());
+        return FinancialAccountResponse.from(accountRepository.save(account));
+    }
+
+    @Transactional
+    public void delete(UUID id) {
+        FinancialAccount account = accountRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Cuenta no encontrada"));
+        account.setDeletedAt(java.time.Instant.now());
+        accountRepository.save(account);
+    }
+
+    @Transactional(readOnly = true)
+    public List<FinancialMovementResponse> getRecentMovements(int limit) {
+        return movementRepository.findRecentMovements(Math.min(limit, 200)).stream()
+                .map(FinancialMovementResponse::from)
+                .toList();
+    }
+
     /**
      * Called internally by AccountsPayableService when a supplier payment is registered.
      * Decreases the account balance and records the movement.

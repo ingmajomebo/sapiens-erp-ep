@@ -7,7 +7,7 @@ import {
   type FinancialAccountType,
 } from './api/cashBanksApi'
 import {
-  Card, CardHeader, KpiCard, GhostBtn, PrimaryBtn, PaginationFooter,
+  Card, CardHeader, KpiCard, GhostBtn, PrimaryBtn, Select, PaginationFooter,
   tableStyle, thStyle, tdStyle,
 } from '../../shared/helpers'
 import { formatCOP } from '../../shared/currency'
@@ -55,28 +55,36 @@ const fieldLabel = (text: string) => (
   </div>
 )
 
-// ── New account modal ─────────────────────────────────────────────────────────
+// ── Account form modal (create & edit) ────────────────────────────────────────
 
-function NewAccountModal({ onClose }: { onClose: () => void }) {
+function AccountFormModal({ account, onClose }: { account: FinancialAccountDto | null; onClose: () => void }) {
   const qc = useQueryClient()
-  const [name, setName]               = useState('')
-  const [type, setType]               = useState<FinancialAccountType>('CASH')
-  const [initialBalance, setInitial]  = useState('')
-  const [notes, setNotes]             = useState('')
+  const isEdit = account !== null
+  const [name, setName]              = useState(account?.name ?? '')
+  const [type, setType]              = useState<FinancialAccountType>(account?.accountType ?? 'CASH')
+  const [initialBalance, setInitial] = useState(account == null ? '' : String(account.initialBalance))
+  const [notes, setNotes]            = useState(account?.notes ?? '')
 
   const mutation = useMutation({
-    mutationFn: () => cashBanksApi.create({
-      name: name.trim(),
-      accountType: type,
-      initialBalance: initialBalance ? parseFloat(initialBalance) : 0,
-      notes: notes.trim() || undefined,
-    }),
+    mutationFn: () => {
+      const req = {
+        name: name.trim(),
+        accountType: type,
+        initialBalance: initialBalance ? parseFloat(initialBalance) : 0,
+        notes: notes.trim() || undefined,
+      }
+      return isEdit ? cashBanksApi.update(account.id, req) : cashBanksApi.create(req)
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['financial-accounts'] })
-      toast('Cuenta creada correctamente', 'success')
+      toast(isEdit ? 'Cuenta actualizada' : 'Cuenta creada correctamente', 'success')
       onClose()
     },
-    onError: (err: Error) => toast(err.message ?? 'Error al crear la cuenta', 'error'),
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+        ?? 'Error al guardar la cuenta'
+      toast(msg, 'error')
+    },
   })
 
   const canSave = name.trim().length > 0 && !mutation.isPending
@@ -85,7 +93,9 @@ function NewAccountModal({ onClose }: { onClose: () => void }) {
     <div style={overlay} onClick={onClose}>
       <div style={modal} onClick={e => e.stopPropagation()}>
         <div style={{ padding: '18px 22px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>Nueva cuenta financiera</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
+            {isEdit ? 'Editar cuenta' : 'Nueva cuenta financiera'}
+          </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--muted)', lineHeight: 1 }}>×</button>
         </div>
 
@@ -98,18 +108,22 @@ function NewAccountModal({ onClose }: { onClose: () => void }) {
 
           <div>
             {fieldLabel('Tipo *')}
-            <select value={type} onChange={e => setType(e.target.value as FinancialAccountType)}
-              style={{ ...inputStyle, appearance: 'none' as const, cursor: 'pointer' }}>
-              {ACCOUNT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-            </select>
+            <Select
+              style={{ width: '100%' }}
+              value={type}
+              onChange={v => setType(v as FinancialAccountType)}
+              options={ACCOUNT_TYPES}
+            />
           </div>
 
-          <div>
-            {fieldLabel('Saldo inicial')}
-            <input type="number" min={0} step={0.01} value={initialBalance}
-              onChange={e => setInitial(e.target.value)}
-              placeholder="0" style={inputStyle} />
-          </div>
+          {!isEdit && (
+            <div>
+              {fieldLabel('Saldo inicial')}
+              <input type="number" min={0} step={0.01} value={initialBalance}
+                onChange={e => setInitial(e.target.value)}
+                placeholder="0" style={inputStyle} />
+            </div>
+          )}
 
           <div>
             {fieldLabel('Observación (opcional)')}
@@ -121,8 +135,61 @@ function NewAccountModal({ onClose }: { onClose: () => void }) {
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '14px 22px', borderTop: '1px solid var(--border)' }}>
           <GhostBtn onClick={onClose} disabled={mutation.isPending}>Cancelar</GhostBtn>
           <PrimaryBtn onClick={() => mutation.mutate()} disabled={!canSave}>
-            {mutation.isPending ? 'Guardando…' : 'Crear cuenta'}
+            {mutation.isPending ? 'Guardando…' : isEdit ? 'Guardar cambios' : 'Crear cuenta'}
           </PrimaryBtn>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Delete confirmation modal ─────────────────────────────────────────────────
+
+function DeleteAccountModal({ account, onClose }: { account: FinancialAccountDto; onClose: () => void }) {
+  const qc = useQueryClient()
+
+  const mutation = useMutation({
+    mutationFn: () => cashBanksApi.delete(account.id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['financial-accounts'] })
+      toast('Cuenta eliminada', 'info')
+      onClose()
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+        ?? 'Error al eliminar la cuenta'
+      toast(msg, 'error')
+    },
+  })
+
+  return (
+    <div style={overlay} onClick={onClose}>
+      <div style={{ ...modal, maxWidth: 420 }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding: '18px 22px 14px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--neg)' }}>Eliminar cuenta</div>
+        </div>
+        <div style={{ padding: '20px 22px' }}>
+          <p style={{ fontSize: 13.5, color: 'var(--text-2)', margin: 0, lineHeight: 1.6 }}>
+            ¿Estás seguro de que deseas eliminar la cuenta{' '}
+            <strong style={{ color: 'var(--text)' }}>{account.name}</strong>?
+          </p>
+          <p style={{ fontSize: 12.5, color: 'var(--muted)', margin: '10px 0 0', lineHeight: 1.5 }}>
+            Los movimientos históricos quedarán guardados para referencia contable.
+          </p>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '14px 22px', borderTop: '1px solid var(--border)' }}>
+          <GhostBtn onClick={onClose} disabled={mutation.isPending}>Cancelar</GhostBtn>
+          <button
+            onClick={() => mutation.mutate()}
+            disabled={mutation.isPending}
+            style={{
+              padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
+              background: 'var(--neg)', color: '#fff', fontSize: 13, fontWeight: 600,
+              fontFamily: 'inherit', opacity: mutation.isPending ? 0.6 : 1,
+            }}
+          >
+            {mutation.isPending ? 'Eliminando…' : 'Eliminar cuenta'}
+          </button>
         </div>
       </div>
     </div>
@@ -272,17 +339,23 @@ function MovementsModal({ account, onClose }: { account: FinancialAccountDto; on
 
 // ── Account card ──────────────────────────────────────────────────────────────
 
-function AccountCard({ account, onClick }: { account: FinancialAccountDto; onClick: () => void }) {
+function AccountCard({
+  account, onClick, onEdit, onDelete,
+}: {
+  account: FinancialAccountDto
+  onClick: () => void
+  onEdit: (e: React.MouseEvent) => void
+  onDelete: (e: React.MouseEvent) => void
+}) {
   const colors = TYPE_COLOR[account.accountType]
   const isNegative = account.currentBalance < 0
 
   return (
     <div
-      onClick={onClick}
       style={{
         background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14,
-        padding: '20px', cursor: 'pointer', transition: 'box-shadow 0.15s, border-color 0.15s',
-        boxShadow: 'var(--shadow-sm)',
+        padding: '20px', transition: 'box-shadow 0.15s, border-color 0.15s',
+        boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column',
       }}
       onMouseEnter={e => {
         (e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 20px rgba(0,0,0,0.1)'
@@ -327,9 +400,38 @@ function AccountCard({ account, onClick }: { account: FinancialAccountDto; onCli
         </div>
       </div>
 
-      {/* Footer */}
-      <div style={{ marginTop: 14, textAlign: 'right' }}>
-        <span style={{ fontSize: 11.5, color: 'var(--accent-text)', fontWeight: 600 }}>Ver movimientos →</span>
+      {/* Footer: actions */}
+      <div style={{ marginTop: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button
+            onClick={onEdit}
+            title="Editar cuenta"
+            style={{
+              padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border)',
+              background: 'var(--surface-2)', color: 'var(--text-2)', cursor: 'pointer',
+              fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
+            }}
+          >
+            Editar
+          </button>
+          <button
+            onClick={onDelete}
+            title="Eliminar cuenta"
+            style={{
+              padding: '5px 12px', borderRadius: 7, border: '1px solid color-mix(in srgb, var(--neg) 30%, transparent)',
+              background: 'color-mix(in srgb, var(--neg) 8%, transparent)', color: 'var(--neg)',
+              cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
+            }}
+          >
+            Eliminar
+          </button>
+        </div>
+        <button
+          onClick={onClick}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+        >
+          <span style={{ fontSize: 11.5, color: 'var(--accent-text)', fontWeight: 600 }}>Ver movimientos →</span>
+        </button>
       </div>
     </div>
   )
@@ -362,17 +464,18 @@ function AccountIcon({ type, color }: { type: FinancialAccountType; color: strin
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export function CashBanks() {
-  const [showNew, setShowNew]           = useState(false)
-  const [selected, setSelected]         = useState<FinancialAccountDto | null>(null)
+  const [formTarget, setFormTarget]   = useState<FinancialAccountDto | null | 'new'>(null)
+  const [deleteTarget, setDeleteTarget] = useState<FinancialAccountDto | null>(null)
+  const [movTarget, setMovTarget]     = useState<FinancialAccountDto | null>(null)
 
   const { data: accounts = [], isLoading } = useQuery<FinancialAccountDto[]>({
     queryKey: ['financial-accounts'],
     queryFn: cashBanksApi.listAll,
   })
 
-  const totalBalance  = accounts.reduce((s, a) => s + a.currentBalance, 0)
-  const cashBalance   = accounts.filter(a => a.accountType === 'CASH').reduce((s, a) => s + a.currentBalance, 0)
-  const bankBalance   = accounts.filter(a => a.accountType === 'BANK').reduce((s, a) => s + a.currentBalance, 0)
+  const totalBalance   = accounts.reduce((s, a) => s + a.currentBalance, 0)
+  const cashBalance    = accounts.filter(a => a.accountType === 'CASH').reduce((s, a) => s + a.currentBalance, 0)
+  const bankBalance    = accounts.filter(a => a.accountType === 'BANK').reduce((s, a) => s + a.currentBalance, 0)
   const digitalBalance = accounts.filter(a => a.accountType === 'DIGITAL_WALLET').reduce((s, a) => s + a.currentBalance, 0)
 
   return (
@@ -380,16 +483,16 @@ export function CashBanks() {
 
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
-        <KpiCard label="Total en cuentas"    value={formatCOP(totalBalance)} />
-        <KpiCard label="Total en cajas"      value={formatCOP(cashBalance)} trendPositive />
-        <KpiCard label="Total en bancos"     value={formatCOP(bankBalance)} trendPositive />
+        <KpiCard label="Total en cuentas"     value={formatCOP(totalBalance)} />
+        <KpiCard label="Total en cajas"       value={formatCOP(cashBalance)}    trendPositive />
+        <KpiCard label="Total en bancos"      value={formatCOP(bankBalance)}    trendPositive />
         <KpiCard label="Billeteras digitales" value={formatCOP(digitalBalance)} trendPositive />
       </div>
 
       {/* Accounts list */}
       <Card>
         <CardHeader title="Cuentas financieras" action={
-          <PrimaryBtn onClick={() => setShowNew(true)}>+ Nueva cuenta</PrimaryBtn>
+          <PrimaryBtn onClick={() => setFormTarget('new')}>+ Nueva cuenta</PrimaryBtn>
         } />
 
         <div style={{ padding: '18px' }}>
@@ -402,20 +505,39 @@ export function CashBanks() {
               <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 12 }}>
                 No hay cuentas financieras aún. Crea una para comenzar.
               </div>
-              <PrimaryBtn onClick={() => setShowNew(true)}>+ Nueva cuenta</PrimaryBtn>
+              <PrimaryBtn onClick={() => setFormTarget('new')}>+ Nueva cuenta</PrimaryBtn>
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
               {accounts.map(a => (
-                <AccountCard key={a.id} account={a} onClick={() => setSelected(a)} />
+                <AccountCard
+                  key={a.id}
+                  account={a}
+                  onClick={() => setMovTarget(a)}
+                  onEdit={e => { e.stopPropagation(); setFormTarget(a) }}
+                  onDelete={e => { e.stopPropagation(); setDeleteTarget(a) }}
+                />
               ))}
             </div>
           )}
         </div>
       </Card>
 
-      {showNew  && <NewAccountModal onClose={() => setShowNew(false)} />}
-      {selected && <MovementsModal account={selected} onClose={() => setSelected(null)} />}
+      {formTarget !== null && (
+        <AccountFormModal
+          account={formTarget === 'new' ? null : formTarget}
+          onClose={() => setFormTarget(null)}
+        />
+      )}
+      {deleteTarget && (
+        <DeleteAccountModal
+          account={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+        />
+      )}
+      {movTarget && (
+        <MovementsModal account={movTarget} onClose={() => setMovTarget(null)} />
+      )}
     </div>
   )
 }

@@ -7,6 +7,7 @@ import {
   type RunType, type RunEnvironment, type StoryStatus, type QaAttachmentDto,
 } from '../api/projectApi'
 import { toast } from '../../../shared/toast'
+import { Select } from '../../../shared/helpers'
 import {
   Badge, Avatar,
   STORY_STATUS_LABELS, STORY_STATUS_COLORS,
@@ -333,11 +334,12 @@ function NewRunModal({ epics, stories, onClose, onSave, isPending }: {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <div>
               <label style={labelStyle}>Tipo</label>
-              <select style={inputStyle} value={runType} onChange={e => setRunType(e.target.value as RunType)}>
-                {(Object.keys(RUN_TYPE_LABELS) as RunType[]).map(t => (
-                  <option key={t} value={t}>{RUN_TYPE_LABELS[t]}</option>
-                ))}
-              </select>
+              <Select
+                style={{ width: '100%' }}
+                value={runType}
+                onChange={v => setRunType(v as RunType)}
+                options={(Object.keys(RUN_TYPE_LABELS) as RunType[]).map(t => ({ value: t, label: RUN_TYPE_LABELS[t] }))}
+              />
             </div>
             <div>
               <label style={labelStyle}>Build</label>
@@ -346,11 +348,12 @@ function NewRunModal({ epics, stories, onClose, onSave, isPending }: {
             </div>
             <div>
               <label style={labelStyle}>Ambiente</label>
-              <select style={inputStyle} value={environment} onChange={e => setEnvironment(e.target.value as RunEnvironment)}>
-                {(Object.keys(RUN_ENV_LABELS) as RunEnvironment[]).map(en => (
-                  <option key={en} value={en}>{RUN_ENV_LABELS[en]}</option>
-                ))}
-              </select>
+              <Select
+                style={{ width: '100%' }}
+                value={environment}
+                onChange={v => setEnvironment(v as RunEnvironment)}
+                options={(Object.keys(RUN_ENV_LABELS) as RunEnvironment[]).map(en => ({ value: en, label: RUN_ENV_LABELS[en] }))}
+              />
             </div>
           </div>
 
@@ -374,10 +377,15 @@ function NewRunModal({ epics, stories, onClose, onSave, isPending }: {
               <input style={inputStyle} placeholder="regression" value={tag} onChange={e => setTag(e.target.value)} />
             )}
             {scopeType === 'EPIC' && (
-              <select style={inputStyle} value={epicId} onChange={e => setEpicId(e.target.value)}>
-                <option value="">Selecciona una épica</option>
-                {epics.map(ep => <option key={ep.id} value={ep.id}>{ep.code} — {ep.name}</option>)}
-              </select>
+              <Select
+                style={{ width: '100%' }}
+                value={epicId}
+                onChange={v => setEpicId(v)}
+                options={[
+                  { value: '', label: 'Selecciona una épica' },
+                  ...epics.map(ep => ({ value: ep.id, label: `${ep.code} — ${ep.name}` })),
+                ]}
+              />
             )}
             {scopeType === 'STORIES' && (
               <div style={{ maxHeight: 180, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>

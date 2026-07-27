@@ -171,14 +171,18 @@ public class SalesInvoiceService {
     public InvoiceListResponse createDraftForOrder(UUID orderId) {
         SalesOrder order = orderRepository.findByIdAndDeletedAtIsNull(orderId)
                 .orElseThrow(() -> new SalesOrderNotFoundException(orderId));
-        if (order.getStatus() == SalesOrderStatus.CANCELLED) {
-            throw new IllegalArgumentException("No se puede facturar un pedido cancelado");
+        if (order.getStatus() == SalesOrderStatus.PENDING
+                || order.getStatus() == SalesOrderStatus.PREPARING
+                || order.getStatus() == SalesOrderStatus.CANCELLED) {
+            throw new IllegalArgumentException(
+                "La factura puede generarse desde que el pedido está en despacho o fue entregado. Estado actual: "
+                        + order.getStatus());
         }
         if (!invoiceRepository.findActiveByOrderIds(List.of(orderId)).isEmpty()) {
             throw new IllegalArgumentException("El pedido " + order.getOrderNumber() + " ya tiene una factura activa");
         }
 
-        SalesInvoice invoice = SalesInvoice.draft(nextInvoiceNumber(), order, null);
+        SalesInvoice invoice = SalesInvoice.draft(order, null);
         for (SalesOrderLine ol : order.getLines()) {
             if (ol.getDeletedAt() != null) continue;
             invoice.addLine(SalesInvoiceLine.create(ol.getProduct(), ol.getProductName(),
@@ -190,12 +194,12 @@ public class SalesInvoiceService {
         return InvoiceListResponse.from(invoice, BigDecimal.ZERO);
     }
 
-    /** BORRADOR → EMITIDA. */
+    /** BORRADOR → EMITIDA. El número fiscal se asigna aquí de forma atómica (misma transacción). */
     @Transactional
     public InvoiceListResponse emit(UUID id, EmitRequest req) {
         SalesInvoice inv = findActive(id);
         SalesInvoiceStatus from = inv.getStatus();
-        inv.emit(req.paymentForm(), req.creditTermDays() != null ? req.creditTermDays() : 0, req.paymentMethod());
+        inv.emit(nextInvoiceNumber(), req.paymentForm(), req.creditTermDays() != null ? req.creditTermDays() : 0, req.paymentMethod());
         invoiceRepository.save(inv);
         // Descuenta inventario en la misma transacción: si falta stock lanza 422 y todo revierte
         decrementStockForSale(inv);
@@ -334,7 +338,7 @@ public class SalesInvoiceService {
             var product = line.getProduct();
             if (product == null || !product.isInventoryTrackingEnabled()) continue;
             inventoryService.registerExit(new ExitRequest(
-                    product.getId(), line.getQuantity(),
+                    product.getId(), line.getQuantity(), null,
                     "Venta " + inv.getInvoiceNumber(), null, principal));
         }
     }
@@ -348,7 +352,8 @@ public class SalesInvoiceService {
             if (product == null || !product.isInventoryTrackingEnabled()) continue;
             inventoryService.registerAdjustment(new AdjustmentRequest(
                     product.getId(), MovementType.POSITIVE_ADJUSTMENT, line.getQuantity(),
-                    null, "Anulación venta " + inv.getInvoiceNumber() + ": " + reason, null, principal));
+                    null, null, null,
+                    "Anulación venta " + inv.getInvoiceNumber() + ": " + reason, null, principal));
         }
     }
 

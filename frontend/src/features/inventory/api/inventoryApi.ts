@@ -1,6 +1,12 @@
 import client from '../../../api/client'
 import type { PaginatedResponse, MovementType, UnitOfMeasure, StockStatus } from '../../../shared/types'
 
+export interface WarehouseStockDto {
+  warehouseId: string
+  warehouseName: string
+  stock: number
+}
+
 export interface StockDto {
   productId: string
   productName: string
@@ -8,6 +14,7 @@ export interface StockDto {
   currentStock: number
   minimumStock: number
   stockStatus: StockStatus
+  warehouseStocks: WarehouseStockDto[]
 }
 
 export interface MovementDto {
@@ -17,6 +24,10 @@ export interface MovementDto {
   movementType: MovementType
   quantity: number
   unitCost: number | null
+  fromLocationId: string | null
+  fromLocationName: string | null
+  toLocationId: string | null
+  toLocationName: string | null
   reason: string | null
   notes: string | null
   createdBy: string | null
@@ -34,6 +45,8 @@ export interface LotDto {
   expiresAt: string | null
   invoiceNumber: string | null
   notes: string | null
+  warehouseId: string | null
+  warehouseName: string | null
   createdAt: string
 }
 
@@ -44,6 +57,17 @@ export interface CreateEntryDto {
   receivedAt?: string | null
   expiresAt?: string | null
   invoiceNumber?: string | null
+  notes?: string | null
+  createdBy?: string | null
+}
+
+export interface TransferRequestDto {
+  productId: string
+  lotId?: string | null
+  fromLocationId: string
+  toLocationId: string
+  quantity: number
+  reason?: string | null
   notes?: string | null
   createdBy?: string | null
 }
@@ -61,6 +85,13 @@ export const inventoryApi = {
     return data
   },
 
+  getTransfers: async (page = 0, size = 30): Promise<PaginatedResponse<MovementDto>> => {
+    const { data } = await client.get('/inventory/transfers', {
+      params: { page, size, sort: 'createdAt,desc' },
+    })
+    return data
+  },
+
   getLots: async (productId: string): Promise<LotDto[]> => {
     const { data } = await client.get(`/inventory/lots/${productId}`)
     return data
@@ -73,6 +104,16 @@ export const inventoryApi = {
 
   createEntry: async (req: CreateEntryDto): Promise<MovementDto> => {
     const { data } = await client.post('/inventory/entries', req)
+    return data
+  },
+
+  createTransfer: async (req: TransferRequestDto): Promise<MovementDto> => {
+    const { data } = await client.post('/inventory/transfers', req)
+    return data
+  },
+
+  assignLotLocation: async (lotId: string, targetLocationId: string, reason: string): Promise<LotDto> => {
+    const { data } = await client.post(`/inventory/lots/${lotId}/assign-location`, { targetLocationId, reason })
     return data
   },
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Card, KpiCard, CardHeader, StatusChip,
-  PrimaryBtn, GhostBtn, FilterSelect,
+  PrimaryBtn, GhostBtn, FilterSelect, Select,
   tableStyle, thStyle, tdStyle,
 } from '../../shared/helpers'
 import { toast } from '../../shared/toast'
@@ -57,7 +57,7 @@ function CancelInvoiceModal({ invoice, onClose }: { invoice: SalesInvoiceDto; on
       qc.invalidateQueries({ queryKey: ['sales-invoices'] })
       qc.invalidateQueries({ queryKey: ['sales-orders'] })
       toast(invoice.status === 'DRAFT'
-        ? `Borrador ${inv.invoiceNumber} cancelado`
+        ? `Borrador cancelado (pedido ${invoice.orderNumber})`
         : `Factura ${inv.invoiceNumber} cancelada · nota crédito generada`, 'info')
       onClose()
     },
@@ -70,7 +70,9 @@ function CancelInvoiceModal({ invoice, onClose }: { invoice: SalesInvoiceDto; on
   return (
     <div style={overlay} onClick={onClose}>
       <div style={modalBox} onClick={e => e.stopPropagation()}>
-        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>Cancelar factura {invoice.invoiceNumber}</div>
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>
+          {invoice.invoiceNumber ? `Cancelar factura ${invoice.invoiceNumber}` : `Cancelar borrador · pedido ${invoice.orderNumber}`}
+        </div>
         <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 14 }}>
           {invoice.customerName} · {formatCOP(invoice.total)}
           {invoice.status !== 'DRAFT' && ' · se generará una nota crédito'}
@@ -90,65 +92,137 @@ function CancelInvoiceModal({ invoice, onClose }: { invoice: SalesInvoiceDto; on
   )
 }
 
-// ─── Modal: emitir borrador ───────────────────────────────────────────────────
+// ─── Modal: cobrar borrador (emite internamente, luego registra el pago) ────────
 
-function EmitModal({ invoice, onClose }: { invoice: SalesInvoiceDto; onClose: () => void }) {
+type DraftPayMode = 'full' | 'partial' | 'credit'
+
+function DraftPaymentModal({ invoice, onClose }: { invoice: SalesInvoiceDto; onClose: () => void }) {
   const qc = useQueryClient()
-  const [paymentForm, setPaymentForm] = useState<PaymentForm>('CASH')
-  const [creditDays, setCreditDays] = useState('15')
+  const [mode, setMode] = useState<DraftPayMode>('full')
+  const [partialAmt, setPartialAmt] = useState(String(invoice.total))
   const [method, setMethod] = useState<InvoicePaymentMethod>('CASH')
+  const [creditDays, setCreditDays] = useState('30')
 
-  const emitMut = useMutation({
-    mutationFn: () => salesInvoiceApi.emit(invoice.id, {
-      paymentForm,
-      creditTermDays: paymentForm === 'CREDIT' ? parseInt(creditDays) : 0,
-      paymentMethod: method,
-    }),
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ['sales-invoices'] })
+    qc.invalidateQueries({ queryKey: ['sales-orders'] })
+  }
+
+  const mut = useMutation({
+    mutationFn: async () => {
+      if (mode === 'credit') {
+        return await salesInvoiceApi.emit(invoice.id, {
+          paymentForm: 'CREDIT',
+          creditTermDays: parseInt(creditDays),
+          paymentMethod: method,
+        })
+      }
+      await salesInvoiceApi.emit(invoice.id, { paymentForm: 'CASH', creditTermDays: 0, paymentMethod: method })
+      const amount = mode === 'full' ? invoice.total : parseFloat(partialAmt)
+      return await salesInvoiceApi.registerPayment(invoice.id, { amount, paymentMethod: method })
+    },
     onSuccess: inv => {
-      qc.invalidateQueries({ queryKey: ['sales-invoices'] })
-      qc.invalidateQueries({ queryKey: ['sales-orders'] })
-      toast(`Factura ${inv.invoiceNumber} emitida`, 'success')
+      invalidate()
+      if (mode === 'credit') {
+        toast(`Factura ${inv.invoiceNumber} emitida a crédito · ${creditDays} días`, 'success')
+      } else if (mode === 'full') {
+        toast(`Factura ${inv.invoiceNumber} cobrada`, 'success')
+      } else {
+        toast(`Factura ${inv.invoiceNumber} · saldo ${formatCOP(inv.balance)} registrado en CxC`, 'success')
+      }
       onClose()
     },
     onError: (e: unknown) => {
+      invalidate()
       const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast(msg ?? 'Error al emitir la factura', 'error')
+      toast(msg ?? 'Error al procesar', 'error')
     },
+  })
+
+  const partialVal = parseFloat(partialAmt) || 0
+  const partialValid = partialVal > 0 && partialVal < invoice.total
+  const canSubmit = !mut.isPending && (mode !== 'partial' || partialValid)
+
+  const tabStyle = (active: boolean): React.CSSProperties => ({
+    flex: 1, padding: '7px 10px', border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+    borderRadius: 8, background: active ? 'color-mix(in srgb, var(--accent) 12%, transparent)' : 'var(--bg)',
+    color: active ? 'var(--accent-text)' : 'var(--muted)', fontWeight: active ? 700 : 500,
+    fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center',
   })
 
   return (
     <div style={overlay} onClick={onClose}>
       <div style={modalBox} onClick={e => e.stopPropagation()}>
-        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>Emitir factura {invoice.invoiceNumber}</div>
-        <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 14 }}>
-          {invoice.customerName} · {formatCOP(invoice.total)}
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Cobrar factura · {invoice.orderNumber}</div>
+        <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16 }}>
+          {invoice.customerName} · Total: <b style={{ color: 'var(--text)' }}>{formatCOP(invoice.total)}</b>
         </div>
-        <label style={labelSm}>FORMA DE PAGO</label>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-          {([['CASH', 'Contado'], ['CREDIT', 'Crédito']] as [PaymentForm, string][]).map(([f, l]) => (
-            <button key={f} type="button" onClick={() => setPaymentForm(f)}
-              style={{
-                ...inputStyle, width: 'auto', cursor: 'pointer', fontWeight: paymentForm === f ? 700 : 500,
-                borderColor: paymentForm === f ? 'var(--accent)' : 'var(--border)',
-              }}>{l}</button>
-          ))}
-          {paymentForm === 'CREDIT' && (
-            <select style={{ ...inputStyle, width: 110 }} value={creditDays} onChange={e => setCreditDays(e.target.value)}>
-              <option value="15">15 días</option>
-              <option value="30">30 días</option>
-            </select>
-          )}
+
+        {/* Selector de modo */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+          <button type="button" style={tabStyle(mode === 'full')} onClick={() => setMode('full')}>Pago completo</button>
+          <button type="button" style={tabStyle(mode === 'partial')} onClick={() => setMode('partial')}>Abono parcial</button>
+          <button type="button" style={tabStyle(mode === 'credit')} onClick={() => setMode('credit')}>A crédito</button>
         </div>
-        <label style={labelSm}>MEDIO DE PAGO PREVISTO</label>
-        <select style={{ ...inputStyle, marginBottom: 16 }} value={method} onChange={e => setMethod(e.target.value as InvoicePaymentMethod)}>
-          {(Object.keys(METHOD_LABELS) as InvoicePaymentMethod[]).map(m => (
-            <option key={m} value={m}>{METHOD_LABELS[m]}</option>
-          ))}
-        </select>
+
+        {/* Modo: abono parcial */}
+        {mode === 'partial' && (
+          <>
+            <label style={labelSm}>MONTO A COBRAR AHORA</label>
+            <input style={{ ...inputStyle, marginBottom: 6 }} type="number" min="0.01" max={invoice.total - 0.01}
+              value={partialAmt} onChange={e => setPartialAmt(e.target.value)} autoFocus />
+            {!partialValid && partialAmt !== '' && (
+              <div style={{ fontSize: 12, color: 'var(--neg)', marginBottom: 8 }}>
+                Ingresa un monto entre $0 y {formatCOP(invoice.total)} (sin incluir el total)
+              </div>
+            )}
+            {partialValid && (
+              <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
+                Saldo <b style={{ color: 'var(--neg)' }}>{formatCOP(invoice.total - partialVal)}</b> irá a Cuentas por Cobrar
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Modo: crédito */}
+        {mode === 'credit' && (
+          <>
+            <label style={labelSm}>PLAZO DE CRÉDITO</label>
+            <Select
+              value={creditDays}
+              onChange={v => setCreditDays(v)}
+              options={[
+                { value: '15', label: '15 días' },
+                { value: '30', label: '30 días' },
+                { value: '45', label: '45 días' },
+                { value: '60', label: '60 días' },
+              ]}
+            />
+            <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
+              El total <b>{formatCOP(invoice.total)}</b> irá a Cuentas por Cobrar
+            </div>
+          </>
+        )}
+
+        {/* Medio de pago (solo para contado) */}
+        {mode !== 'credit' && (
+          <>
+            <label style={labelSm}>MEDIO DE PAGO</label>
+            <Select
+              value={method}
+              onChange={v => setMethod(v as InvoicePaymentMethod)}
+              options={(Object.keys(METHOD_LABELS) as InvoicePaymentMethod[]).map(m => ({ value: m, label: METHOD_LABELS[m] }))}
+            />
+          </>
+        )}
+
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <GhostBtn onClick={onClose}>Volver</GhostBtn>
-          <PrimaryBtn disabled={emitMut.isPending} onClick={() => emitMut.mutate()}>
-            {emitMut.isPending ? 'Emitiendo…' : 'Emitir factura'}
+          <PrimaryBtn disabled={!canSubmit} onClick={() => mut.mutate()}>
+            {mut.isPending ? 'Procesando…'
+              : mode === 'full' ? `Cobrar ${formatCOP(invoice.total)}`
+              : mode === 'partial' ? `Abonar ${formatCOP(partialVal)}`
+              : `Emitir a crédito · ${creditDays} días`}
           </PrimaryBtn>
         </div>
       </div>
@@ -201,11 +275,11 @@ function PaymentModal({ invoice, onClose }: { invoice: SalesInvoiceDto; onClose:
           </div>
         )}
         <label style={labelSm}>MEDIO DE PAGO</label>
-        <select style={{ ...inputStyle, marginBottom: 10 }} value={method} onChange={e => setMethod(e.target.value as InvoicePaymentMethod)}>
-          {(Object.keys(METHOD_LABELS) as InvoicePaymentMethod[]).map(m => (
-            <option key={m} value={m}>{METHOD_LABELS[m]}</option>
-          ))}
-        </select>
+        <Select
+          value={method}
+          onChange={v => setMethod(v as InvoicePaymentMethod)}
+          options={(Object.keys(METHOD_LABELS) as InvoicePaymentMethod[]).map(m => ({ value: m, label: METHOD_LABELS[m] }))}
+        />
         <label style={labelSm}>REFERENCIA (OPCIONAL)</label>
         <input style={{ ...inputStyle, marginBottom: 16 }} placeholder="ej. TX-12345" value={reference}
           onChange={e => setReference(e.target.value)} />
@@ -254,7 +328,7 @@ function InvoiceDetail({ invoiceId, onBack, onEmit, onPay, onCancel }: {
         <GhostBtn style={{ fontSize: 12.5, padding: '6px 12px' }} onClick={onBack}>← Facturas</GhostBtn>
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 20, fontWeight: 800, color: 'var(--accent-text)' }}>{inv.invoiceNumber}</span>
+            <span style={{ fontSize: 20, fontWeight: 800, color: 'var(--accent-text)' }}>{inv.invoiceNumber ?? '—'}</span>
             <StatusChip status={STATUS_TO_CHIP[inv.status]} label={STATUS_LABELS[inv.status]} />
             {inv.overdue && <StatusChip status="overdue" label="Vencida" />}
           </div>
@@ -264,11 +338,11 @@ function InvoiceDetail({ invoiceId, onBack, onEmit, onPay, onCancel }: {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          {inv.status === 'DRAFT' && <PrimaryBtn onClick={() => onEmit(inv)}>📤 Emitir</PrimaryBtn>}
+          {inv.status === 'DRAFT' && <PrimaryBtn onClick={() => onEmit(inv)}>💰 Cobrar</PrimaryBtn>}
           {(inv.status === 'ISSUED' || inv.status === 'PARTIALLY_PAID') && (
             <PrimaryBtn onClick={() => onPay(inv)}>+ Registrar pago</PrimaryBtn>
           )}
-          <GhostBtn onClick={() => salesInvoiceApi.downloadPdf(inv.id, `${inv.invoiceNumber}.pdf`)}>📄 Descargar PDF</GhostBtn>
+          <GhostBtn onClick={() => salesInvoiceApi.downloadPdf(inv.id, `${inv.invoiceNumber ?? inv.id}.pdf`)}>📄 Descargar PDF</GhostBtn>
           {inv.status !== 'CANCELLED' && (
             <GhostBtn style={{ color: 'var(--neg)' }} onClick={() => onCancel(inv)}>✕ Cancelar</GhostBtn>
           )}
@@ -563,7 +637,7 @@ export function Invoicing() {
     return (
       <>
         {cancelling && <CancelInvoiceModal invoice={cancelling} onClose={() => setCancelling(null)} />}
-        {emitting && <EmitModal invoice={emitting} onClose={() => setEmitting(null)} />}
+        {emitting && <DraftPaymentModal invoice={emitting} onClose={() => setEmitting(null)} />}
         {paying && (paying.customerId
           ? <RegisterPaymentModal customerId={paying.customerId} customerName={paying.customerName}
               focusInvoiceId={paying.id} onClose={() => setPaying(null)} />
@@ -582,7 +656,7 @@ export function Invoicing() {
   return (
     <div style={{ padding: '24px 26px 40px', display: 'flex', flexDirection: 'column', gap: 20, animation: 'fadeUp 0.25s ease' }}>
       {cancelling && <CancelInvoiceModal invoice={cancelling} onClose={() => setCancelling(null)} />}
-      {emitting && <EmitModal invoice={emitting} onClose={() => setEmitting(null)} />}
+      {emitting && <DraftPaymentModal invoice={emitting} onClose={() => setEmitting(null)} />}
       {paying && (paying.customerId
           ? <RegisterPaymentModal customerId={paying.customerId} customerName={paying.customerName}
               focusInvoiceId={paying.id} onClose={() => setPaying(null)} />
@@ -607,10 +681,12 @@ export function Invoicing() {
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <input style={{ ...inputStyle, width: 240 }} placeholder="Buscar factura, pedido o cliente…"
               value={qInput} onChange={e => setQInput(e.target.value)} />
-            <select style={{ ...inputStyle, width: 160 }} value={filters.preset}
-              onChange={e => { setFilters(f => ({ ...f, preset: e.target.value, from: '', to: '' })); setPage(0) }}>
-              {DATE_PRESETS.map(d => <option key={d.key} value={d.key}>{d.label}</option>)}
-            </select>
+            <Select
+              style={{ width: 160 }}
+              value={filters.preset}
+              onChange={v => { setFilters(f => ({ ...f, preset: v, from: '', to: '' })); setPage(0) }}
+              options={DATE_PRESETS.map(d => ({ value: d.key, label: d.label }))}
+            />
             {filters.preset === 'custom' && (
               <>
                 <input style={{ ...inputStyle, width: 140 }} type="date" value={filters.from}
@@ -619,11 +695,15 @@ export function Invoicing() {
                   onChange={e => setFilters(f => ({ ...f, to: e.target.value }))} />
               </>
             )}
-            <select style={{ ...inputStyle, width: 180 }} value={filters.customerId}
-              onChange={e => { setFilters(f => ({ ...f, customerId: e.target.value })); setPage(0) }}>
-              <option value="">Todos los clientes</option>
-              {customers.filter(c => !c.anonymous).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <Select
+              style={{ width: 180 }}
+              value={filters.customerId}
+              onChange={v => { setFilters(f => ({ ...f, customerId: v })); setPage(0) }}
+              options={[
+                { value: '', label: 'Todos los clientes' },
+                ...customers.filter(c => !c.anonymous).map(c => ({ value: c.id, label: c.name })),
+              ]}
+            />
             <input style={{ ...inputStyle, width: 110 }} type="number" placeholder="Monto mín."
               value={filters.minTotal} onChange={e => { setFilters(f => ({ ...f, minTotal: e.target.value })); setPage(0) }} />
             <input style={{ ...inputStyle, width: 110 }} type="number" placeholder="Monto máx."
@@ -696,7 +776,7 @@ export function Invoicing() {
                     <button
                       onClick={() => { setSelectedId(inv.id); window.history.replaceState(null, '', `?invoice=${inv.id}`) }}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, color: 'var(--accent-text)', fontSize: 12.5, fontFamily: 'inherit', textDecoration: 'underline', padding: 0 }}>
-                      {inv.invoiceNumber}
+                      {inv.invoiceNumber ?? '—'}
                     </button>
                   </td>
                   <td style={tdStyle}>{inv.orderNumber}</td>
@@ -723,15 +803,15 @@ export function Invoicing() {
                   <td style={tdStyle}>
                     <div style={{ display: 'flex', gap: 6 }}>
                       {inv.status === 'DRAFT' && (
-                        <GhostBtn style={{ fontSize: 11.5, padding: '3px 9px', color: 'var(--accent-text)' }}
-                          onClick={() => setEmitting(inv)}>📤 Emitir</GhostBtn>
+                        <GhostBtn style={{ fontSize: 11.5, padding: '3px 9px', color: 'var(--pos)' }}
+                          onClick={() => setEmitting(inv)}>💰 Cobrar</GhostBtn>
                       )}
                       {(inv.status === 'ISSUED' || inv.status === 'PARTIALLY_PAID') && (
                         <GhostBtn style={{ fontSize: 11.5, padding: '3px 9px', color: 'var(--pos)' }}
                           onClick={() => setPaying(inv)}>+ Pago</GhostBtn>
                       )}
                       <GhostBtn style={{ fontSize: 11.5, padding: '3px 9px' }} title="Descargar PDF"
-                        onClick={() => salesInvoiceApi.downloadPdf(inv.id, `${inv.invoiceNumber}.pdf`)}>📄 PDF</GhostBtn>
+                        onClick={() => salesInvoiceApi.downloadPdf(inv.id, `${inv.invoiceNumber ?? inv.id}.pdf`)}>📄 PDF</GhostBtn>
                       {inv.status !== 'CANCELLED' && (
                         <GhostBtn style={{ fontSize: 11.5, padding: '3px 9px', color: 'var(--neg)' }}
                           onClick={() => setCancelling(inv)}>✕</GhostBtn>

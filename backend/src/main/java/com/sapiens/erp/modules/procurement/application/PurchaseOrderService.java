@@ -2,6 +2,8 @@ package com.sapiens.erp.modules.procurement.application;
 
 import com.sapiens.erp.modules.catalog.domain.Product;
 import com.sapiens.erp.modules.catalog.domain.ProductRepository;
+import com.sapiens.erp.modules.catalog.domain.Warehouse;
+import com.sapiens.erp.modules.catalog.domain.WarehouseRepository;
 import com.sapiens.erp.modules.catalog.domain.exception.ProductNotFoundException;
 import com.sapiens.erp.modules.finance.application.AccountsPayableService;
 import com.sapiens.erp.modules.inventory.api.dto.EntryRequest;
@@ -29,6 +31,7 @@ public class PurchaseOrderService {
     private final PurchaseReceiptRepository receiptRepository;
     private final SupplierRepository supplierRepository;
     private final ProductRepository productRepository;
+    private final WarehouseRepository warehouseRepository;
     private final InventoryService inventoryService;
     private final AccountsPayableService accountsPayableService;
 
@@ -60,10 +63,15 @@ public class PurchaseOrderService {
         Long seq = purchaseOrderRepository.nextOrderNumber();
         String orderNumber = "PO-" + seq;
 
+        Warehouse warehouseRef = req.warehouseId() != null
+                ? warehouseRepository.findById(req.warehouseId()).orElse(null)
+                : null;
+        String warehouseName = warehouseRef != null ? warehouseRef.getName() : req.warehouse();
+
         PurchaseOrder po = PurchaseOrder.create(
                 orderNumber, supplier,
-                req.expectedDelivery(), req.warehouse(),
-                req.paymentTerms(), req.notes()
+                req.expectedDelivery(), warehouseName,
+                warehouseRef, req.paymentTerms(), req.notes()
         );
 
         for (PurchaseOrderLineRequest lineReq : req.lines()) {
@@ -130,6 +138,8 @@ public class PurchaseOrderService {
 
         receiptRepository.save(receipt);
 
+        UUID receivedWarehouseId = po.getWarehouseRef() != null ? po.getWarehouseRef().getId() : null;
+
         for (PurchaseReceiptLine rl : receipt.getLines()) {
             if (rl.getQuantityReceived().compareTo(BigDecimal.ZERO) > 0) {
                 inventoryService.registerEntry(new EntryRequest(
@@ -140,7 +150,8 @@ public class PurchaseOrderService {
                         null,
                         po.getOrderNumber(),
                         "Recepción OC " + po.getOrderNumber(),
-                        null
+                        null,
+                        receivedWarehouseId
                 ));
             }
         }

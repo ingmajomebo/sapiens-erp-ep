@@ -4,6 +4,7 @@ import com.sapiens.erp.modules.catalog.domain.Product;
 import com.sapiens.erp.modules.catalog.domain.UnitOfMeasure;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 public record StockResponse(
@@ -12,11 +13,14 @@ public record StockResponse(
         UnitOfMeasure unitOfMeasure,
         BigDecimal currentStock,
         BigDecimal minimumStock,
-        StockStatus stockStatus
+        StockStatus stockStatus,
+        List<WarehouseStock> warehouseStocks
 ) {
     public enum StockStatus { OK, LOW, CRITICAL, OUT_OF_STOCK }
 
-    public static StockResponse of(Product product, BigDecimal stock) {
+    public record WarehouseStock(UUID warehouseId, String warehouseName, BigDecimal stock) {}
+
+    public static StockResponse of(Product product, BigDecimal stock, List<WarehouseStock> warehouseStocks) {
         BigDecimal current = stock != null ? stock : BigDecimal.ZERO;
         BigDecimal minimum = product.getMinimumStock() != null ? product.getMinimumStock() : BigDecimal.ZERO;
 
@@ -37,7 +41,8 @@ public record StockResponse(
                 product.getUnitOfMeasure(),
                 current,
                 minimum,
-                status
+                status,
+                warehouseStocks != null ? warehouseStocks : List.of()
         );
     }
 }

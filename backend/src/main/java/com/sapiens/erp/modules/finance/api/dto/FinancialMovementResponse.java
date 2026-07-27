@@ -16,7 +16,8 @@ public record FinancialMovementResponse(
         BigDecimal balanceAfter,
         String relatedDocument,
         LocalDate movementDate,
-        Instant createdAt
+        Instant createdAt,
+        String accountName
 ) {
     public static FinancialMovementResponse from(FinancialMovement m) {
         return new FinancialMovementResponse(
@@ -28,7 +29,8 @@ public record FinancialMovementResponse(
                 m.getBalanceAfter(),
                 m.getRelatedDocument(),
                 m.getMovementDate(),
-                m.getCreatedAt()
+                m.getCreatedAt(),
+                m.getFinancialAccount() != null ? m.getFinancialAccount().getName() : null
         );
     }
 }

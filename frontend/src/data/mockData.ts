@@ -32,12 +32,12 @@ export const salesOrders = [
 ]
 
 export const cashMovements = [
-  { time: '14:32', type: 'Sale', ref: 'SO-2026-142', method: 'Cash', amount: '€840.00', pos: true },
-  { time: '13:18', type: 'Sale', ref: 'SO-2026-141', method: 'Card', amount: '€156.00', pos: true },
-  { time: '11:45', type: 'Expense', ref: 'EXP-2026-088', method: 'Cash', amount: '−€180.00', pos: false },
-  { time: '10:20', type: 'Sale', ref: 'SO-2026-139', method: 'Cash', amount: '€720.00', pos: true },
-  { time: '09:05', type: 'Sale', ref: 'SO-2026-138', method: 'Transfer', amount: '€480.00', pos: true },
-  { time: '07:30', type: 'Opening', ref: 'CS-2026-156', method: '—', amount: '€300.00', pos: true },
+  { time: '14:32', type: 'Venta',    ref: 'SO-2026-142',   method: 'Efectivo',       amount: '$ 840.000',   pos: true },
+  { time: '13:18', type: 'Venta',    ref: 'SO-2026-141',   method: 'Tarjeta',         amount: '$ 156.000',   pos: true },
+  { time: '11:45', type: 'Gasto',    ref: 'EXP-2026-088',  method: 'Efectivo',       amount: '−$ 180.000',  pos: false },
+  { time: '10:20', type: 'Venta',    ref: 'SO-2026-139',   method: 'Efectivo',       amount: '$ 720.000',   pos: true },
+  { time: '09:05', type: 'Venta',    ref: 'SO-2026-138',   method: 'Transferencia',  amount: '$ 480.000',   pos: true },
+  { time: '07:30', type: 'Apertura', ref: 'CS-2026-156',   method: '—',              amount: '$ 300.000',   pos: true },
 ]
 
 export const invoices = [

@@ -36,6 +36,8 @@ export interface ProductDto {
   salePrice: number | null
   inventoryTrackingEnabled: boolean
   defaultWarehouse: string | null
+  warehouseId: string | null
+  warehouseName: string | null
   status: ProductStatus
   imageUrl: string | null
   createdAt: string
@@ -49,6 +51,7 @@ export interface CreateProductDto {
   productType: ProductType
   salePrice: number
   defaultWarehouse: string
+  warehouseId?: string | null
   minimumStock?: number | null
   description?: string | null
   sku?: string | null

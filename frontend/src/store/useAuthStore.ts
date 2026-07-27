@@ -5,6 +5,7 @@ export interface AuthUser {
   id: string
   name: string
   role: string
+  permissions: string[]
 }
 
 interface AuthState {
@@ -30,7 +31,7 @@ export const useAuthStore = create<AuthState>()(
         set({ accessToken: null, refreshToken: null, user: null }),
     }),
     {
-      name: 'auth-storage',          // matches what client.ts already reads
+      name: 'auth-storage',
       partialize: (s) => ({
         accessToken:  s.accessToken,
         refreshToken: s.refreshToken,

@@ -59,9 +59,12 @@ public class SalesInvoicePdfService {
         PdfWriter.getInstance(doc, out);
         doc.open();
 
-        header(doc, "Factura de venta", inv.getInvoiceNumber(),
-                inv.getStatus() == SalesInvoiceStatus.CANCELLED ? "CANCELADA"
-                        : inv.getStatus() == SalesInvoiceStatus.DRAFT ? "BORRADOR" : null);
+        boolean isDraft = inv.getStatus() == SalesInvoiceStatus.DRAFT;
+        String docTitle  = isDraft ? "Factura Proforma" : "Factura de Venta";
+        String docNumber = isDraft ? inv.getSalesOrder().getOrderNumber() : inv.getInvoiceNumber();
+        String watermark = isDraft ? "DOCUMENTO SIN VALIDEZ FISCAL · NO VÁLIDA ANTE DIAN"
+                : inv.getStatus() == SalesInvoiceStatus.CANCELLED ? "ANULADA" : null;
+        header(doc, docTitle, docNumber, watermark);
 
         // Emisor / adquiriente
         PdfPTable parties = new PdfPTable(2);

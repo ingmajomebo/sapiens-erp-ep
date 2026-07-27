@@ -20,6 +20,7 @@ public class ExpenseService {
     private final ExpenseRepository expenseRepository;
     private final FinancialAccountRepository accountRepository;
     private final FinancialMovementRepository movementRepository;
+    private final CashSessionService cashSessionService;
 
     @Transactional(readOnly = true)
     public List<ExpenseResponse> listAll() {
@@ -29,6 +30,7 @@ public class ExpenseService {
     }
 
     @Transactional
+    @SuppressWarnings("null")
     public ExpenseResponse create(ExpenseRequest req) {
         FinancialAccount account = findActiveAccount(req.financialAccountId());
 
@@ -41,6 +43,12 @@ public class ExpenseService {
                 account, req.amount(), concept, "GASTO", expense.getId());
         movementRepository.save(movement);
         accountRepository.save(account);
+
+        cashSessionService.autoMovementIfCashAccount(
+                req.financialAccountId(),
+                com.sapiens.erp.modules.finance.domain.CashMovementType.EXPENSE,
+                com.sapiens.erp.modules.finance.domain.CashMovementDirection.OUT,
+                req.amount(), null, concept);
 
         return ExpenseResponse.from(expense);
     }

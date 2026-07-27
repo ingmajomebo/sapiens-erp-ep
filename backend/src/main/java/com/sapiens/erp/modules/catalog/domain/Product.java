@@ -68,6 +68,10 @@ public class Product extends AuditableEntity {
     @Column(name = "default_warehouse", length = 100)
     private String defaultWarehouse;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "warehouse_id")
+    private Warehouse warehouse;
+
     @Enumerated(EnumType.STRING)
     @Column(length = 20, nullable = false)
     private ProductStatus status = ProductStatus.ACTIVE;

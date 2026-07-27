@@ -26,7 +26,7 @@ public class CategoryController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('CATALOG_CATEGORY_MANAGE')")
     public ResponseEntity<CategoryResponse> create(@RequestParam String name,
                                                     @RequestParam(required = false) String description) {
         if (categoryRepository.existsByNameIgnoreCaseAndDeletedAtIsNull(name)) {

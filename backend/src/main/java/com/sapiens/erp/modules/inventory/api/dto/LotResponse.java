@@ -18,6 +18,8 @@ public record LotResponse(
         LocalDate expiresAt,
         String invoiceNumber,
         String notes,
+        UUID warehouseId,
+        String warehouseName,
         Instant createdAt
 ) {
     public static LotResponse of(Lot lot, BigDecimal available) {
@@ -32,6 +34,8 @@ public record LotResponse(
                 lot.getExpiresAt(),
                 lot.getInvoiceNumber(),
                 lot.getNotes(),
+                lot.getWarehouse() != null ? lot.getWarehouse().getId()   : null,
+                lot.getWarehouse() != null ? lot.getWarehouse().getName() : null,
                 lot.getCreatedAt()
         );
     }

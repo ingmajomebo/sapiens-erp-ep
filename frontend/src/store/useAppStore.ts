@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware'
 
 export type Page = 'dashboard' | 'inventory' | 'purchases' | 'sales' | 'customers' | 'cash' | 'accountsPayable' | 'accountsReceivable' | 'invoicing' | 'cashBanks' | 'expenses' | 'accounting' | 'project' | 'settings'
 export type Lang = 'en' | 'es' | 'pt'
-export type DrawerType = null | 'product' | 'po' | 'sale' | 'invoice' | 'expense' | 'closeRegister' | 'supplier'
+export type DrawerType = null | 'product' | 'po' | 'sale' | 'invoice' | 'expense' | 'closeRegister' | 'openRegister' | 'supplier'
 
 export interface BrandColors {
   accent?: string

@@ -1,6 +1,7 @@
 package com.sapiens.erp.modules.inventory.domain;
 
 import com.sapiens.erp.modules.catalog.domain.Product;
+import com.sapiens.erp.modules.catalog.domain.Warehouse;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -41,11 +42,16 @@ public class Lot {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "warehouse_id")
+    private Warehouse warehouse;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
     public static Lot create(Product product, BigDecimal quantity, BigDecimal purchasePrice,
-                             LocalDate receivedAt, LocalDate expiresAt, String invoiceNumber, String notes) {
+                             LocalDate receivedAt, LocalDate expiresAt, String invoiceNumber,
+                             String notes, Warehouse warehouse) {
         Lot lot = new Lot();
         lot.id = UUID.randomUUID();
         lot.product = product;
@@ -55,6 +61,7 @@ public class Lot {
         lot.expiresAt = expiresAt;
         lot.invoiceNumber = invoiceNumber;
         lot.notes = notes;
+        lot.warehouse = warehouse;
         lot.createdAt = Instant.now();
         return lot;
     }

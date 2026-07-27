@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Card, KpiCard, GhostBtn, StatusChip, tableStyle, thStyle, tdStyle } from '../../shared/helpers'
+import { Card, KpiCard, GhostBtn, StatusChip, Select, tableStyle, thStyle, tdStyle } from '../../shared/helpers'
 import { formatCOP } from '../../shared/currency'
 import { customerApi } from '../sales/api/salesApi'
 import { RegisterPaymentModal, VoidReceiptModal } from './RegisterPaymentModal'
@@ -148,6 +148,7 @@ export function Receivables() {
   const [customerFilter, setCustomerFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [bucketFilter, setBucketFilter] = useState('')
+  const [openOnly, setOpenOnly] = useState(true)
   const [page, setPage] = useState(0)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [paying, setPaying] = useState<ReceivableDto | null>(null)
@@ -157,11 +158,12 @@ export function Receivables() {
   const { data: customers = [] } = useQuery({ queryKey: ['customers'], queryFn: customerApi.listAll })
 
   const { data: pageData } = useQuery({
-    queryKey: ['receivables', 'list', customerFilter, statusFilter, bucketFilter, page],
+    queryKey: ['receivables', 'list', customerFilter, statusFilter, bucketFilter, openOnly, page],
     queryFn: () => receivablesApi.list({
       customerId: customerFilter || undefined,
       status: statusFilter || undefined,
       agingBucket: bucketFilter || undefined,
+      openOnly,
       page, size: PAGE_SIZE,
     }),
   })
@@ -204,28 +206,44 @@ export function Receivables() {
         <>
           {/* Filtros */}
           <Card style={{ padding: '14px 18px', display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-            <select style={{ ...inputStyle, width: 200 }} value={customerFilter}
-              onChange={e => { setCustomerFilter(e.target.value); setPage(0) }}>
-              <option value="">Todos los clientes</option>
-              {customers.filter(c => !c.anonymous).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-            <select style={{ ...inputStyle, width: 160 }} value={statusFilter}
-              onChange={e => { setStatusFilter(e.target.value); setPage(0) }}>
-              <option value="">Todos los estados</option>
-              {(Object.keys(STATUS_LABELS) as ReceivableStatus[]).map(s => (
-                <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-              ))}
-            </select>
-            <select style={{ ...inputStyle, width: 160 }} value={bucketFilter}
-              onChange={e => { setBucketFilter(e.target.value); setPage(0) }}>
-              <option value="">Toda antigüedad</option>
-              {(Object.keys(BUCKET_LABELS) as AgingBucket[]).map(b => (
-                <option key={b} value={b}>{BUCKET_LABELS[b]}</option>
-              ))}
-            </select>
-            {(customerFilter || statusFilter || bucketFilter) && (
+            <Select
+              style={{ width: 200 }}
+              value={customerFilter}
+              onChange={v => { setCustomerFilter(v); setPage(0) }}
+              options={[
+                { value: '', label: 'Todos los clientes' },
+                ...customers.filter(c => !c.anonymous).map(c => ({ value: c.id, label: c.name })),
+              ]}
+            />
+            <Select
+              style={{ width: 160 }}
+              value={statusFilter}
+              onChange={v => { setStatusFilter(v); setPage(0) }}
+              options={[
+                { value: '', label: openOnly ? 'Pendiente y parcial' : 'Todos los estados' },
+                ...(Object.keys(STATUS_LABELS) as ReceivableStatus[])
+                  .filter(s => !openOnly || s === 'PENDING' || s === 'PARTIALLY_PAID')
+                  .map(s => ({ value: s, label: STATUS_LABELS[s] })),
+              ]}
+            />
+            <Select
+              style={{ width: 160 }}
+              value={bucketFilter}
+              onChange={v => { setBucketFilter(v); setPage(0) }}
+              options={[
+                { value: '', label: 'Toda antigüedad' },
+                ...(Object.keys(BUCKET_LABELS) as AgingBucket[]).map(b => ({ value: b, label: BUCKET_LABELS[b] })),
+              ]}
+            />
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--text)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              <input type="checkbox" checked={!openOnly}
+                onChange={e => { setOpenOnly(!e.target.checked); setStatusFilter(''); setPage(0) }}
+                style={{ accentColor: 'var(--accent)', cursor: 'pointer' }} />
+              Ver también pagadas y canceladas
+            </label>
+            {(customerFilter || statusFilter || bucketFilter || !openOnly) && (
               <GhostBtn style={{ fontSize: 12 }} onClick={() => {
-                setCustomerFilter(''); setStatusFilter(''); setBucketFilter(''); setPage(0)
+                setCustomerFilter(''); setStatusFilter(''); setBucketFilter(''); setOpenOnly(true); setPage(0)
               }}>Limpiar</GhostBtn>
             )}
           </Card>

@@ -41,7 +41,7 @@ public class AccountsPayableController {
     }
 
     @PostMapping("/{id}/pay")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('FINANCE_PAYMENT_REGISTER')")
     public ResponseEntity<AccountsPayableResponse> registerPayment(
             @PathVariable UUID id,
             @Valid @RequestBody PaymentRequest req) {

@@ -9,6 +9,7 @@ import java.util.UUID;
 public record ExitRequest(
         @NotNull UUID productId,
         @NotNull @DecimalMin("0.001") BigDecimal quantity,
+        UUID fromLocationId,   // nullable; defaults to the default storage location
         String reason,
         String notes,
         String createdBy

@@ -27,13 +27,34 @@ public class FinancialAccountController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('FINANCE_ACCOUNT_MANAGE')")
     public ResponseEntity<FinancialAccountResponse> create(@Valid @RequestBody FinancialAccountRequest req) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(req));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('FINANCE_ACCOUNT_MANAGE')")
+    public ResponseEntity<FinancialAccountResponse> update(
+            @PathVariable UUID id,
+            @Valid @RequestBody FinancialAccountRequest req) {
+        return ResponseEntity.ok(service.update(id, req));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('FINANCE_ACCOUNT_MANAGE')")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        service.delete(id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}/movements")
     public ResponseEntity<List<FinancialMovementResponse>> getMovements(@PathVariable UUID id) {
         return ResponseEntity.ok(service.getMovements(id));
+    }
+
+    @GetMapping("/movements/recent")
+    public ResponseEntity<List<FinancialMovementResponse>> getRecentMovements(
+            @RequestParam(defaultValue = "50") int limit) {
+        return ResponseEntity.ok(service.getRecentMovements(limit));
     }
 }

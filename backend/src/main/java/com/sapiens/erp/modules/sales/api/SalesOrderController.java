@@ -50,7 +50,7 @@ public class SalesOrderController {
     }
 
     @PostMapping("/sales-orders")
-    @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('SALES_ORDER_CREATE')")
     public ResponseEntity<OrderResponse> create(@Valid @RequestBody CreateRequest request) {
         OrderResponse response = salesOrderService.createAdmin(request);
         return ResponseEntity
@@ -59,14 +59,14 @@ public class SalesOrderController {
     }
 
     @PatchMapping("/sales-orders/{id}/status")
-    @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('SALES_ORDER_CREATE')")
     public ResponseEntity<OrderResponse> updateStatus(@PathVariable UUID id,
                                                       @RequestParam String status) {
         return ResponseEntity.ok(salesOrderService.updateStatus(id, SalesOrderStatus.valueOf(status)));
     }
 
     @PatchMapping("/sales-orders/{id}/cancel")
-    @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('SALES_ORDER_CREATE')")
     public ResponseEntity<OrderResponse> cancelOrder(@PathVariable UUID id,
                                                      @Valid @RequestBody CancelRequest request) {
         return ResponseEntity.ok(salesOrderService.cancel(id, request.reason()));
@@ -76,7 +76,7 @@ public class SalesOrderController {
 
     /** Genera la factura del pedido en estado BORRADOR (se emite después). */
     @PostMapping("/sales-orders/{id}/invoice")
-    @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('SALES_INVOICE_MANAGE')")
     public ResponseEntity<InvoiceListResponse> createInvoiceDraft(@PathVariable UUID id) {
         return ResponseEntity.status(HttpStatus.CREATED).body(invoiceService.createDraftForOrder(id));
     }
@@ -128,7 +128,7 @@ public class SalesOrderController {
     }
 
     @PatchMapping("/sales-invoices/{id}/emit")
-    @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('SALES_INVOICE_MANAGE')")
     public ResponseEntity<InvoiceListResponse> emitInvoice(@PathVariable UUID id,
                                                            @Valid @RequestBody EmitRequest request) {
         return ResponseEntity.ok(invoiceService.emit(id, request));
@@ -136,7 +136,7 @@ public class SalesOrderController {
 
     /** Registra un abono: crea un recibo de caja (RC) aplicado a la CxC de la factura. */
     @PostMapping("/sales-invoices/{id}/payments")
-    @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('SALES_INVOICE_MANAGE')")
     public ResponseEntity<InvoiceListResponse> registerPayment(@PathVariable UUID id,
                                                                @Valid @RequestBody PaymentRequest request) {
         paymentReceiptService.payInvoice(id, request.amount(), request.paymentMethod(),
@@ -146,14 +146,14 @@ public class SalesOrderController {
 
     /** Compatibilidad con el flujo simple: paga el saldo completo en efectivo (también genera RC). */
     @PatchMapping("/sales-invoices/{id}/pay")
-    @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('SALES_INVOICE_MANAGE')")
     public ResponseEntity<InvoiceListResponse> payInvoice(@PathVariable UUID id) {
         paymentReceiptService.payInvoice(id, null, InvoicePaymentMethod.CASH, null, null);
         return ResponseEntity.ok(invoiceService.listResponse(id));
     }
 
     @PatchMapping("/sales-invoices/{id}/cancel")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('SALES_INVOICE_MANAGE')")
     public ResponseEntity<InvoiceListResponse> cancelInvoice(@PathVariable UUID id,
                                                              @Valid @RequestBody CancelRequest request) {
         return ResponseEntity.ok(invoiceService.cancel(id, request.reason()));
@@ -187,7 +187,7 @@ public class SalesOrderController {
     }
 
     @PostMapping("/customers")
-    @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('SALES_CUSTOMER_MANAGE')")
     public ResponseEntity<CustomerResponse> createCustomer(@Valid @RequestBody CustomerRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(customerService.create(request));
     }
@@ -195,19 +195,19 @@ public class SalesOrderController {
     // ── Enlaces públicos (administración: los gestiona la empresa) ────────────
 
     @GetMapping("/sales-order-links")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('SALES_ORDER_APPROVE')")
     public ResponseEntity<List<LinkResponse>> listLinks() {
         return ResponseEntity.ok(linkService.listAll());
     }
 
     @PostMapping("/sales-order-links")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('SALES_ORDER_APPROVE')")
     public ResponseEntity<LinkResponse> createLink(@RequestBody LinkRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(linkService.create(request));
     }
 
     @PatchMapping("/sales-order-links/{id}/toggle")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('SALES_ORDER_APPROVE')")
     public ResponseEntity<LinkResponse> toggleLink(@PathVariable UUID id) {
         return ResponseEntity.ok(linkService.toggle(id));
     }

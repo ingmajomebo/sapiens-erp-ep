@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { cashSessionApi } from '../features/cash/cashSessionApi'
 import { useAppStore } from '../store/useAppStore'
 import { translations } from '../i18n/translations'
 import { Button } from './Button'
@@ -8,6 +9,7 @@ import { formatCOP } from './currency'
 import { productApi, categoryApi } from '../features/catalog/api/productApi'
 import { supplierApi } from '../features/procurement/api/supplierApi'
 import { purchaseOrderApi } from '../features/procurement/api/purchaseOrderApi'
+import { warehouseApi } from '../features/inventory/api/warehouseApi'
 import type { UnitOfMeasure, ProductType, ProductStatus } from './types'
 
 const XIcon = () => (
@@ -140,6 +142,11 @@ function ProductForm() {
     queryFn: categoryApi.listAll,
   })
 
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ['warehouses'],
+    queryFn: warehouseApi.listAll,
+  })
+
   const createProduct = useMutation({
     mutationFn: productApi.create,
     onSuccess: () => {
@@ -202,13 +209,15 @@ function ProductForm() {
     }
 
     setFormErrors({})
+    const selectedWarehouse = warehouses.find(w => w.id === defaultWarehouse)
     const created = await createProduct.mutateAsync({
       name: name.trim(),
       categoryId,
       unitOfMeasure,
       productType: productType as ProductType,
       salePrice: parseFloat(salePrice),
-      defaultWarehouse: defaultWarehouse.trim(),
+      warehouseId: selectedWarehouse?.id ?? null,
+      defaultWarehouse: selectedWarehouse?.name ?? defaultWarehouse.trim(),
       minimumStock: minimumStock ? parseFloat(minimumStock) : null,
       description: null,
       sku: null,
@@ -432,11 +441,11 @@ function ProductForm() {
               onChange={(e) => { setDefaultWarehouse(e.target.value); clearError('defaultWarehouse') }}
             >
               <option value="">— Seleccionar almacén *</option>
-              <option value="Bodega principal">Bodega principal</option>
-              <option value="Nevera principal">Nevera principal</option>
-              <option value="Nevera de exhibición">Nevera de exhibición</option>
-              <option value="Congelador">Congelador</option>
-              <option value="Punto de venta">Punto de venta</option>
+              {warehouses.map(w => (
+                <option key={w.id} value={w.id}>
+                  {w.name}{w.capacity ? ` (${w.capacity} ${w.capacityUnit})` : ''}
+                </option>
+              ))}
             </select>
           </Field>
           <Field label="Stock mínimo">
@@ -601,7 +610,7 @@ function POForm() {
 
   const [supplierId, setSupplierId] = useState('')
   const [expectedDelivery, setExpectedDelivery] = useState(nextWeek)
-  const [warehouse, setWarehouse] = useState('')
+  const [warehouseId, setWarehouseId] = useState('')
   const [paymentTerms, setPaymentTerms] = useState('30 días')
   const [notes, setNotes] = useState('')
   const [lines, setLines] = useState<POLine[]>([
@@ -613,6 +622,7 @@ function POForm() {
   const { data: productsPage } = useQuery({ queryKey: ['products'], queryFn: () => productApi.listAll(0, 200) })
   const products = productsPage?.content ?? []
   const productMap = Object.fromEntries(products.map((p) => [p.id, p]))
+  const { data: warehousesPO = [] } = useQuery({ queryKey: ['warehouses'], queryFn: warehouseApi.listAll })
 
   function updateLine(id: number, field: keyof Omit<POLine, 'id'>, value: string) {
     setLines((ls) => ls.map((l) => (l.id === id ? { ...l, [field]: value } : l)))
@@ -646,11 +656,13 @@ function POForm() {
 
   async function buildAndCreate() {
     if (!supplierId) throw new Error('Selecciona un proveedor')
+    if (!warehouseId) throw new Error('Selecciona el almacén donde se recibirán los productos')
     if (validLines.length === 0) throw new Error('Agrega al menos un producto válido')
     return purchaseOrderApi.create({
       supplierId,
       expectedDelivery: expectedDelivery || null,
-      warehouse: warehouse || null,
+      warehouse: null,
+      warehouseId: warehouseId || null,
       paymentTerms: paymentTerms || null,
       notes: notes || null,
       lines: validLines.map((l) => ({
@@ -709,12 +721,14 @@ function POForm() {
           <input style={inputStyle} type="date" value={expectedDelivery}
             onChange={(e) => setExpectedDelivery(e.target.value)} />
         </Field>
-        <Field label="Almacén">
-          <select style={selectStyle} value={warehouse} onChange={(e) => setWarehouse(e.target.value)}>
-            <option value="">— Seleccionar</option>
-            <option>Cold Storage A</option>
-            <option>Cold Storage B</option>
-            <option>Almacén General</option>
+        <Field label="Almacén de recepción" required>
+          <select style={{ ...selectStyle, borderColor: !warehouseId ? 'color-mix(in srgb, var(--warn) 60%, transparent)' : undefined }} value={warehouseId} onChange={(e) => setWarehouseId(e.target.value)}>
+            <option value="">— Seleccionar almacén *</option>
+            {warehousesPO.map(w => (
+              <option key={w.id} value={w.id}>
+                {w.name}{w.capacity ? ` (${w.capacity} ${w.capacityUnit})` : ''}
+              </option>
+            ))}
           </select>
         </Field>
         <Field label="Condiciones de pago">
@@ -1014,14 +1028,112 @@ function ExpenseForm() {
   )
 }
 
+// ── Open Register Form ─────────────────────────────────────────────────────────
+
+function OpenRegisterForm() {
+  const { lang, closeDrawer } = useAppStore()
+  const t = translations[lang]
+  const queryClient = useQueryClient()
+  const [openingBalance, setOpeningBalance] = useState('')
+  const [notes, setNotes] = useState('')
+
+  const openMutation = useMutation({
+    mutationFn: () => cashSessionApi.open({
+      openingBalance: openingBalance ? parseFloat(openingBalance) : 0,
+      notes: notes || undefined,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cash-session'] })
+      toast('Caja abierta', 'success')
+      closeDrawer()
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Error al abrir caja'
+      toast(msg, 'error')
+    },
+  })
+
+  return (
+    <>
+      <div style={{
+        background: 'color-mix(in srgb, var(--pos) 8%, transparent)',
+        border: '1px solid color-mix(in srgb, var(--pos) 25%, transparent)',
+        borderRadius: 10, padding: '14px 16px', marginBottom: 24,
+      }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--pos)', marginBottom: 3 }}>Nueva sesión de caja</div>
+        <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+          Ingresa el dinero con el que abres la caja (efectivo físico).
+        </div>
+      </div>
+      <FormSection title={t.sec_general}>
+        <Field label="Base de apertura (COP)">
+          <input
+            style={inputStyle}
+            type="number"
+            placeholder="0"
+            value={openingBalance}
+            onChange={(e) => setOpeningBalance(e.target.value)}
+            min={0}
+            step={1000}
+          />
+        </Field>
+        <Field label={t.cr_notes}>
+          <textarea
+            style={{ ...inputStyle, minHeight: 72, resize: 'vertical' }}
+            placeholder="Observaciones de apertura…"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+        </Field>
+      </FormSection>
+      <DrawerFooter
+        onClose={closeDrawer}
+        saveLabel="Abrir caja"
+        cancelLabel={t.btn_cancel}
+        onSave={async () => { await openMutation.mutateAsync() }}
+      />
+    </>
+  )
+}
+
 // ── Close Register Form ────────────────────────────────────────────────────────
 
 function CloseRegisterForm() {
   const { lang, closeDrawer } = useAppStore()
   const t = translations[lang]
+  const queryClient = useQueryClient()
   const [counted, setCounted] = useState('')
-  const expected = 2196.00
-  const diff = counted ? parseFloat(counted) - expected : 0
+  const [notes, setNotes] = useState('')
+
+  const { data: session } = useQuery({
+    queryKey: ['cash-session'],
+    queryFn: cashSessionApi.getCurrent,
+    retry: false,
+  })
+
+  const closeMutation = useMutation({
+    mutationFn: () => {
+      if (!session) throw new Error('No hay sesión activa')
+      return cashSessionApi.close(session.sessionId, {
+        countedBalance: parseFloat(counted),
+        notes: notes || undefined,
+      })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cash-session'] })
+      queryClient.invalidateQueries({ queryKey: ['accounts-payable'] })
+      toast('Caja cerrada', 'info')
+      closeDrawer()
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Error al cerrar caja'
+      toast(msg, 'error')
+    },
+  })
+
+  const expected = session?.expectedBalance ?? session?.openingAmount ?? 0
+  const numCounted = counted ? parseFloat(counted) : null
+  const diff = numCounted !== null ? numCounted - expected : null
 
   return (
     <>
@@ -1029,31 +1141,59 @@ function CloseRegisterForm() {
         background: 'var(--warn-bg)', border: '1px solid color-mix(in srgb, var(--warn) 30%, transparent)',
         borderRadius: 10, padding: '14px 16px', marginBottom: 24,
       }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--warn)', marginBottom: 4 }}>Sesión #CS-2026-156</div>
-        <div style={{ fontSize: 12, color: 'var(--muted)' }}>{t.cash_openedby}</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--warn)', marginBottom: 4 }}>
+          {session?.sessionNumber ?? 'Sesión activa'}
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+          Abierta por {session?.openedByName ?? '—'} · Base: {formatCOP(session?.openingAmount ?? 0)}
+        </div>
       </div>
       <FormSection title={t.sec_general}>
         <Field label={t.cr_expected}>
-          <input style={{ ...inputStyle, background: 'var(--bg)', color: 'var(--muted)', cursor: 'not-allowed' }}
-            type="text" value={formatCOP(expected)} readOnly />
+          <input
+            style={{ ...inputStyle, background: 'var(--bg)', color: 'var(--muted)', cursor: 'not-allowed' }}
+            type="text"
+            value={formatCOP(expected)}
+            readOnly
+          />
         </Field>
         <Field label={t.cr_counted}>
-          <input style={inputStyle} type="number" placeholder="0" value={counted}
-            onChange={(e) => setCounted(e.target.value)} />
+          <input
+            style={inputStyle}
+            type="number"
+            placeholder="0"
+            value={counted}
+            onChange={(e) => setCounted(e.target.value)}
+            min={0}
+            step={1000}
+          />
         </Field>
-        {counted && (
+        {diff !== null && (
           <Field label={t.cr_difference}>
             <input
               style={{ ...inputStyle, background: 'var(--bg)', color: diff >= 0 ? 'var(--pos)' : 'var(--neg)', fontWeight: 600, cursor: 'not-allowed' }}
-              type="text" value={`${diff >= 0 ? '+' : ''}${formatCOP(Math.abs(diff))}`} readOnly />
+              type="text"
+              value={`${diff >= 0 ? '+' : '−'}${formatCOP(Math.abs(diff))}`}
+              readOnly
+            />
           </Field>
         )}
         <Field label={t.cr_notes}>
-          <textarea style={{ ...inputStyle, minHeight: 72, resize: 'vertical' }} placeholder="Observaciones de cierre..." />
+          <textarea
+            style={{ ...inputStyle, minHeight: 72, resize: 'vertical' }}
+            placeholder="Observaciones de cierre…"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
         </Field>
       </FormSection>
-      <DrawerFooter onClose={closeDrawer} saveLabel={t.btn_close_register} cancelLabel={t.btn_cancel}
-        danger drawerType="closeRegister" />
+      <DrawerFooter
+        onClose={closeDrawer}
+        saveLabel={t.btn_close_register}
+        cancelLabel={t.btn_cancel}
+        danger
+        onSave={async () => { await closeMutation.mutateAsync() }}
+      />
     </>
   )
 }
@@ -1067,6 +1207,7 @@ const drawerToastMessages: Record<string, string> = {
   sale:          'Venta registrada',
   invoice:       'Factura generada',
   expense:       'Gasto registrado',
+  openRegister:  'Caja abierta',
   closeRegister: 'Caja cerrada',
 }
 
@@ -1121,13 +1262,14 @@ function DrawerFooter({ onClose, saveLabel, cancelLabel, danger, drawerType, onS
 
 // ── Drawer shell ───────────────────────────────────────────────────────────────
 
-const drawerTitleKeys: Record<string, 'btn_new_product' | 'btn_new_po' | 'btn_new_sale' | 'btn_new_invoice' | 'btn_new_expense' | 'btn_close_register' | 'btn_new_supplier'> = {
+const drawerTitleKeys: Record<string, 'btn_new_product' | 'btn_new_po' | 'btn_new_sale' | 'btn_new_invoice' | 'btn_new_expense' | 'btn_close_register' | 'btn_open_register' | 'btn_new_supplier'> = {
   product:       'btn_new_product',
   supplier:      'btn_new_supplier',
   po:            'btn_new_po',
   sale:          'btn_new_sale',
   invoice:       'btn_new_invoice',
   expense:       'btn_new_expense',
+  openRegister:  'btn_open_register',
   closeRegister: 'btn_close_register',
 }
 
@@ -1173,6 +1315,7 @@ export function Drawer() {
           {drawerType === 'sale'          && <SaleForm />}
           {drawerType === 'invoice'       && <InvoiceForm />}
           {drawerType === 'expense'       && <ExpenseForm />}
+          {drawerType === 'openRegister'  && <OpenRegisterForm />}
           {drawerType === 'closeRegister' && <CloseRegisterForm />}
         </div>
       </div>

@@ -20,6 +20,8 @@ export interface PurchaseOrderDto {
   status: 'DRAFT' | 'CONFIRMED' | 'PARTIALLY_RECEIVED' | 'RECEIVED' | 'CANCELLED'
   expectedDelivery: string | null
   warehouse: string | null
+  warehouseId: string | null
+  warehouseName: string | null
   paymentTerms: string | null
   notes: string | null
   discount: number
@@ -45,6 +47,7 @@ export interface CreatePODto {
   supplierId: string
   expectedDelivery: string | null
   warehouse: string | null
+  warehouseId: string | null
   paymentTerms: string | null
   notes: string | null
   lines: CreatePOLineDto[]

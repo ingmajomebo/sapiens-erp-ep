@@ -12,6 +12,7 @@ public record PurchaseOrderRequest(
         @NotNull UUID supplierId,
         LocalDate expectedDelivery,
         String warehouse,
+        UUID warehouseId,
         String paymentTerms,
         String notes,
         @NotEmpty @Valid List<PurchaseOrderLineRequest> lines

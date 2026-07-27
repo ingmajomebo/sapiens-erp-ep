@@ -17,6 +17,7 @@ import java.util.UUID;
 public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
+    private final PermissionCacheService permissionCacheService;
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
@@ -32,11 +33,17 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + id));
     }
 
+    @SuppressWarnings("null")
     private UserDetails toUserDetails(User u) {
+        List<SimpleGrantedAuthority> authorities =
+                permissionCacheService.getPermissionCodes(u.getUserRole().getId())
+                        .stream()
+                        .map(SimpleGrantedAuthority::new)
+                        .toList();
         return new org.springframework.security.core.userdetails.User(
                 u.getId().toString(),
                 u.getPasswordHash(),
-                List.of(new SimpleGrantedAuthority("ROLE_" + u.getRole().name()))
+                authorities
         );
     }
 }

@@ -4,7 +4,7 @@ import { useAppStore } from '../../store/useAppStore'
 import { translations } from '../../i18n/translations'
 import {
   Card, KpiCard, CardHeader, StatusChip,
-  PrimaryBtn, GhostBtn, FilterSelect, PaginationFooter,
+  PrimaryBtn, GhostBtn, FilterSelect, Select, PaginationFooter,
   tableStyle, thStyle, tdStyle,
 } from '../../shared/helpers'
 import { toast } from '../../shared/toast'
@@ -78,10 +78,9 @@ function OrderDetailModal({ order, onClose }: { order: SalesOrderDto; onClose: (
   })
   const invoiceMut = useMutation({
     mutationFn: () => salesOrderApi.issueInvoice(order.id),
-    onSuccess: inv => { invalidate(); toast(`Factura ${inv.invoiceNumber} generada`, 'success'); onClose() },
+    onSuccess: () => { invalidate(); toast('Borrador de factura generado', 'success'); onClose() },
     onError: (e: unknown) => toast((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Error al generar la factura', 'error'),
   })
-
   const next = NEXT_ACTIONS[order.status]
   const cancellable = ['PENDING', 'PREPARING', 'DISPATCHED'].includes(order.status)
 
@@ -144,10 +143,10 @@ function OrderDetailModal({ order, onClose }: { order: SalesOrderDto; onClose: (
 
         {/* Factura */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, fontSize: 13 }}>
-          {order.invoiceNumber ? (
+          {order.invoiceId ? (
             <>
               <span style={{ color: 'var(--muted)' }}>Factura:</span>
-              <b>{order.invoiceNumber}</b>
+              <b>{order.invoiceNumber ?? '—'}</b>
               <StatusChip
                 status={order.invoiceStatus === 'PAID' ? 'paid' : order.invoiceStatus === 'CANCELLED' ? 'critical' : order.invoiceStatus === 'DRAFT' ? 'draft' : order.invoiceStatus === 'PARTIALLY_PAID' ? 'partial' : 'issued'}
                 label={order.invoiceStatus === 'PAID' ? 'Pagada' : order.invoiceStatus === 'CANCELLED' ? 'Cancelada' : order.invoiceStatus === 'DRAFT' ? 'Borrador' : order.invoiceStatus === 'PARTIALLY_PAID' ? 'Pago parcial' : 'Emitida'}
@@ -164,7 +163,7 @@ function OrderDetailModal({ order, onClose }: { order: SalesOrderDto; onClose: (
             {cancellable && (
               <GhostBtn style={{ color: 'var(--neg)' }} onClick={() => setShowCancel(true)}>✕ Cancelar pedido</GhostBtn>
             )}
-            {!order.invoiceNumber && order.status !== 'CANCELLED' && (
+            {!order.invoiceId && (order.status === 'DISPATCHED' || order.status === 'DELIVERED') && (
               <GhostBtn onClick={() => invoiceMut.mutate()} disabled={invoiceMut.isPending}>
                 🧾 Generar factura
               </GhostBtn>
@@ -258,10 +257,15 @@ function NewOrderModal({ onClose }: { onClose: () => void }) {
                 + Nuevo
               </button>
             </div>
-            <select style={inputStyle} value={customerId} onChange={e => setCustomerId(e.target.value)}>
-              <option value="">Cliente anónimo</option>
-              {customers.filter(c => !c.anonymous).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <Select
+              style={{ width: '100%' }}
+              value={customerId}
+              onChange={v => setCustomerId(v)}
+              options={[
+                { value: '', label: 'Cliente anónimo' },
+                ...customers.filter(c => !c.anonymous).map(c => ({ value: c.id, label: c.name })),
+              ]}
+            />
           </div>
           {!customerId && (
             <div>
@@ -296,11 +300,15 @@ function NewOrderModal({ onClose }: { onClose: () => void }) {
         <label style={labelSm}>LÍNEAS DEL PEDIDO</label>
         {lines.map((line, i) => (
           <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
-            <select style={{ ...inputStyle, flex: 1 }} value={line.productId}
-              onChange={e => setLines(ls => ls.map((l, j) => j === i ? { ...l, productId: e.target.value } : l))}>
-              <option value="">Selecciona producto…</option>
-              {products.map(p => <option key={p.id} value={p.id}>{p.name} — {formatCOP(p.salePrice ?? 0)}</option>)}
-            </select>
+            <Select
+              style={{ flex: 1 }}
+              value={line.productId}
+              onChange={v => setLines(ls => ls.map((l, j) => j === i ? { ...l, productId: v } : l))}
+              options={[
+                { value: '', label: 'Selecciona producto…' },
+                ...products.map(p => ({ value: p.id, label: `${p.name} — ${formatCOP(p.salePrice ?? 0)}` })),
+              ]}
+            />
             <input style={{ ...inputStyle, width: 90 }} type="number" min="0" step="0.5" placeholder="Cant."
               value={line.quantity}
               onChange={e => setLines(ls => ls.map((l, j) => j === i ? { ...l, quantity: e.target.value } : l))} />

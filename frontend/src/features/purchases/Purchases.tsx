@@ -4,7 +4,7 @@ import { useAppStore } from '../../store/useAppStore'
 import { translations } from '../../i18n/translations'
 import {
   Card, KpiCard, CardHeader, Tile, StatusChip,
-  PrimaryBtn, GhostBtn, FilterSelect, PaginationFooter,
+  PrimaryBtn, GhostBtn, FilterSelect, Select, PaginationFooter,
   tableStyle, thStyle, tdStyle,
 } from '../../shared/helpers'
 import { supplierApi, type SupplierDto } from '../procurement/api/supplierApi'
@@ -15,7 +15,7 @@ import type { AccountsPayableDto, SupplierPaymentDto } from '../procurement/api/
 import { cashBanksApi } from '../finance/api/cashBanksApi'
 import type { FinancialAccountDto } from '../finance/api/cashBanksApi'
 import { toast } from '../../shared/toast'
-import { formatCOP } from '../../shared/currency'
+import { formatCOP, formatQty } from '../../shared/currency'
 
 function tileColorForName(name: string) {
   const colors = ['teal', 'blue', 'orange', 'purple', 'red', 'green']
@@ -436,7 +436,7 @@ function PODetailModal({ orderId, onClose, onRefresh }: PODetailModalProps) {
                           />
                         </td>
                         <td style={{ ...tdStyle, textAlign: 'right', color: pending > 0 ? 'var(--neg)' : 'var(--pos)', fontWeight: 600 }}>
-                          {pending > 0 ? pending.toFixed(3).replace(/\.?0+$/, '') : '—'}
+                          {pending > 0 ? formatQty(pending, 3, true) : '—'}
                         </td>
                         <td style={{ ...tdStyle, textAlign: 'right' }}>{formatCOP(line.unitCost)}</td>
                         <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 600 }}>{formatCOP(lineTotal)}</td>
@@ -603,23 +603,29 @@ function PODetailModal({ orderId, onClose, onRefresh }: PODetailModalProps) {
               <div>
                 {fieldLabel('Método de pago')}
                 {fieldInput(
-                  <select value={payMethod} onChange={e => setPayMethod(e.target.value)} style={sel}>
-                    <option value="">— Seleccionar —</option>
-                    {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
+                  <Select
+                    style={{ width: '100%' }}
+                    value={payMethod}
+                    onChange={v => setPayMethod(v)}
+                    options={[
+                      { value: '', label: '— Seleccionar —' },
+                      ...PAYMENT_METHODS.map(m => ({ value: m, label: m })),
+                    ]}
+                  />
                 )}
               </div>
               <div>
                 {fieldLabel('Caja / Banco origen')}
                 {fieldInput(
-                  <select value={payAccountId} onChange={e => setPayAccountId(e.target.value)} style={sel}>
-                    <option value="">— Seleccionar cuenta —</option>
-                    {financialAccounts.map(a => (
-                      <option key={a.id} value={a.id}>
-                        {a.name} ({formatCOP(a.currentBalance)})
-                      </option>
-                    ))}
-                  </select>
+                  <Select
+                    style={{ width: '100%' }}
+                    value={payAccountId}
+                    onChange={v => setPayAccountId(v)}
+                    options={[
+                      { value: '', label: '— Seleccionar cuenta —' },
+                      ...financialAccounts.map(a => ({ value: a.id, label: `${a.name} (${formatCOP(a.currentBalance)})` })),
+                    ]}
+                  />
                 )}
               </div>
             </div>
@@ -698,7 +704,7 @@ function PODetailModal({ orderId, onClose, onRefresh }: PODetailModalProps) {
             {[
               ['Proveedor', order.supplierName],
               ['Entrega esperada', formatDate(order.expectedDelivery)],
-              ['Almacén', order.warehouse ?? '—'],
+              ['Almacén', order.warehouseName ?? order.warehouse ?? '—'],
               ['Condiciones de pago', order.paymentTerms ?? '—'],
               ['Creada', formatDate(order.createdAt)],
               ['Notas', order.notes ?? '—'],
@@ -1219,7 +1225,7 @@ export function Purchases() {
                       <td style={{ ...tdStyle, fontSize: 12.5, color: 'var(--muted)' }}>
                         {formatDate(o.expectedDelivery)}
                       </td>
-                      <td style={{ ...tdStyle, fontSize: 12.5 }}>{o.warehouse ?? '—'}</td>
+                      <td style={{ ...tdStyle, fontSize: 12.5 }}>{o.warehouseName ?? o.warehouse ?? '—'}</td>
                       <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 600 }}>
                         {formatCOP(o.total)}
                       </td>

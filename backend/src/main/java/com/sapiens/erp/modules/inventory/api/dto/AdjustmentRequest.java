@@ -13,6 +13,8 @@ public record AdjustmentRequest(
         @NotNull MovementType type,
         @NotNull @DecimalMin("0.001") BigDecimal quantity,
         BigDecimal unitCost,
+        UUID fromLocationId,   // for NEGATIVE_ADJUSTMENT; nullable → default location
+        UUID toLocationId,     // for POSITIVE_ADJUSTMENT; nullable → no location tracking
         @NotBlank String reason,
         String notes,
         String createdBy

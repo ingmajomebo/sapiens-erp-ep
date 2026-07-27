@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { expensesApi, type ExpenseDto, type ExpenseCategory, type ExpenseRequestDto } from './api/expensesApi'
 import { cashBanksApi, type FinancialAccountDto } from './api/cashBanksApi'
 import {
-  Card, CardHeader, KpiCard, GhostBtn, PrimaryBtn, PaginationFooter,
+  Card, CardHeader, KpiCard, GhostBtn, PrimaryBtn, Select, PaginationFooter,
   tableStyle, thStyle, tdStyle,
 } from '../../shared/helpers'
 import { formatCOP } from '../../shared/currency'
@@ -142,12 +142,12 @@ function ExpenseModal({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>
                 {fieldLabel('Categoría')}
-                <select style={inputStyle} value={category}
-                  onChange={e => setCategory(e.target.value as ExpenseCategory)}>
-                  {(Object.keys(CATEGORY_LABELS) as ExpenseCategory[]).map(c => (
-                    <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
-                  ))}
-                </select>
+                <Select
+                  style={{ width: '100%' }}
+                  value={category}
+                  onChange={v => setCategory(v as ExpenseCategory)}
+                  options={(Object.keys(CATEGORY_LABELS) as ExpenseCategory[]).map(c => ({ value: c, label: CATEGORY_LABELS[c] }))}
+                />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -175,15 +175,15 @@ function ExpenseModal({
               {!isEdit ? (
                 <div>
                   {fieldLabel('Cuenta financiera *')}
-                  <select style={inputStyle} value={accountId}
-                    onChange={e => setAccountId(e.target.value)} required>
-                    <option value="">Seleccionar cuenta...</option>
-                    {accounts.map(a => (
-                      <option key={a.id} value={a.id}>
-                        {a.name} — Saldo: {formatCOP(a.currentBalance)}
-                      </option>
-                    ))}
-                  </select>
+                  <Select
+                    style={{ width: '100%' }}
+                    value={accountId}
+                    onChange={v => setAccountId(v)}
+                    options={[
+                      { value: '', label: 'Seleccionar cuenta...' },
+                      ...accounts.map(a => ({ value: a.id, label: `${a.name} — Saldo: ${formatCOP(a.currentBalance)}` })),
+                    ]}
+                  />
                 </div>
               ) : (
                 <div style={{ padding: '10px 12px', background: 'var(--surface-2)', borderRadius: 8, fontSize: 12.5, color: 'var(--muted)' }}>
@@ -285,7 +285,7 @@ export function Expenses() {
   const [selectedMonth, setSelectedMonth] = useState<string>(CURRENT_MONTH_NUM)
   const [expandedDesc, setExpandedDesc] = useState<Set<string>>(new Set())
   const [expSearch, setExpSearch] = useState('')
-  const [tableUsePeriod, setTableUsePeriod] = useState(false)
+  const [tableUsePeriod, setTableUsePeriod] = useState(true)
   const [expPage, setExpPage] = useState(0)
   const PAGE_SIZE = 12
 
@@ -360,14 +360,16 @@ export function Expenses() {
               Gasto {periodLabel}
             </span>
             <div style={{ display: 'flex', gap: 6 }}>
-              <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}
-                aria-label="Elegir mes" style={selectStyle}>
-                {MONTH_OPTIONS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-              </select>
-              <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)}
-                aria-label="Elegir año" style={selectStyle}>
-                {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
+              <Select
+                value={selectedMonth}
+                onChange={v => setSelectedMonth(v)}
+                options={MONTH_OPTIONS}
+              />
+              <Select
+                value={selectedYear}
+                onChange={v => setSelectedYear(v)}
+                options={availableYears.map(y => ({ value: y, label: y }))}
+              />
             </div>
           </div>
           <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.5px', fontVariantNumeric: 'tabular-nums' }}>

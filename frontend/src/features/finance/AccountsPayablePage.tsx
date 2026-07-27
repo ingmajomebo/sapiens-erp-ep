@@ -4,7 +4,7 @@ import { accountsPayableApi, type AccountsPayableDto, type SupplierPaymentDto } 
 import { cashBanksApi, type FinancialAccountDto } from './api/cashBanksApi'
 import {
   Card, CardHeader, KpiCard, StatusChip, GhostBtn, PrimaryBtn,
-  FilterSelect, PaginationFooter, tableStyle, thStyle, tdStyle,
+  FilterSelect, Select, PaginationFooter, tableStyle, thStyle, tdStyle,
 } from '../../shared/helpers'
 import { formatCOP } from '../../shared/currency'
 import { toast } from '../../shared/toast'
@@ -254,21 +254,27 @@ function APModal({ ap, mode: initMode, onClose }: {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
             <div>
               {sectionLabel('Método de pago')}
-              <select value={payMethod} onChange={e => setPayMethod(e.target.value)} style={sel}>
-                <option value="">— Seleccionar —</option>
-                {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
+              <Select
+                style={{ width: '100%' }}
+                value={payMethod}
+                onChange={v => setPayMethod(v)}
+                options={[
+                  { value: '', label: '— Seleccionar —' },
+                  ...PAYMENT_METHODS.map(m => ({ value: m, label: m })),
+                ]}
+              />
             </div>
             <div>
               {sectionLabel('Caja / Banco origen')}
-              <select value={payAccountId} onChange={e => setPayAccountId(e.target.value)} style={sel}>
-                <option value="">— Seleccionar cuenta —</option>
-                {accounts.map(a => (
-                  <option key={a.id} value={a.id}>
-                    {a.name} ({formatCOP(a.currentBalance)})
-                  </option>
-                ))}
-              </select>
+              <Select
+                style={{ width: '100%' }}
+                value={payAccountId}
+                onChange={v => setPayAccountId(v)}
+                options={[
+                  { value: '', label: '— Seleccionar cuenta —' },
+                  ...accounts.map(a => ({ value: a.id, label: `${a.name} (${formatCOP(a.currentBalance)})` })),
+                ]}
+              />
             </div>
           </div>
 

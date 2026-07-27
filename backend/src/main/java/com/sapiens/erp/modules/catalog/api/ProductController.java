@@ -42,7 +42,7 @@ public class ProductController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('CATALOG_PRODUCT_CREATE')")
     public ResponseEntity<ProductResponse> create(@Valid @RequestBody ProductRequest request) {
         ProductResponse response = productService.create(request);
         return ResponseEntity
@@ -51,21 +51,21 @@ public class ProductController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('CATALOG_PRODUCT_EDIT')")
     public ResponseEntity<ProductResponse> update(@PathVariable UUID id,
                                                    @Valid @RequestBody ProductRequest request) {
         return ResponseEntity.ok(productService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('CATALOG_PRODUCT_DELETE')")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         productService.delete(id);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/import")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('CATALOG_PRODUCT_CREATE')")
     public ResponseEntity<List<ProductResponse>> importBulk(@RequestBody List<@Valid ProductRequest> requests) {
         return ResponseEntity.ok(productService.importBulk(requests));
     }
@@ -73,7 +73,7 @@ public class ProductController {
     // ── Imagen del producto (REQ-INV-08) ─────────────────────────────────────
 
     @PostMapping("/{id}/image")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('CATALOG_PRODUCT_EDIT')")
     public ResponseEntity<ProductResponse> uploadImage(@PathVariable UUID id,
                                                        @RequestParam("file") MultipartFile file) {
         return ResponseEntity.ok(productImageService.upload(id, file));
@@ -90,7 +90,7 @@ public class ProductController {
     }
 
     @DeleteMapping("/{id}/image")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('CATALOG_PRODUCT_EDIT')")
     public ResponseEntity<ProductResponse> deleteImage(@PathVariable UUID id) {
         return ResponseEntity.ok(productImageService.deleteImage(id));
     }

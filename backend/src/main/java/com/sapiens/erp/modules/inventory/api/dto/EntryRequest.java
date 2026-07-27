@@ -15,5 +15,6 @@ public record EntryRequest(
         LocalDate expiresAt,
         String invoiceNumber,
         String notes,
-        String createdBy
+        String createdBy,
+        UUID warehouseId
 ) {}

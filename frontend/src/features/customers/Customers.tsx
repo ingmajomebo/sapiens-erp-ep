@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Card, KpiCard, PrimaryBtn, GhostBtn,
+  Select,
   tableStyle, thStyle, tdStyle,
 } from '../../shared/helpers'
 import { toast } from '../../shared/toast'
@@ -118,13 +119,15 @@ export function CustomerFormModal({ initial, onClose, onSaved }: {
           </div>
           <div>
             <label style={labelSm}>Tipo de documento</label>
-            <select style={inputStyle} value={form.documentType ?? ''}
-              onChange={e => set('documentType', e.target.value || null)}>
-              <option value="">Sin documento</option>
-              {(Object.keys(DOC_LABELS) as DocumentType[]).map(dt => (
-                <option key={dt} value={dt}>{DOC_LABELS[dt]}</option>
-              ))}
-            </select>
+            <Select
+              style={{ width: '100%' }}
+              value={form.documentType ?? ''}
+              onChange={v => set('documentType', v || null)}
+              options={[
+                { value: '', label: 'Sin documento' },
+                ...(Object.keys(DOC_LABELS) as DocumentType[]).map(dt => ({ value: dt, label: DOC_LABELS[dt] })),
+              ]}
+            />
           </div>
           <div>
             <label style={labelSm}>Número de documento</label>

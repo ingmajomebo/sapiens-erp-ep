@@ -2,6 +2,7 @@ package com.sapiens.erp.modules.identity.application;
 
 import com.sapiens.erp.modules.identity.api.dto.LoginRequest;
 import com.sapiens.erp.modules.identity.api.dto.LoginResponse;
+import com.sapiens.erp.modules.identity.api.dto.MeResponse;
 import com.sapiens.erp.modules.identity.domain.RefreshToken;
 import com.sapiens.erp.modules.identity.domain.RefreshTokenRepository;
 import com.sapiens.erp.modules.identity.domain.User;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -24,10 +26,12 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
+    private final PermissionCacheService permissionCacheService;
 
     @Value("${app.jwt.refresh-token-expiration}")
     private long refreshTokenExpiration;
 
+    @SuppressWarnings("null")
     @Transactional
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByEmailAndDeletedAtIsNull(request.email())
@@ -54,15 +58,10 @@ public class AuthService {
         );
         refreshTokenRepository.save(refreshToken);
 
-        return new LoginResponse(
-                accessToken,
-                rawRefreshToken,
-                user.getId(),
-                user.getName(),
-                user.getRole().name()
-        );
+        return buildResponse(accessToken, rawRefreshToken, user);
     }
 
+    @SuppressWarnings("null")
     @Transactional
     public LoginResponse refresh(String rawToken) {
         String tokenHash = jwtService.hashToken(rawToken);
@@ -87,18 +86,38 @@ public class AuthService {
         );
         refreshTokenRepository.save(newRt);
 
-        return new LoginResponse(
-                accessToken,
-                newRawToken,
-                user.getId(),
-                user.getName(),
-                user.getRole().name()
-        );
+        return buildResponse(accessToken, newRawToken, user);
     }
 
     @Transactional
     public void logout(String rawToken) {
         String tokenHash = jwtService.hashToken(rawToken);
         refreshTokenRepository.findByTokenHash(tokenHash).ifPresent(RefreshToken::revoke);
+    }
+
+    @SuppressWarnings("null")
+    @Transactional(readOnly = true)
+    public MeResponse me(UUID userId) {
+        User user = userRepository.findById(userId)
+                .filter(u -> u.isEnabled() && u.isActive())
+                .orElseThrow(() -> new BadCredentialsException("User not found"));
+        return new MeResponse(
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getUserRole().getName(),
+                permissionCacheService.getPermissionCodes(user.getUserRole().getId())
+        );
+    }
+
+    private LoginResponse buildResponse(String accessToken, String rawRefreshToken, User user) {
+        return new LoginResponse(
+                accessToken,
+                rawRefreshToken,
+                user.getId(),
+                user.getName(),
+                user.getUserRole().getName(),
+                permissionCacheService.getPermissionCodes(user.getUserRole().getId())
+        );
     }
 }

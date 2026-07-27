@@ -21,6 +21,7 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final ProductImageService productImageService;
+    private final WarehouseRepository warehouseRepository;
 
     @Transactional(readOnly = true)
     public Page<ProductResponse> listAll(Pageable pageable) {
@@ -128,7 +129,14 @@ public class ProductService {
         if (request.purchaseCost() != null) product.setPurchaseCost(request.purchaseCost());
         if (request.salePrice() != null) product.setSalePrice(request.salePrice());
         if (request.inventoryTrackingEnabled() != null) product.setInventoryTrackingEnabled(request.inventoryTrackingEnabled());
-        if (request.defaultWarehouse() != null) product.setDefaultWarehouse(request.defaultWarehouse().isBlank() ? null : request.defaultWarehouse().trim());
+        if (request.warehouseId() != null) {
+            warehouseRepository.findByIdAndDeletedAtIsNull(request.warehouseId()).ifPresent(w -> {
+                product.setWarehouse(w);
+                product.setDefaultWarehouse(w.getName());
+            });
+        } else if (request.defaultWarehouse() != null) {
+            product.setDefaultWarehouse(request.defaultWarehouse().isBlank() ? null : request.defaultWarehouse().trim());
+        }
         if (request.imageUrl() != null) {
             String newUrl = request.imageUrl().isBlank() ? null : request.imageUrl().trim();
             // Sin huérfanos: si deja de apuntar al archivo gestionado, se elimina del disco

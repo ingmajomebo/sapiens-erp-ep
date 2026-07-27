@@ -14,6 +14,7 @@ export interface LoginResponse {
   userId: string
   name: string
   role: string
+  permissions: string[]
 }
 
 export const authApi = {

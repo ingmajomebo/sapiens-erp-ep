@@ -23,7 +23,8 @@ public record ProductRequest(
         @DecimalMin("0") BigDecimal purchaseCost,
         @NotNull @DecimalMin("0") BigDecimal salePrice,
         Boolean inventoryTrackingEnabled,
-        @NotBlank String defaultWarehouse,
+        String defaultWarehouse,
+        UUID warehouseId,
         ProductStatus status,
         String imageUrl
 ) {}

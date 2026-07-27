@@ -5,5 +5,6 @@ public enum MovementType {
     EXIT,
     WASTE,
     POSITIVE_ADJUSTMENT,
-    NEGATIVE_ADJUSTMENT
+    NEGATIVE_ADJUSTMENT,
+    TRANSFER
 }

@@ -51,6 +51,7 @@ export function LoginPage() {
         id: data.userId,
         name: data.name,
         role: data.role,
+        permissions: data.permissions ?? [],
       })
     } catch {
       setError(t.login_invalid)

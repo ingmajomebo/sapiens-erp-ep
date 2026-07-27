@@ -26,7 +26,7 @@ public class SupplierController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('PROCUREMENT_SUPPLIER_MANAGE')")
     public ResponseEntity<SupplierResponse> create(@Valid @RequestBody SupplierRequest request) {
         SupplierResponse response = supplierService.create(request);
         return ResponseEntity
@@ -35,14 +35,14 @@ public class SupplierController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('PROCUREMENT_SUPPLIER_MANAGE')")
     public ResponseEntity<SupplierResponse> update(@PathVariable UUID id,
                                                     @Valid @RequestBody SupplierRequest request) {
         return ResponseEntity.ok(supplierService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAuthority('PROCUREMENT_SUPPLIER_MANAGE')")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         supplierService.delete(id);
         return ResponseEntity.noContent().build();

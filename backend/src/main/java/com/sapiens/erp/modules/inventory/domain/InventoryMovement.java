@@ -1,6 +1,7 @@
 package com.sapiens.erp.modules.inventory.domain;
 
 import com.sapiens.erp.modules.catalog.domain.Product;
+import com.sapiens.erp.modules.catalog.domain.Warehouse;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -41,6 +42,14 @@ public class InventoryMovement {
     @Column(name = "new_average_cost", precision = 14, scale = 4)
     private BigDecimal newAverageCost;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "from_location_id")
+    private Warehouse fromLocation;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "to_location_id")
+    private Warehouse toLocation;
+
     @Column(columnDefinition = "TEXT")
     private String reason;
 
@@ -53,13 +62,25 @@ public class InventoryMovement {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    // ── Factory methods ────────────────────────────────────────────────────────
+
+    /** Without location context (backward-compatible). */
     public static InventoryMovement create(Product product, MovementType type, BigDecimal quantity,
                                            BigDecimal unitCost, String reason, String notes, String createdBy) {
-        return create(product, type, quantity, unitCost, null, null, reason, notes, createdBy);
+        return create(product, type, quantity, unitCost, null, null, null, null, reason, notes, createdBy);
     }
 
+    /** Without location context, with cost recalculation data. */
     public static InventoryMovement create(Product product, MovementType type, BigDecimal quantity,
                                            BigDecimal unitCost, BigDecimal previousAverageCost, BigDecimal newAverageCost,
+                                           String reason, String notes, String createdBy) {
+        return create(product, type, quantity, unitCost, previousAverageCost, newAverageCost, null, null, reason, notes, createdBy);
+    }
+
+    /** Full create with locations and cost data. */
+    public static InventoryMovement create(Product product, MovementType type, BigDecimal quantity,
+                                           BigDecimal unitCost, BigDecimal previousAverageCost, BigDecimal newAverageCost,
+                                           Warehouse fromLocation, Warehouse toLocation,
                                            String reason, String notes, String createdBy) {
         InventoryMovement m = new InventoryMovement();
         m.id = UUID.randomUUID();
@@ -69,10 +90,20 @@ public class InventoryMovement {
         m.unitCost = unitCost;
         m.previousAverageCost = previousAverageCost;
         m.newAverageCost = newAverageCost;
+        m.fromLocation = fromLocation;
+        m.toLocation = toLocation;
         m.reason = reason;
         m.notes = notes;
         m.createdBy = createdBy;
         m.createdAt = Instant.now();
         return m;
+    }
+
+    /** Convenience factory for TRANSFER movements. */
+    public static InventoryMovement createTransfer(Product product, BigDecimal quantity,
+                                                   Warehouse fromLocation, Warehouse toLocation,
+                                                   String reason, String notes, String createdBy) {
+        return create(product, MovementType.TRANSFER, quantity, null, null, null,
+                fromLocation, toLocation, reason, notes, createdBy);
     }
 }

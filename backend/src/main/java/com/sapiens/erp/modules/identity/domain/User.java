@@ -28,9 +28,9 @@ public class User extends AuditableEntity {
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
-    @Enumerated(EnumType.STRING)
-    @Column(length = 20, nullable = false)
-    private Role role;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "role_id", nullable = false)
+    private UserRole userRole;
 
     @Column(nullable = false)
     private boolean enabled = true;
@@ -38,13 +38,13 @@ public class User extends AuditableEntity {
     @Column(name = "last_login")
     private Instant lastLogin;
 
-    public static User create(String name, String email, String passwordHash, Role role) {
+    public static User create(String name, String email, String passwordHash, UserRole userRole) {
         User u = new User();
         u.id = UUID.randomUUID();
         u.name = name;
         u.email = email;
         u.passwordHash = passwordHash;
-        u.role = role;
+        u.userRole = userRole;
         u.enabled = true;
         return u;
     }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { PrimaryBtn, GhostBtn } from '../../shared/helpers'
+import { PrimaryBtn, GhostBtn, Select } from '../../shared/helpers'
 import { toast, toastLoading, toastResolve } from '../../shared/toast'
 import { formatCOP } from '../../shared/currency'
 import { cashBanksApi } from '../finance/api/cashBanksApi'
@@ -64,11 +64,12 @@ function CommonFields({ method, setMethod, accountId, setAccountId, reference, s
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
       <div>
         <label style={labelSm}>Medio de pago</label>
-        <select style={inputStyle} value={method} onChange={e => setMethod(e.target.value as ReceiptPaymentMethod)}>
-          {(['CASH', 'TRANSFER', 'CARD'] as ReceiptPaymentMethod[]).map(m => (
-            <option key={m} value={m}>{METHOD_LABELS[m]}</option>
-          ))}
-        </select>
+        <Select
+          style={{ width: '100%' }}
+          value={method}
+          onChange={v => setMethod(v as ReceiptPaymentMethod)}
+          options={(['CASH', 'TRANSFER', 'CARD'] as ReceiptPaymentMethod[]).map(m => ({ value: m, label: METHOD_LABELS[m] }))}
+        />
       </div>
       <div>
         <label style={labelSm}>Referencia (opcional)</label>
@@ -77,12 +78,15 @@ function CommonFields({ method, setMethod, accountId, setAccountId, reference, s
       </div>
       <div style={{ gridColumn: '1 / -1' }}>
         <label style={labelSm}>Cuenta que recibe *</label>
-        <select style={inputStyle} value={accountId} onChange={e => setAccountId(e.target.value)}>
-          <option value="">Seleccionar cuenta…</option>
-          {activeAccounts.map(a => (
-            <option key={a.id} value={a.id}>{a.name} · {formatCOP(a.currentBalance)}</option>
-          ))}
-        </select>
+        <Select
+          style={{ width: '100%' }}
+          value={accountId}
+          onChange={v => setAccountId(v)}
+          options={[
+            { value: '', label: 'Seleccionar cuenta…' },
+            ...activeAccounts.map(a => ({ value: a.id, label: `${a.name} · ${formatCOP(a.currentBalance)}` })),
+          ]}
+        />
       </div>
     </div>
   )
