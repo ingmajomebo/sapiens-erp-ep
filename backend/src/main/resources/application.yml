@@ -27,6 +27,11 @@ spring:
       max-request-size: 7MB
 
 app:
+  # Administrador inicial. En producción es obligatorio definirlas: sin ellas
+  # no se crea ningún usuario y nadie puede entrar (a propósito).
+  admin:
+    email: ${ADMIN_EMAIL:}
+    password: ${ADMIN_PASSWORD:}
   uploads:
     dir: ${UPLOADS_DIR:uploads/qa}
     products-dir: ${UPLOADS_PRODUCTS_DIR:uploads/products}

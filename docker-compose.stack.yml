@@ -45,6 +45,8 @@ services:
       DB_SSLMODE: disable
       JWT_SECRET: ${JWT_SECRET}
       CORS_ORIGIN: ${CORS_ORIGIN}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       UPLOADS_DIR: /app/uploads/qa
       UPLOADS_PRODUCTS_DIR: /app/uploads/products
       AI_ANTHROPIC_API_KEY: ${AI_ANTHROPIC_API_KEY:-}
