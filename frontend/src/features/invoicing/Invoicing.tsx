@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Card, KpiCard, CardHeader, StatusChip,
-  PrimaryBtn, GhostBtn, FilterSelect, Select,
+  PrimaryBtn, GhostBtn, Select,
   tableStyle, thStyle, tdStyle,
 } from '../../shared/helpers'
 import { toast } from '../../shared/toast'
@@ -12,7 +12,7 @@ import { RegisterPaymentModal } from '../receivables/RegisterPaymentModal'
 import {
   salesInvoiceApi,
   type SalesInvoiceDto, type SalesInvoiceStatus,
-  type PaymentForm, type InvoicePaymentMethod,
+  type InvoicePaymentMethod,
 } from '../sales/api/salesApi'
 
 const fmtDate = (v: string | null | undefined, withTime = false) =>

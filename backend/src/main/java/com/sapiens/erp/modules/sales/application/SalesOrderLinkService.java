@@ -20,6 +20,7 @@ public class SalesOrderLinkService {
     private final SalesOrderLinkRepository linkRepository;
     private final SalesOrderService salesOrderService;
     private final com.sapiens.erp.modules.catalog.domain.ProductRepository productRepository;
+    private final StorefrontSettingsService storefrontSettingsService;
 
     // ── Administración ────────────────────────────────────────────────────────
 
@@ -55,7 +56,7 @@ public class SalesOrderLinkService {
                 .map(p -> new PublicProductResponse(p.getId(), p.getName(),
                         p.getUnitOfMeasure().name(), p.getSalePrice(), p.getImageUrl()))
                 .toList();
-        return new PublicCatalogResponse(link.getLabel(), products);
+        return new PublicCatalogResponse(link.getLabel(), products, storefrontSettingsService.getAll());
     }
 
     @Transactional

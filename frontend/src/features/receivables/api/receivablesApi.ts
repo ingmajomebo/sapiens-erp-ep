@@ -86,7 +86,7 @@ export interface PaymentReceiptRequest {
 // ─── API ──────────────────────────────────────────────────────────────────────
 
 export const receivablesApi = {
-  list: async (params: Record<string, string | number | undefined>): Promise<{
+  list: async (params: Record<string, string | number | boolean | undefined>): Promise<{
     content: ReceivableDto[]; page: number; size: number; totalElements: number
   }> => {
     const { data } = await client.get('/accounts-receivable', { params })

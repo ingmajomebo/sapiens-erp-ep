@@ -1,6 +1,7 @@
 package com.sapiens.erp.modules.identity.infrastructure;
 
 import com.sapiens.erp.modules.identity.application.CustomUserDetailsService;
+import com.sapiens.erp.modules.storefront.infrastructure.StorefrontTokenService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
@@ -40,6 +41,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             Claims claims = jwtService.validateToken(token);
             String userId = claims.getSubject();
+
+            // Un token de la tienda pública nunca autentica contra el ERP,
+            // aunque la firma sea válida: son dos poblaciones distintas.
+            if (StorefrontTokenService.CUSTOMER_TYPE
+                    .equals(claims.get(StorefrontTokenService.TOKEN_TYPE_CLAIM, String.class))) {
+                chain.doFilter(request, response);
+                return;
+            }
 
             if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = userDetailsService.loadUserById(UUID.fromString(userId));

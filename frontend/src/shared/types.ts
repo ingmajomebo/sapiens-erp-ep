@@ -21,6 +21,7 @@ export type MovementType =
   | 'WASTE'
   | 'POSITIVE_ADJUSTMENT'
   | 'NEGATIVE_ADJUSTMENT'
+  | 'TRANSFER'
 
 export type UnitOfMeasure = 'KG' | 'LB' | 'UNIT' | 'PACKAGE' | 'LITER'
 

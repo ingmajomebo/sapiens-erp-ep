@@ -1,0 +1,113 @@
+.hero {
+  position: relative;
+  height: 100vh;
+  min-height: 620px;
+  /* El header sticky se superpone: el contenido ya va al tercio inferior */
+  margin-top: calc(var(--header-h) * -1);
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  background: var(--deep-aqua);
+  color: var(--text-on-aqua);
+}
+
+.media {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Única excepción a la regla de "sin gradientes decorativos" */
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--hero-overlay);
+}
+
+.content {
+  position: relative;
+  width: 100%;
+  /* Anclado al tercio inferior, nunca centrado vertical */
+  padding-bottom: 128px;
+}
+
+.eyebrow { color: var(--text-on-aqua-muted); }
+
+.title {
+  margin-top: 22px;
+  color: var(--text-on-aqua);
+  max-width: 15ch;
+}
+
+.subtitle {
+  margin: 26px 0 34px;
+  max-width: 520px;
+  color: var(--text-on-aqua-muted);
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+
+.secondaryCta {
+  color: var(--text-on-aqua);
+  font-size: var(--fs-body);
+  text-decoration: underline;
+  text-underline-offset: 6px;
+  transition: color var(--t-fast);
+}
+.secondaryCta:hover { color: var(--pacific-sunset); }
+
+/* Ancla inferior sobre borde hairline */
+.anchor {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-top: 1px solid var(--hairline-on-aqua);
+}
+.anchorInner {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-block: 18px;
+  font-size: var(--fs-eyebrow);
+  font-weight: 400;
+  letter-spacing: var(--tr-nav);
+  text-transform: uppercase;
+  color: var(--text-on-aqua-muted);
+}
+.dot { opacity: 0.5; }
+
+/* Entrada escalonada */
+.reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  animation: rise 600ms var(--ease-out) forwards;
+}
+.d1 { animation-delay: 0ms; }
+.d2 { animation-delay: 80ms; }
+.d3 { animation-delay: 160ms; }
+.d4 { animation-delay: 240ms; }
+.d5 { animation-delay: 320ms; }
+
+@keyframes rise {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; animation: none; }
+}
+
+@media (max-width: 640px) {
+  .content { padding-bottom: 104px; }
+  .subtitle { font-size: 15px; }
+  .actions { gap: 20px; }
+}

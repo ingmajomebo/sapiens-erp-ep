@@ -5,10 +5,13 @@ import com.sapiens.erp.modules.finance.domain.exception.InsufficientCashExceptio
 import com.sapiens.erp.modules.finance.domain.exception.PaymentExceedsBalanceException;
 import com.sapiens.erp.modules.finance.domain.exception.ReceivableHasActivePaymentsException;
 import com.sapiens.erp.modules.inventory.domain.exception.InsufficientStockException;
+import com.sapiens.erp.modules.storefront.domain.exception.StorefrontAuthException;
+import com.sapiens.erp.modules.storefront.domain.exception.StorefrontOutOfStockException;
 import com.sapiens.erp.modules.inventory.domain.exception.InsufficientStockAtLocationException;
 import com.sapiens.erp.modules.inventory.domain.exception.LocationHasStockException;
 import com.sapiens.erp.modules.inventory.domain.exception.LocationNotFoundException;
 import com.sapiens.erp.modules.inventory.domain.exception.SameLocationTransferException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -21,6 +24,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -110,8 +114,31 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(409, "CONFLICT", ex.getMessage()));
     }
 
+    /** 422 con el detalle de la presentación, para que la tienda pueda señalarla. */
+    @ExceptionHandler(StorefrontOutOfStockException.class)
+    public ResponseEntity<StorefrontOutOfStockResponse> handleStorefrontOutOfStock(
+            StorefrontOutOfStockException ex) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(new StorefrontOutOfStockResponse(
+                        422, "INSUFFICIENT_STOCK", ex.getMessage(),
+                        ex.getPresentationId(), ex.getProductName(), ex.getPresentationName(),
+                        java.time.Instant.now()));
+    }
+
+    public record StorefrontOutOfStockResponse(
+            int status, String error, String message,
+            java.util.UUID presentationId, String productName, String presentationName,
+            java.time.Instant timestamp) {}
+
+    @ExceptionHandler(StorefrontAuthException.class)
+    public ResponseEntity<ErrorResponse> handleStorefrontAuth(StorefrontAuthException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ErrorResponse.of(401, "UNAUTHORIZED", ex.getMessage()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneral(Exception ex) {
+        log.error("Unhandled exception", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ErrorResponse.of(500, "INTERNAL_ERROR", "Internal server error"));
     }

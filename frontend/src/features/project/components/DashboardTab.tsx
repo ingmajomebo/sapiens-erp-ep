@@ -1,9 +1,7 @@
-import type { ProjectTaskDto, SprintDto } from '../api/projectApi'
+import type { ProjectTaskDto, SprintDto, TaskStatus, TaskAssignee } from '../api/projectApi'
 import {
-  Badge, Avatar, KpiCard,
+  Avatar, KpiCard,
   STATUS_LABELS, STATUS_COLORS, STATUS_BG,
-  TASK_TYPE_LABELS, TASK_TYPE_COLORS,
-  PRIORITY_LABELS, PRIORITY_COLORS,
   MODULES, MODULE_LABELS,
 } from './shared'
 

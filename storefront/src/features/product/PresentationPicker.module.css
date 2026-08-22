@@ -1,0 +1,51 @@
+.axis { margin-top: 22px; }
+.label { font-size: 13px; font-weight: 700; margin-bottom: 12px; }
+.options { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.option {
+  position: relative;
+  padding: 12px 20px;
+  border: 1px solid var(--option-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-size: 15px;
+  color: inherit;
+  transition: border-color var(--t-fast), background var(--t-fast);
+}
+.option:hover:not(.disabled) { border-color: var(--deep-aqua); }
+
+.selected {
+  border: 1.5px solid var(--deep-aqua);
+  background: var(--white);
+  font-weight: 700;
+}
+
+.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  /* Tachado diagonal sutil, sin oscurecer la caja */
+  background-image: linear-gradient(
+    to top right,
+    transparent calc(50% - 0.5px),
+    var(--option-border) calc(50% - 0.5px),
+    var(--option-border) calc(50% + 0.5px),
+    transparent calc(50% + 0.5px)
+  );
+}
+
+.best {
+  position: absolute;
+  top: -9px;
+  left: 12px;
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  background: var(--saffron);
+  color: var(--deep-aqua);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: var(--tr-eyebrow);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.price { color: var(--text-on-cream-muted); }
+.selected .price { color: inherit; }

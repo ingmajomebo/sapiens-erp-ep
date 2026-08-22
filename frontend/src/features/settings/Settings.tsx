@@ -10,6 +10,7 @@ import type { WarehouseDto } from '../inventory/api/warehouseApi'
 import { toast } from '../../shared/toast'
 import client from '../../api/client'
 import { rolesApi } from './api/rolesApi'
+import { StorefrontSection } from './StorefrontSection'
 import type { RoleDto, PermissionDto } from './api/rolesApi'
 
 const adminApi = {
@@ -67,7 +68,7 @@ export function Settings() {
   const { lang, theme, brandLogo, companyName, brandColors, setBrandLogo, setCompanyName, setBrandColors, resetBrandColors } = useAppStore()
   const t = translations[lang]
 
-  const [tab, setTab] = useState<'brand' | 'colors' | 'warehouses' | 'data' | 'roles'>('brand')
+  const [tab, setTab] = useState<'brand' | 'colors' | 'storefront' | 'warehouses' | 'data' | 'roles'>('brand')
   const [nameInput, setNameInput] = useState(companyName)
   const [saved, setSaved] = useState(false)
   const [logoError, setLogoError] = useState('')
@@ -137,6 +138,9 @@ export function Settings() {
         </button>
         <button style={tabStyle(tab === 'colors')}     onClick={() => setTab('colors')}>
           {t.set_colors_tab}
+        </button>
+        <button style={tabStyle(tab === 'storefront')} onClick={() => setTab('storefront')}>
+          Página de venta
         </button>
         <button style={tabStyle(tab === 'warehouses')} onClick={() => setTab('warehouses')}>
           Almacenes
@@ -466,6 +470,8 @@ export function Settings() {
       )}
 
       {/* ── WAREHOUSES TAB ── */}
+      {tab === 'storefront' && <StorefrontSection />}
+
       {tab === 'warehouses' && <WarehousesSection />}
 
       {/* ── DATA TAB ── */}

@@ -1,16 +1,15 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   sprintsApi, projectTasksApi, promptPlansApi, userStoriesApi, aiApi, epicsApi, qaApi,
   type SprintDto, type ProjectTaskDto, type PromptPlanDto,
-  type TaskStatus, type TaskType, type TaskAssignee, type TaskPriority,
+  type TaskStatus, type TaskType, type TaskPriority,
   type PromptCategory, type PromptStatus,
   type UserStoryDto, type StoryType, type StoryStatus, type NfrCategory,
   type ScenarioType, type UserStoryRequest, type StoryScenarioRequest,
   type EpicDto, type EpicRequest, type EpicStatus,
   type TestExecutionDto,
   type AiChatMessage,
-  type AiContextDto,
 } from './api/projectApi'
 import { toast } from '../../shared/toast'
 import { Select } from '../../shared/helpers'
@@ -31,7 +30,7 @@ import {
   NFR_CAT_LABELS, NFR_CAT_COLORS,
   SCENARIO_TYPE_LABELS, SCENARIO_TYPE_COLORS,
   NEXT_STATUS,
-  Badge, Avatar, KpiCard,
+  Badge, Avatar,
   overlayStyle, modalStyle, modalHeaderStyle, closeBtnStyle, labelStyle, inputStyle,
   btnPrimaryStyle, btnSecondaryStyle, iconBtnStyle,
 } from './components/shared'
@@ -479,7 +478,7 @@ function PromptModal({
   const [module, setModule] = useState(prompt?.module ?? prefillTask?.module ?? '')
   const [category, setCategory] = useState<PromptCategory>(prompt?.category ?? 'NEW_FEATURE')
   const [linkedStoryId, setLinkedStoryId] = useState(prefillStory?.id ?? '')
-  const [linkedTaskId, setLinkedTaskId] = useState(prompt?.linkedTaskId ?? initialLinkedTaskId ?? '')
+  const [linkedTaskId] = useState(prompt?.linkedTaskId ?? initialLinkedTaskId ?? '')
 
   const selectedStory = stories.find(s => s.id === linkedStoryId) ?? null
   const moduleLabel = module ? (MODULE_LABELS[module] ?? module) : 'No especificado'
@@ -870,7 +869,7 @@ Módulo: ${moduleLabel}`)
 // ─── Prompt Detail Modal ──────────────────────────────────────────────────────
 
 function PromptDetailModal({
-  prompt, onClose, onStatusChange, onEdit,
+  prompt, onClose, onStatusChange, onEdit, onRecordExecution,
 }: {
   prompt: PromptPlanDto
   onClose: () => void
@@ -1216,7 +1215,7 @@ function BoardTab({
 // ─── Tasks Tab ────────────────────────────────────────────────────────────────
 
 function TasksTab({
-  tasks, sprints, onStatusChange, onEditTask, onDeleteTask, onClickTask,
+  tasks, sprints, onStatusChange, onEditTask, onDeleteTask, onGeneratePrompt, onClickTask,
 }: {
   tasks: ProjectTaskDto[]
   sprints: SprintDto[]

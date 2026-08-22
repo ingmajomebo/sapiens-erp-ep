@@ -14,6 +14,7 @@ import java.util.UUID;
 public record ProductRequest(
         @NotBlank @Size(max = 100) String name,
         @NotNull UUID categoryId,
+        UUID subcategoryId,
         @NotNull UnitOfMeasure unitOfMeasure,
         @DecimalMin("0") BigDecimal minimumStock,
         String description,

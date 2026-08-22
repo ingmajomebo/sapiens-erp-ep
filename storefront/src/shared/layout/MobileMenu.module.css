@@ -1,0 +1,55 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: var(--cream);
+  color: var(--text-on-cream);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.top {
+  height: var(--header-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--hairline-on-cream);
+}
+
+.body { padding-block: 12px 40px; }
+
+.row { border-bottom: 1px solid var(--hairline-on-cream); }
+
+.rowButton,
+.rowLink {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-block: 20px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: var(--tr-h3);
+  color: inherit;
+  text-align: left;
+}
+
+
+.sublist { padding-bottom: 18px; }
+
+.sublink {
+  display: block;
+  padding-block: 9px;
+  font-size: 16px;
+  color: var(--text-on-cream-muted);
+}
+.sublink:hover { color: var(--text-on-cream); }
+
+.seeAll {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 14px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}

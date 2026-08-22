@@ -1,0 +1,33 @@
+.wrap { max-width: 720px; margin-inline: auto; padding-block: 64px var(--section-y); }
+.eyebrow { color: var(--pacific-sunset); }
+.title { margin-top: 16px; font-size: var(--fs-h2); }
+.meta { margin-top: 14px; color: var(--text-on-cream-muted); }
+
+.steps { display: flex; gap: 8px; margin-block: 48px; }
+.step { flex: 1; }
+.stepBar { height: 3px; background: var(--progress-track); }
+.stepBarActive { background: var(--pacific-sunset); }
+.stepLabel { margin-top: 12px; font-size: 12px; font-weight: 700; letter-spacing: var(--tr-eyebrow); text-transform: uppercase; color: var(--text-on-cream-soft); }
+.stepLabelActive { color: var(--text-on-cream); }
+
+.cancelled { padding: 18px 20px; border: 1px solid var(--scarlet-red); border-radius: var(--radius-sm); margin-block: 40px; }
+
+.transfer {
+  background: var(--guarantee-bg);
+  border: 1px solid var(--hairline-on-cream);
+  border-radius: var(--radius-sm);
+  padding: 26px;
+  margin-bottom: 40px;
+}
+.transferTitle { font-size: 17px; font-weight: 700; margin-bottom: 14px; }
+.transferRow { display: flex; justify-content: space-between; padding-block: 6px; font-size: 15px; }
+.transferNote { margin-top: 16px; font-size: 14px; line-height: 1.6; }
+
+.lines { border-top: 1px solid var(--hairline-on-cream); }
+.line { display: flex; justify-content: space-between; gap: 16px; padding-block: 14px; border-bottom: 1px solid var(--hairline-on-cream); font-size: 15px; }
+.linePresentation { color: var(--text-on-cream-soft); }
+.totalRow { display: flex; justify-content: space-between; padding-block: 8px; font-size: 15px; }
+.totalFinal { display: flex; justify-content: space-between; border-top: 2px solid var(--deep-aqua); margin-top: 10px; padding-top: 14px; font-size: 20px; font-weight: 700; }
+
+.keep { margin-top: 40px; padding: 16px 18px; border: 1px dashed var(--hairline-on-cream); border-radius: var(--radius-sm); font-size: 14px; color: var(--text-on-cream-muted); }
+.state { padding-block: 120px; text-align: center; color: var(--text-on-cream-muted); }

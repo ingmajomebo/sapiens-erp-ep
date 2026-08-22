@@ -1,0 +1,82 @@
+# Stack desplegable de Sapiens ERP + tienda Encanto Pacífico.
+#
+# El MISMO archivo levanta desarrollo y producción. Lo que cambia es el
+# archivo de entorno que se le pase:
+#
+#   docker compose --env-file deploy/env/prod.env -f docker-compose.stack.yml up -d
+#   docker compose --env-file deploy/env/dev.env  -f docker-compose.stack.yml up -d
+#
+# COMPOSE_PROJECT_NAME separa contenedores, redes y volúmenes entre ambientes.
+
+name: ${STACK_NAME:-encanto}
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${PGDATABASE}
+      POSTGRES_USER: ${PGUSER}
+      POSTGRES_PASSWORD: ${PGPASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    # Sin `ports`: la BD nunca se expone fuera de la red del stack
+
+  backend:
+    image: ${REGISTRY}/erp-backend:${IMAGE_TAG}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      PORT: 8080
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: ${PGDATABASE}
+      PGUSER: ${PGUSER}
+      PGPASSWORD: ${PGPASSWORD}
+      DB_SSLMODE: disable
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      UPLOADS_DIR: /app/uploads/qa
+      UPLOADS_PRODUCTS_DIR: /app/uploads/products
+      AI_ANTHROPIC_API_KEY: ${AI_ANTHROPIC_API_KEY:-}
+    volumes:
+      - uploads:/app/uploads
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  # Panel administrativo
+  erp:
+    image: ${REGISTRY}/erp-frontend:${IMAGE_TAG}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${ERP_PORT}:80"
+
+  # Tienda pública
+  storefront:
+    image: ${REGISTRY}/storefront:${IMAGE_TAG}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${STOREFRONT_PORT}:80"
+
+volumes:
+  pgdata:
+  uploads:

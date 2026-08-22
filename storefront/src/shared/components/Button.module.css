@@ -1,0 +1,62 @@
+.base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 18px 36px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast);
+}
+
+.base:disabled,
+.base[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Único elemento relleno en Pacific Sunset permitido por viewport */
+.primary {
+  background: var(--pacific-sunset);
+  color: var(--white);
+  border: 1px solid var(--pacific-sunset);
+}
+.primary:hover:not(:disabled):not([aria-disabled='true']) {
+  background: var(--sunset-hover);
+  border-color: var(--sunset-hover);
+}
+
+.secondary {
+  background: transparent;
+  color: inherit;
+  border: 1px solid currentColor;
+}
+.secondary:hover:not(:disabled):not([aria-disabled='true']) {
+  background: currentColor;
+}
+/* El texto se invierte contra el fondo heredado */
+.secondary:hover:not(:disabled):not([aria-disabled='true']) > span {
+  color: var(--cream);
+  mix-blend-mode: difference;
+}
+
+.text {
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: var(--fs-body);
+  font-weight: 400;
+  text-decoration: underline;
+  text-underline-offset: 6px;
+}
+.text:hover:not(:disabled) { color: var(--pacific-sunset); }
+
+.full { width: 100%; }

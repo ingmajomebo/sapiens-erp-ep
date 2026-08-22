@@ -6,7 +6,7 @@ import { translations } from '../i18n/translations'
 import { Button } from './Button'
 import { toast } from './toast'
 import { formatCOP } from './currency'
-import { productApi, categoryApi } from '../features/catalog/api/productApi'
+import { productApi, categoryApi, subcategoryApi } from '../features/catalog/api/productApi'
 import { supplierApi } from '../features/procurement/api/supplierApi'
 import { purchaseOrderApi } from '../features/procurement/api/purchaseOrderApi'
 import { warehouseApi } from '../features/inventory/api/warehouseApi'
@@ -119,6 +119,7 @@ function ProductForm() {
 
   // Section 3: Inventory config
   const [categoryId, setCategoryId] = useState('')
+  const [subcategoryId, setSubcategoryId] = useState('')
   const [unitOfMeasure, setUnitOfMeasure] = useState<UnitOfMeasure>('KG')
   const [inventoryTracking, setInventoryTracking] = useState(true)
   const [defaultWarehouse, setDefaultWarehouse] = useState('')
@@ -129,6 +130,10 @@ function ProductForm() {
 
   const [showNewCat, setShowNewCat] = useState(false)
   const [newCatName, setNewCatName] = useState('')
+  const [showNewSubcat, setShowNewSubcat] = useState(false)
+  const [newSubcatName, setNewSubcatName] = useState('')
+  const [savingSubcat, setSavingSubcat] = useState(false)
+  const [subcatError, setSubcatError] = useState('')
   const [savingCat, setSavingCat] = useState(false)
   const [catError, setCatError] = useState('')
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
@@ -140,6 +145,12 @@ function ProductForm() {
   const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
     queryFn: categoryApi.listAll,
+  })
+
+  const { data: subcategories = [] } = useQuery({
+    queryKey: ['subcategories', categoryId],
+    queryFn: () => subcategoryApi.listAll(categoryId),
+    enabled: !!categoryId,
   })
 
   const { data: warehouses = [] } = useQuery({
@@ -177,6 +188,25 @@ function ProductForm() {
     setImagePreview(url || null)
   }
 
+  async function handleCreateSubcategory() {
+    if (!categoryId) { setSubcatError('Elige primero una categoría'); return }
+    if (!newSubcatName.trim()) { setSubcatError('Nombre requerido'); return }
+    setSavingSubcat(true)
+    setSubcatError('')
+    try {
+      const created = await subcategoryApi.create(categoryId, newSubcatName.trim())
+      await qc.invalidateQueries({ queryKey: ['subcategories', categoryId] })
+      setSubcategoryId(created.id)
+      setNewSubcatName('')
+      setShowNewSubcat(false)
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'No se pudo crear la subcategoría'
+      setSubcatError(msg)
+    } finally {
+      setSavingSubcat(false)
+    }
+  }
+
   async function handleCreateCategory() {
     if (!newCatName.trim()) { setCatError('Nombre requerido'); return }
     setSavingCat(true)
@@ -185,6 +215,7 @@ function ProductForm() {
       const created = await categoryApi.create(newCatName.trim())
       await qc.invalidateQueries({ queryKey: ['categories'] })
       setCategoryId(created.id)
+      setSubcategoryId('')
       setNewCatName('')
       setShowNewCat(false)
     } catch (err: unknown) {
@@ -213,6 +244,7 @@ function ProductForm() {
     const created = await createProduct.mutateAsync({
       name: name.trim(),
       categoryId,
+      subcategoryId: subcategoryId || null,
       unitOfMeasure,
       productType: productType as ProductType,
       salePrice: parseFloat(salePrice),
@@ -369,7 +401,14 @@ function ProductForm() {
             <select
               style={{ ...selectStyle, flex: 1, ...(formErrors.categoryId ? { borderColor: 'var(--neg)' } : {}) }}
               value={categoryId}
-              onChange={(e) => { setCategoryId(e.target.value); clearError('categoryId') }}
+              onChange={(e) => {
+                setCategoryId(e.target.value)
+                // La subcategoría cuelga de la categoría: al cambiarla deja de ser válida
+                setSubcategoryId('')
+                setShowNewSubcat(false)
+                setSubcatError('')
+                clearError('categoryId')
+              }}
             >
               <option value="">— Seleccionar categoría *</option>
               {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -400,6 +439,57 @@ function ProductForm() {
                 <Button variant="primary" size="sm" loading={savingCat} onClick={handleCreateCategory}>Agregar</Button>
               </div>
               {catError && <div style={{ marginTop: 4, fontSize: 11.5, color: 'var(--neg)' }}>{catError}</div>}
+            </div>
+          )}
+        </Field>
+
+        <Field label="Subcategoría">
+          <div style={{ display: 'flex', gap: 6 }}>
+            <select
+              style={{ ...selectStyle, flex: 1, ...(categoryId ? {} : { opacity: 0.55, cursor: 'not-allowed' }) }}
+              value={subcategoryId}
+              disabled={!categoryId}
+              onChange={(e) => setSubcategoryId(e.target.value)}
+            >
+              <option value="">
+                {categoryId ? '— Sin subcategoría (opcional)' : '— Elige una categoría primero'}
+              </option>
+              {subcategories.map((sc) => <option key={sc.id} value={sc.id}>{sc.name}</option>)}
+            </select>
+            <button
+              type="button"
+              disabled={!categoryId}
+              onClick={() => { setShowNewSubcat((v) => !v); setSubcatError('') }}
+              style={{
+                flexShrink: 0, width: 34, height: 34, borderRadius: 8,
+                border: '1px solid var(--border)',
+                background: showNewSubcat ? 'var(--accent)' : 'var(--surface-2)',
+                color: showNewSubcat ? '#fff' : 'var(--text-2)',
+                fontSize: 18, lineHeight: 1,
+                cursor: categoryId ? 'pointer' : 'not-allowed',
+                opacity: categoryId ? 1 : 0.55,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'background 140ms ease, color 140ms ease',
+              }}
+            >
+              {showNewSubcat ? '×' : '+'}
+            </button>
+          </div>
+          {categoryId && subcategories.length === 0 && !showNewSubcat && (
+            <div style={{ marginTop: 4, fontSize: 11.5, color: 'var(--muted)' }}>
+              Esta categoría aún no tiene subcategorías. Usa + para crear una.
+            </div>
+          )}
+          {showNewSubcat && (
+            <div style={{ marginTop: 8 }}>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input autoFocus style={{ ...inputStyle, flex: 1 }} placeholder="Nombre de subcategoría..."
+                  value={newSubcatName}
+                  onChange={(e) => { setNewSubcatName(e.target.value); setSubcatError('') }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleCreateSubcategory() }} />
+                <Button variant="primary" size="sm" loading={savingSubcat} onClick={handleCreateSubcategory}>Agregar</Button>
+              </div>
+              {subcatError && <div style={{ marginTop: 4, fontSize: 11.5, color: 'var(--neg)' }}>{subcatError}</div>}
             </div>
           )}
         </Field>

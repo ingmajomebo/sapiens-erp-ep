@@ -1,0 +1,8 @@
+.eyebrow {
+  display: block;
+  font-size: var(--fs-eyebrow);
+  font-weight: 700;
+  letter-spacing: var(--tr-eyebrow);
+  text-transform: uppercase;
+  line-height: 1.4;
+}

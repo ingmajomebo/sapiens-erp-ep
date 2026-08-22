@@ -148,9 +148,13 @@ export interface PublicProductDto {
   imageUrl: string | null
 }
 
+/** Textos editables de la página pública, indexados por clave. */
+export type StorefrontSettings = Record<string, string>
+
 export interface PublicCatalogDto {
   label: string | null
   products: PublicProductDto[]
+  storefront: StorefrontSettings
 }
 
 // ─── API canal administrativo ─────────────────────────────────────────────────
@@ -278,6 +282,19 @@ export const salesLinkApi = {
 
   toggle: async (id: string): Promise<SalesOrderLinkDto> => {
     const { data } = await client.patch(`/sales-order-links/${id}/toggle`)
+    return data
+  },
+}
+
+export const storefrontApi = {
+  getAll: async (): Promise<StorefrontSettings> => {
+    const { data } = await client.get('/storefront-settings')
+    return data
+  },
+
+  /** Envía solo las claves modificadas; el resto conserva su valor. */
+  update: async (changes: StorefrontSettings): Promise<StorefrontSettings> => {
+    const { data } = await client.put('/storefront-settings', changes)
     return data
   },
 }

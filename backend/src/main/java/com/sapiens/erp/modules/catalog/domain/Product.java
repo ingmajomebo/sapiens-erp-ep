@@ -27,6 +27,11 @@ public class Product extends AuditableEntity {
     @JoinColumn(name = "category_id")
     private Category category;
 
+    /** Opcional. Si está presente, siempre pertenece a {@link #category}. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "subcategory_id")
+    private Subcategory subcategory;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "unit_of_measure", length = 10, nullable = false)
     private UnitOfMeasure unitOfMeasure;

@@ -20,6 +20,7 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
+    private final SubcategoryRepository subcategoryRepository;
     private final ProductImageService productImageService;
     private final WarehouseRepository warehouseRepository;
 
@@ -53,6 +54,7 @@ public class ProductService {
                 request.description()
         );
         applyExtendedFields(product, request);
+        product.setSubcategory(resolveSubcategory(request.subcategoryId(), category));
         product.setSku(sku);
 
         return ProductResponse.from(productRepository.save(product));
@@ -75,7 +77,9 @@ public class ProductService {
         }
 
         product.setName(request.name());
-        product.setCategory(resolveCategory(request.categoryId()));
+        Category category = resolveCategory(request.categoryId());
+        product.setCategory(category);
+        product.setSubcategory(resolveSubcategory(request.subcategoryId(), category));
         product.setUnitOfMeasure(request.unitOfMeasure() != null ? request.unitOfMeasure() : product.getUnitOfMeasure());
         product.setMinimumStock(request.minimumStock() != null ? request.minimumStock() : product.getMinimumStock());
         product.setDescription(request.description());
@@ -148,6 +152,22 @@ public class ProductService {
             product.setStatus(request.status());
             product.setActive(request.status() == ProductStatus.ACTIVE);
         }
+    }
+
+    /**
+     * La subcategoría es opcional, pero si viene debe pertenecer a la categoría
+     * del producto: si no, quedarían pares (categoría, subcategoría) imposibles.
+     */
+    private Subcategory resolveSubcategory(UUID subcategoryId, Category category) {
+        if (subcategoryId == null) return null;
+        Subcategory subcategory = subcategoryRepository.findById(subcategoryId)
+                .filter(sc -> sc.getDeletedAt() == null)
+                .orElseThrow(() -> new IllegalArgumentException("Subcategory not found: " + subcategoryId));
+        if (category == null || !subcategory.getCategory().getId().equals(category.getId())) {
+            throw new IllegalArgumentException(
+                    "Subcategory '" + subcategory.getName() + "' does not belong to the selected category");
+        }
+        return subcategory;
     }
 
     private Category resolveCategory(UUID categoryId) {

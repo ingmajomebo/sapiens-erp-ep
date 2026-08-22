@@ -1,0 +1,22 @@
+.bar {
+  height: var(--announce-h);
+  background: var(--deep-aqua);
+  color: var(--text-on-aqua);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.message {
+  font-size: var(--fs-eyebrow);
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-align: center;
+  padding-inline: var(--gutter);
+  transition: opacity var(--t-medium);
+}
+
+.visible { opacity: 1; }
+.hidden  { opacity: 0; }

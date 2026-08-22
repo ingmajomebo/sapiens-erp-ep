@@ -1,0 +1,24 @@
+.layout { display: grid; grid-template-columns: 1fr 1fr; gap: 72px; align-items: start; }
+.head { max-width: 24ch; }
+.media { margin: 0; border-radius: var(--radius-sm); overflow: hidden; }
+.media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.list > * + * { margin-top: 48px; padding-top: 48px; border-top: 1px solid var(--hairline-on-cream); }
+.quote {
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--text-on-cream);
+}
+.author { margin-top: 20px; }
+.name { font-size: 14px; font-weight: 700; letter-spacing: 0.02em; }
+.role {
+  margin-top: 4px;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: var(--tr-eyebrow);
+  text-transform: uppercase;
+  color: var(--text-on-cream-soft);
+}
+.pending { margin-top: 34px; font-size: 12.5px; color: var(--pacific-sunset); }
+@media (max-width: 1023px) { .layout { grid-template-columns: 1fr; gap: 44px; } }

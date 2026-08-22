@@ -11,6 +11,17 @@ import { toast } from '../../shared/toast'
 
 const today = new Date().toISOString().slice(0, 10)
 
+/**
+ * El backend no expone un estado OVERDUE (AccountsPayableStatus solo tiene
+ * PENDING, PARTIALLY_PAID, PAID, CANCELLED). El vencimiento se deriva:
+ * hay saldo pendiente y la fecha de pago ya pasó.
+ */
+function isOverdue(ap: AccountsPayableDto): boolean {
+  if (!ap.dueDate) return false
+  if (ap.status === 'PAID' || ap.status === 'CANCELLED') return false
+  return ap.dueDate < today
+}
+
 const PAYMENT_METHODS = ['Efectivo', 'Transferencia', 'Nequi', 'Daviplata', 'Tarjeta débito', 'Tarjeta crédito', 'Cheque', 'Otro']
 
 const AP_STATUS_LABEL: Record<string, string> = {
@@ -218,7 +229,6 @@ function APModal({ ap, mode: initMode, onClose }: {
   }
 
   // ── PAY MODE
-  const sel: React.CSSProperties = { ...inputStyle, appearance: 'none' as const, cursor: 'pointer' }
   return (
     <div style={overlay} onClick={onClose}>
       <div style={{ ...modal, maxWidth: 520 }} onClick={e => e.stopPropagation()}>
@@ -342,7 +352,7 @@ export function AccountsPayablePage() {
 
   const totalPending  = invoices.reduce((s, a) => s + (a.status !== 'PAID' && a.status !== 'CANCELLED' ? a.pendingAmount : 0), 0)
   const totalPaid     = invoices.reduce((s, a) => s + a.paidAmount, 0)
-  const overdueCount  = invoices.filter(a => a.status === 'OVERDUE').length
+  const overdueCount  = invoices.filter(isOverdue).length
   const thisMonthCnt  = invoices.filter(a => {
     if (!a.createdAt) return false
     const d = new Date(a.createdAt)
@@ -456,8 +466,8 @@ export function AccountsPayablePage() {
                     <td style={{ ...tdStyle, fontSize: 12, color: 'var(--muted)' }}>{ap.orderNumber}</td>
                     <td style={{
                       ...tdStyle,
-                      color: ap.status === 'OVERDUE' ? 'var(--neg)' : 'var(--text-2)',
-                      fontWeight: ap.status === 'OVERDUE' ? 600 : 400,
+                      color: isOverdue(ap) ? 'var(--neg)' : 'var(--text-2)',
+                      fontWeight: isOverdue(ap) ? 600 : 400,
                     }}>
                       {ap.dueDate ? new Date(ap.dueDate).toLocaleDateString('es-CO') : '—'}
                     </td>

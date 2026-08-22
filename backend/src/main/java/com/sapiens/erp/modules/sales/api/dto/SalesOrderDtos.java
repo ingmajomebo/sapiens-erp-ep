@@ -140,5 +140,7 @@ public final class SalesOrderDtos {
     public record PublicProductResponse(UUID id, String name, String unitOfMeasure,
                                         BigDecimal salePrice, String imageUrl) {}
 
-    public record PublicCatalogResponse(String label, List<PublicProductResponse> products) {}
+    /** {@code storefront} lleva los textos editables de la página pública. */
+    public record PublicCatalogResponse(String label, List<PublicProductResponse> products,
+                                        java.util.Map<String, String> storefront) {}
 }

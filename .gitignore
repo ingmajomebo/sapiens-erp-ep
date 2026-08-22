@@ -27,3 +27,12 @@ frontend/node_modules/
 .claude/
 
 testsprite_tests/tmp/config.json
+
+# Entornos de despliegue: secretos, nunca al repositorio
+deploy/env/*.env
+deploy/env/*.env.rollback
+
+# Storefront
+storefront/node_modules/
+storefront/dist/
+storefront/*.tsbuildinfo

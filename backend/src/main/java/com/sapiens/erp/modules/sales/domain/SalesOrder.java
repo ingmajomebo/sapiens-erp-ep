@@ -58,6 +58,28 @@ public class SalesOrder extends AuditableEntity {
     @Column(name = "cancel_reason", columnDefinition = "TEXT")
     private String cancelReason;
 
+    /* ── Canal público (tienda web) ─────────────────────────────────────── */
+
+    /** Token opaco para consultar el pedido sin cuenta. Solo canal PUBLIC. */
+    @Column(name = "tracking_token", length = 64)
+    private String trackingToken;
+
+    @Column(name = "delivery_city", length = 80)
+    private String deliveryCity;
+
+    @Column(name = "contact_phone", length = 40)
+    private String contactPhone;
+
+    @Column(name = "contact_email", length = 160)
+    private String contactEmail;
+
+    /** Calculado por el servidor al crear el pedido. */
+    @Column(name = "shipping_cost", nullable = false, precision = 12, scale = 2)
+    private BigDecimal shippingCost = BigDecimal.ZERO;
+
+    @Column(name = "payment_method", length = 30)
+    private String paymentMethod;
+
     @OneToMany(mappedBy = "salesOrder", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SalesOrderLine> lines = new ArrayList<>();
 

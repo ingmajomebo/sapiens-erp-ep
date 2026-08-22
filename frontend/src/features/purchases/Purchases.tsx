@@ -70,15 +70,6 @@ const PAYMENT_METHODS = [
   'Otro',
 ]
 
-const PAYMENT_ORIGINS = [
-  'Caja principal',
-  'Caja menor',
-  'Cuenta bancaria',
-  'Nequi',
-  'Daviplata',
-  'Otro',
-]
-
 // ── Confirm Dialog ───────────────────────────────────────────────────────────
 
 interface ConfirmDialogProps {
@@ -514,8 +505,6 @@ function PODetailModal({ orderId, onClose, onRefresh }: PODetailModalProps) {
       <div style={{ marginBottom: 14 }}>{node}</div>
     )
 
-    const sel: React.CSSProperties = { ...inputStyle, textAlign: 'left', cursor: 'pointer', appearance: 'none' as const }
-
     return (
       <div style={overlay} onClick={() => setMode('detail')}>
         <div style={{ ...modal, maxWidth: 520 }} onClick={e => e.stopPropagation()}>
@@ -880,7 +869,7 @@ function PODetailModal({ orderId, onClose, onRefresh }: PODetailModalProps) {
                           <td style={{ ...tdStyle, color: 'var(--muted)' }}>{formatDate(p.paymentDate)}</td>
                           <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 700, color: 'var(--pos)' }}>{formatCOP(p.amount)}</td>
                           <td style={tdStyle}>{p.paymentMethod ?? '—'}</td>
-                          <td style={{ ...tdStyle, color: 'var(--muted)' }}>{p.bankAccount ?? '—'}</td>
+                          <td style={{ ...tdStyle, color: 'var(--muted)' }}>{p.supplierAccount ?? '—'}</td>
                           <td style={{ ...tdStyle, color: 'var(--muted)', fontSize: 11 }}>{p.notes ?? '—'}</td>
                         </tr>
                       ))}
@@ -1100,7 +1089,6 @@ export function Purchases() {
 
   const totalValue = orders.reduce((s, o) => s + o.total, 0)
   const pendingOrders = orders.filter((o) => o.status === 'DRAFT' || o.status === 'CONFIRMED').length
-  const receivedOrders = orders.filter((o) => o.status === 'RECEIVED').length
 
   async function handleDeleteSupplier(id: string, name: string) {
     if (!confirm(`¿Eliminar proveedor "${name}"?`)) return

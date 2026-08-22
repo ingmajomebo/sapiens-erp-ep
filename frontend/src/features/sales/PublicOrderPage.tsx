@@ -165,6 +165,13 @@ export function PublicOrderPage({ token }: { token: string }) {
     retry: false,
   })
 
+  /**
+   * Texto configurable desde Ajustes › Página de venta. El fallback mantiene
+   * la página en pie si la clave todavía no existe en la base de datos.
+   */
+  const sf = (key: string, fallback: string) =>
+    catalog?.storefront?.[key]?.trim() || fallback
+
   const submitMut = useMutation({
     mutationFn: () => publicOrderApi.create(token, {
       contactName: contactName.trim() || undefined,
@@ -220,11 +227,11 @@ export function PublicOrderPage({ token }: { token: string }) {
         <style>{CSS}</style>
         <div className="lp-hero" style={{ paddingBottom: 0 }}>
           <div className="lp-hero-inner" style={{ textAlign: 'center', padding: '30px 0 10px' }}>
-            <div className="lp-eyebrow" style={{ color: '#BFE0E2' }}>La Pescadería · pedido recibido</div>
-            <h1 style={{ margin: '18px 0 10px' }}>¡Marchando<em className="lp-serif">!</em></h1>
+            <div className="lp-eyebrow" style={{ color: '#BFE0E2' }}>{sf('confirm_eyebrow', 'Pedido recibido')}</div>
+            <h1 style={{ margin: '18px 0 10px' }}>{sf('confirm_title', '¡Marchando!')}</h1>
             <div style={{ fontSize: 15.5, color: '#BFE0E2', lineHeight: 1.6 }}>
               Tu pedido <b style={{ color: '#fff' }}>{confirmed.orderNumber}</b> ya está en la pizarra.<br />
-              Te contactaremos para confirmar la recogida o entrega.
+              {sf('confirm_message', 'Te contactaremos para confirmar la recogida o entrega.')}
             </div>
           </div>
           <Waves fill="#F2F7F7" />
@@ -242,10 +249,10 @@ export function PublicOrderPage({ token }: { token: string }) {
               display: 'flex', justifyContent: 'space-between', fontSize: 16, fontWeight: 800,
               borderTop: '2px solid #0B2436', marginTop: 10, paddingTop: 12,
             }}>
-              <span>Total estimado</span><span style={{ color: '#0E7C86' }}>{formatCOP(confirmed.total)}</span>
+              <span>{sf('order_total_label', 'Total estimado')}</span><span style={{ color: '#0E7C86' }}>{formatCOP(confirmed.total)}</span>
             </div>
             <div className="lp-serif" style={{ fontSize: 12.5, color: '#4A6572', marginTop: 10 }}>
-              El importe final se ajusta al peso exacto en mostrador.
+              {sf('confirm_note', 'El importe final se ajusta al peso exacto en mostrador.')}
             </div>
           </div>
         </div>
@@ -267,8 +274,8 @@ export function PublicOrderPage({ token }: { token: string }) {
         <div className="lp-hero-inner">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-              <span style={{ fontSize: 22 }} aria-hidden="true">🐟</span>
-              <span style={{ fontWeight: 800, fontSize: 15, letterSpacing: '0.12em' }}>LA PESCADERÍA</span>
+              <span style={{ fontSize: 22 }} aria-hidden="true">{sf('brand_emoji', '🐟')}</span>
+              <span style={{ fontWeight: 800, fontSize: 15, letterSpacing: '0.12em' }}>{sf('brand_name', 'LA PESCADERÍA')}</span>
             </div>
             <span className="lp-eyebrow" style={{ color: '#BFE0E2' }}>
               {catalog.label ?? 'Pedidos en línea'}
@@ -276,16 +283,15 @@ export function PublicOrderPage({ token }: { token: string }) {
           </div>
 
           <h1>
-            Del mar a tu mesa,<br />
-            <em className="lp-serif">el mismo día.</em>
+            {sf('hero_title_1', 'Del mar a tu mesa,')}<br />
+            <em className="lp-serif">{sf('hero_title_2', 'el mismo día.')}</em>
           </h1>
           <p style={{ fontSize: 16, color: '#BFE0E2', maxWidth: 480, lineHeight: 1.65, margin: '0 0 26px' }}>
-            Cada mañana elegimos el mejor género de la lonja. Pide ahora y
-            te lo preparamos como tú quieras: limpio, fileteado o en rodajas.
+            {sf('hero_subtitle', 'Cada mañana elegimos el mejor género de la lonja. Pide ahora y te lo preparamos como tú quieras: limpio, fileteado o en rodajas.')}
           </p>
           <button className="lp-cta" style={{ background: '#FF6B4A', marginBottom: 8 }}
             onClick={() => catalogRef.current?.scrollIntoView({ behavior: 'smooth' })}>
-            Ver el género de hoy ↓
+            {sf('hero_cta', 'Ver el género de hoy ↓')}
           </button>
         </div>
         <Waves fill="#F2F7F7" />
@@ -303,20 +309,20 @@ export function PublicOrderPage({ token }: { token: string }) {
       {/* Propuesta de valor */}
       <div className="lp-section">
         <div className="lp-props">
-          <Prop icon="⚓" title="Recibido de lonja a diario"
-            text="Compramos cada madrugada en la lonja. Lo que ves es lo que ha llegado hoy." />
-          <Prop icon="🔪" title="Preparado a tu gusto"
-            text="Indícanos en las notas cómo lo quieres: entero, limpio, en filetes o en rodajas." />
-          <Prop icon="🛵" title="Recogida o entrega hoy"
-            text="Confirmamos tu pedido por teléfono y lo tienes listo el mismo día." />
+          <Prop icon={sf('prop1_icon', '⚓')} title={sf('prop1_title', 'Recibido de lonja a diario')}
+            text={sf('prop1_text', 'Compramos cada madrugada en la lonja. Lo que ves es lo que ha llegado hoy.')} />
+          <Prop icon={sf('prop2_icon', '🔪')} title={sf('prop2_title', 'Preparado a tu gusto')}
+            text={sf('prop2_text', 'Indícanos en las notas cómo lo quieres: entero, limpio, en filetes o en rodajas.')} />
+          <Prop icon={sf('prop3_icon', '🛵')} title={sf('prop3_title', 'Recogida o entrega hoy')}
+            text={sf('prop3_text', 'Confirmamos tu pedido por teléfono y lo tienes listo el mismo día.')} />
         </div>
       </div>
 
       {/* Género del día */}
       <div className="lp-section" ref={catalogRef} style={{ paddingTop: 6 }}>
-        <div className="lp-eyebrow" style={{ color: '#FF6B4A' }}>El género de hoy</div>
+        <div className="lp-eyebrow" style={{ color: '#FF6B4A' }}>{sf('catalog_eyebrow', 'El género de hoy')}</div>
         <h2 style={{ fontSize: 27, fontWeight: 800, margin: '8px 0 0', letterSpacing: '-0.01em' }}>
-          Elige y dinos <em className="lp-serif" style={{ fontWeight: 400 }}>cuánto</em>
+          {sf('catalog_title', 'Elige y dinos cuánto')}
         </h2>
         <div className="lp-grid">
           {catalog.products.map(p => (
@@ -326,22 +332,22 @@ export function PublicOrderPage({ token }: { token: string }) {
         </div>
         {catalog.products.length === 0 && (
           <div style={{ textAlign: 'center', color: '#4A6572', padding: 40 }}>
-            Hoy no hay género publicado. Vuelve a intentarlo más tarde.
+            {sf('catalog_empty', 'Hoy no hay género publicado. Vuelve a intentarlo más tarde.')}
           </div>
         )}
       </div>
 
       {/* Tu pedido */}
       <div className="lp-section" ref={orderRef} style={{ maxWidth: 620, padding: '44px 24px 30px' }}>
-        <div className="lp-eyebrow" style={{ color: '#FF6B4A' }}>Tu pedido</div>
+        <div className="lp-eyebrow" style={{ color: '#FF6B4A' }}>{sf('order_eyebrow', 'Tu pedido')}</div>
         <h2 style={{ fontSize: 27, fontWeight: 800, margin: '8px 0 16px', letterSpacing: '-0.01em' }}>
-          Revisa y envía
+          {sf('order_title', 'Revisa y envía')}
         </h2>
 
         <div style={{ background: '#fff', border: '1px solid #DCE8E9', borderRadius: 16, padding: '20px 24px' }}>
           {selected.length === 0 ? (
             <div style={{ fontSize: 14, color: '#4A6572', padding: '6px 0' }}>
-              Aún no has elegido nada — añade género con los botones <b>+</b> de arriba.
+              {sf('order_empty', 'Aún no has elegido nada — añade género con los botones + de arriba.')}
             </div>
           ) : (
             <>
@@ -355,15 +361,15 @@ export function PublicOrderPage({ token }: { token: string }) {
                 display: 'flex', justifyContent: 'space-between', fontSize: 16, fontWeight: 800,
                 borderTop: '2px solid #0B2436', marginTop: 10, paddingTop: 12, marginBottom: 6,
               }}>
-                <span>Total estimado</span><span style={{ color: '#0E7C86' }}>{formatCOP(total)}</span>
+                <span>{sf('order_total_label', 'Total estimado')}</span><span style={{ color: '#0E7C86' }}>{formatCOP(total)}</span>
               </div>
             </>
           )}
 
           {/* ¿Cómo lo recibes? */}
-          <div style={{ fontSize: 13, fontWeight: 800, margin: '18px 0 10px' }}>¿Cómo lo recibes?</div>
+          <div style={{ fontSize: 13, fontWeight: 800, margin: '18px 0 10px' }}>{sf('delivery_question', '¿Cómo lo recibes?')}</div>
           <div style={{ display: 'flex', gap: 10 }}>
-            {([['PICKUP', '🏪 Recojo en el local'], ['DELIVERY', '🛵 Envío a domicilio']] as [DeliveryMethod, string][]).map(([m, label]) => (
+            {([['PICKUP', sf('pickup_label', '🏪 Recojo en el local')], ['DELIVERY', sf('delivery_label', '🛵 Envío a domicilio')]] as [DeliveryMethod, string][]).map(([m, label]) => (
               <button key={m} type="button" onClick={() => setDeliveryMethod(m)}
                 style={{
                   flex: 1, padding: '12px 10px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
@@ -376,7 +382,7 @@ export function PublicOrderPage({ token }: { token: string }) {
             ))}
           </div>
           {deliveryMethod === 'DELIVERY' && (
-            <input className="lp-input" style={{ marginTop: 10 }} placeholder="Dirección de entrega *"
+            <input className="lp-input" style={{ marginTop: 10 }} placeholder={sf('address_placeholder', 'Dirección de entrega *')}
               value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} />
           )}
 
@@ -385,18 +391,18 @@ export function PublicOrderPage({ token }: { token: string }) {
             <input className="lp-input" placeholder="Teléfono" value={contactPhone} onChange={e => setContactPhone(e.target.value)} />
             <input className="lp-input" style={{ gridColumn: '1 / -1' }} type="email" placeholder="Email (opcional)" value={contactEmail} onChange={e => setContactEmail(e.target.value)} />
             <textarea className="lp-input" style={{ gridColumn: '1 / -1', minHeight: 62, resize: 'vertical' }}
-              placeholder="¿Cómo lo preparamos? ¿A qué hora pasas a recogerlo?"
+              placeholder={sf('notes_placeholder', '¿Cómo lo preparamos? ¿A qué hora pasas a recogerlo?')}
               value={notes} onChange={e => setNotes(e.target.value)} />
           </div>
 
           <button className="lp-cta" style={{ width: '100%', marginTop: 14 }}
             disabled={selected.length === 0 || submitMut.isPending}
             onClick={() => submitMut.mutate()}>
-            {submitMut.isPending ? 'Enviando…' : `Enviar pedido · ${formatCOP(total)}`}
+            {submitMut.isPending ? 'Enviando…' : `${sf('submit_button', 'Enviar pedido')} · ${formatCOP(total)}`}
           </button>
           {submitMut.isError && (
             <div style={{ color: '#C2402A', fontSize: 13, marginTop: 10 }}>
-              No se pudo enviar el pedido. Revisa las cantidades e inténtalo de nuevo.
+              {sf('submit_error', 'No se pudo enviar el pedido. Revisa las cantidades e inténtalo de nuevo.')}
             </div>
           )}
         </div>
@@ -406,13 +412,15 @@ export function PublicOrderPage({ token }: { token: string }) {
       <footer style={{ background: '#0B2436', color: '#BFE0E2', marginTop: 30 }}>
         <div className="lp-section" style={{ padding: '30px 24px 34px', display: 'flex', flexWrap: 'wrap', gap: 26, justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontWeight: 800, color: '#fff', letterSpacing: '0.12em', marginBottom: 8 }}>🐟 LA PESCADERÍA</div>
-            <div className="lp-serif" style={{ fontSize: 13.5 }}>Género de lonja desde 1987</div>
+            <div style={{ fontWeight: 800, color: '#fff', letterSpacing: '0.12em', marginBottom: 8 }}>
+              {sf('brand_emoji', '🐟')} {sf('brand_name', 'LA PESCADERÍA')}
+            </div>
+            <div className="lp-serif" style={{ fontSize: 13.5 }}>{sf('footer_tagline', 'Género de lonja desde 1987')}</div>
           </div>
           <div style={{ fontSize: 13, lineHeight: 1.9 }}>
-            Calle del Puerto, 12 · Mercado Central<br />
-            Lunes a sábado · 8:00 – 15:00<br />
-            +34 600 000 000
+            {sf('footer_address', 'Calle del Puerto, 12 · Mercado Central')}<br />
+            {sf('footer_hours', 'Lunes a sábado · 8:00 – 15:00')}<br />
+            {sf('footer_phone', '+34 600 000 000')}
           </div>
         </div>
       </footer>
@@ -425,7 +433,7 @@ export function PublicOrderPage({ token }: { token: string }) {
           </span>
           <button className="lp-cta" style={{ background: '#FF6B4A', padding: '10px 20px', fontSize: 14 }}
             onClick={() => orderRef.current?.scrollIntoView({ behavior: 'smooth' })}>
-            Revisar pedido →
+            {sf('cart_button', 'Revisar pedido →')}
           </button>
         </div>
       )}

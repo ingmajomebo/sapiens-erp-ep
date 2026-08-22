@@ -1,0 +1,34 @@
+# Overrides de producción. Se activa con SPRING_PROFILES_ACTIVE=prod
+# Solo contiene lo que difiere de application.yml.
+
+spring:
+  jpa:
+    properties:
+      hibernate:
+        format_sql: false
+
+server:
+  # Detrás del reverse proxy: respeta X-Forwarded-Proto para que los enlaces
+  # y redirecciones se generen con https y no con http
+  forward-headers-strategy: framework
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/plain,text/css,application/javascript
+  error:
+    include-stacktrace: never
+    include-message: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+logging:
+  level:
+    com.sapiens.erp: INFO
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN

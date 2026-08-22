@@ -17,11 +17,21 @@ export interface CategoryDto {
   description: string | null
 }
 
+export interface SubcategoryDto {
+  id: string
+  categoryId: string
+  categoryName: string
+  name: string
+  description: string | null
+}
+
 export interface ProductDto {
   id: string
   name: string
   categoryId: string | null
   categoryName: string | null
+  subcategoryId: string | null
+  subcategoryName: string | null
   unitOfMeasure: UnitOfMeasure
   minimumStock: number | null
   currentStock: number
@@ -47,6 +57,8 @@ export interface ProductDto {
 export interface CreateProductDto {
   name: string
   categoryId: string
+  /** Opcional. Debe pertenecer a categoryId o el backend rechaza con 400. */
+  subcategoryId?: string | null
   unitOfMeasure: UnitOfMeasure
   productType: ProductType
   salePrice: number
@@ -116,6 +128,23 @@ export const categoryApi = {
   create: async (name: string, description?: string): Promise<CategoryDto> => {
     const { data } = await client.post('/categories', null, {
       params: { name, description },
+    })
+    return data
+  },
+}
+
+export const subcategoryApi = {
+  /** Sin categoryId devuelve todas; con él, solo las de esa categoría. */
+  listAll: async (categoryId?: string): Promise<SubcategoryDto[]> => {
+    const { data } = await client.get('/subcategories', {
+      params: categoryId ? { categoryId } : undefined,
+    })
+    return data
+  },
+
+  create: async (categoryId: string, name: string, description?: string): Promise<SubcategoryDto> => {
+    const { data } = await client.post('/subcategories', null, {
+      params: { categoryId, name, description },
     })
     return data
   },

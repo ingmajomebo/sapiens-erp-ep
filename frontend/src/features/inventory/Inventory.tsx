@@ -9,7 +9,7 @@ import {
   tableStyle, thStyle, tdStyle,
 } from '../../shared/helpers'
 import { Button } from '../../shared/Button'
-import { productApi, categoryApi, productImageSrc } from '../catalog/api/productApi'
+import { productApi, categoryApi, subcategoryApi, productImageSrc } from '../catalog/api/productApi'
 import { inventoryApi } from './api/inventoryApi'
 import { warehouseApi } from './api/warehouseApi'
 import { storageLocationApi } from './api/storageLocationApi'
@@ -352,10 +352,9 @@ function TransferModal({ product, warehouseStocks, fromWarehouseId, onClose }: {
 
 import type { LotDto } from './api/inventoryApi'
 
-function LotsTab({ lots, product, unitOfMeasure }: {
+function LotsTab({ lots, product }: {
   lots: LotDto[]
   product: ProductDto
-  unitOfMeasure: string
 }) {
   const qc = useQueryClient()
   const [assigningLotId, setAssigningLotId] = useState<string | null>(null)
@@ -442,7 +441,6 @@ function LotsTab({ lots, product, unitOfMeasure }: {
             {lots.map((lot) => {
               const isExpired = !!lot.expiresAt && new Date(lot.expiresAt) < new Date()
               const isLow = lot.availableQuantity > 0 && lot.availableQuantity < lot.originalQuantity * 0.2
-              const noLocation = !lot.warehouseId && lot.availableQuantity > 0
               const isAssigning = assigningLotId === lot.id
 
               return (
@@ -564,9 +562,10 @@ function LotsTab({ lots, product, unitOfMeasure }: {
 
 // ── Product Modal (form + lotes + movimientos) ──────────────────────────────
 
-function ProductDetailPage({ product, currentStock, warehouseStocks, onClose, onDeleted, onUpdated }: {
+function ProductDetailPage({ product, currentStock, stockStatus, warehouseStocks, onClose, onDeleted, onUpdated }: {
   product: ProductDto
   currentStock: number
+  stockStatus: StockStatus
   warehouseStocks: WarehouseStockDto[]
   onClose: () => void
   onDeleted: () => void
@@ -581,6 +580,7 @@ function ProductDetailPage({ product, currentStock, warehouseStocks, onClose, on
   const [name, setName] = useState(product.name)
   const [description, setDescription] = useState(product.description ?? '')
   const [categoryId, setCategoryId] = useState(product.categoryId ?? '')
+  const [subcategoryId, setSubcategoryId] = useState(product.subcategoryId ?? '')
   const [sku, setSku] = useState(product.sku ?? '')
   const [barcode, setBarcode] = useState(product.barcode ?? '')
   const [productType, setProductType] = useState<ProductType>(product.productType ?? 'CONSUMER_GOOD')
@@ -593,6 +593,11 @@ function ProductDetailPage({ product, currentStock, warehouseStocks, onClose, on
   const [formError, setFormError] = useState<string | null>(null)
 
   const { data: categories = [] } = useQuery({ queryKey: ['categories'], queryFn: categoryApi.listAll })
+  const { data: subcategories = [] } = useQuery({
+    queryKey: ['subcategories', categoryId],
+    queryFn: () => subcategoryApi.listAll(categoryId),
+    enabled: !!categoryId,
+  })
   const { data: warehouseList = [] } = useQuery({ queryKey: ['warehouses'], queryFn: warehouseApi.listAll })
 
   // Detectar qué campos cambiaron vs el producto original
@@ -604,6 +609,11 @@ function ProductDetailPage({ product, currentStock, warehouseStocks, onClose, on
       const fromCat = product.categoryName ?? '—'
       const toCat = categories.find(c => c.id === categoryId)?.name ?? '—'
       list.push({ field: 'Categoría', from: fromCat, to: toCat })
+    }
+    if (subcategoryId !== (product.subcategoryId ?? '')) {
+      const fromSub = product.subcategoryName ?? '—'
+      const toSub = subcategories.find(sc => sc.id === subcategoryId)?.name ?? '—'
+      list.push({ field: 'Subcategoría', from: fromSub, to: toSub })
     }
     if (productType !== (product.productType ?? 'CONSUMER_GOOD'))
       list.push({ field: 'Tipo de producto', from: PRODUCT_TYPE_LABELS[product.productType ?? 'CONSUMER_GOOD'] ?? '—', to: PRODUCT_TYPE_LABELS[productType] ?? productType })
@@ -633,7 +643,7 @@ function ProductDetailPage({ product, currentStock, warehouseStocks, onClose, on
       list.push({ field: 'Almacén', from: fromName, to: toName })
     }
     return list
-  }, [name, description, categoryId, sku, barcode, productType, status, salePrice, minimumStock, inventoryTracking, unitOfMeasure, warehouseId, product, categories, warehouseList])
+  }, [name, description, categoryId, subcategoryId, sku, barcode, productType, status, salePrice, minimumStock, inventoryTracking, unitOfMeasure, warehouseId, product, categories, subcategories, warehouseList])
 
   const isDirty = changes.length > 0
 
@@ -703,6 +713,7 @@ function ProductDetailPage({ product, currentStock, warehouseStocks, onClose, on
     const updated = await productApi.update(product.id, {
       name: name.trim(),
       categoryId,
+      subcategoryId: subcategoryId || null,
       unitOfMeasure,
       productType,
       salePrice: salePrice !== '' ? parseFloat(salePrice) : 0,
@@ -838,7 +849,7 @@ function ProductDetailPage({ product, currentStock, warehouseStocks, onClose, on
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{product.name}</div>
               <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
-                {product.categoryName ?? '—'} · {UNIT_LABELS[unitOfMeasure] ?? unitOfMeasure}
+                {product.categoryName ?? '—'}{product.subcategoryName ? ` › ${product.subcategoryName}` : ''} · {UNIT_LABELS[unitOfMeasure] ?? unitOfMeasure}
               </div>
             </div>
           </div>
@@ -907,7 +918,7 @@ function ProductDetailPage({ product, currentStock, warehouseStocks, onClose, on
           {/* Status + type chips */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             <StatusChip
-              status={product.stockStatus === 'OK' ? 'ok' : product.stockStatus === 'LOW' ? 'low' : 'warn'}
+              status={stockStatusToChipStatus(stockStatus)}
               label={STATUS_LABELS[product.status] ?? product.status}
             />
             <span style={{
@@ -953,12 +964,38 @@ function ProductDetailPage({ product, currentStock, warehouseStocks, onClose, on
                   <Select
                     style={{ width: '100%' }}
                     value={categoryId}
-                    onChange={(v) => setCategoryId(v)}
+                    onChange={(v) => {
+                      setCategoryId(v)
+                      // La subcategoría cuelga de la categoría: al cambiarla deja de ser válida
+                      setSubcategoryId('')
+                    }}
                     options={[
                       { value: '', label: 'Seleccionar categoría…' },
                       ...categories.map((c) => ({ value: c.id, label: c.name })),
                     ]}
                   />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <label style={labelStyle}>Subcategoría</label>
+                  <Select
+                    style={{ width: '100%' }}
+                    value={subcategoryId}
+                    disabled={!categoryId}
+                    onChange={(v) => setSubcategoryId(v)}
+                    options={[
+                      {
+                        value: '',
+                        label: categoryId ? 'Sin subcategoría (opcional)' : 'Elige una categoría primero',
+                      },
+                      ...subcategories.map((sc) => ({ value: sc.id, label: sc.name })),
+                    ]}
+                  />
+                  {categoryId && subcategories.length === 0 && (
+                    <span style={{ marginTop: 4, fontSize: 11.5, color: 'var(--muted)' }}>
+                      Esta categoría aún no tiene subcategorías. Puedes crearlas desde el formulario de nuevo producto.
+                    </span>
+                  )}
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
@@ -1058,7 +1095,7 @@ function ProductDetailPage({ product, currentStock, warehouseStocks, onClose, on
 
             {/* ── Tab Lotes ── */}
             {tab === 'lots' && (
-              <LotsTab lots={lots} product={product} unitOfMeasure={unitOfMeasure} />
+              <LotsTab lots={lots} product={product} />
             )}
 
             {/* ── Tab Movimientos ── */}
@@ -1486,6 +1523,7 @@ export function Inventory() {
       <ProductDetailPage
         product={selectedProduct.product}
         currentStock={liveStock?.currentStock ?? selectedProduct.stock}
+        stockStatus={liveStock?.stockStatus ?? 'OUT_OF_STOCK'}
         warehouseStocks={liveStock?.warehouseStocks ?? selectedProduct.warehouseStocks}
         onClose={() => setSelectedProduct(null)}
         onDeleted={() => setSelectedProduct(null)}

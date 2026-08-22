@@ -1,0 +1,110 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: var(--header-h);
+  transition: background var(--t-medium), color var(--t-medium), border-color var(--t-medium);
+  border-bottom: 1px solid transparent;
+}
+
+/* Sobre el hero: transparente, texto claro */
+.transparent {
+  background: transparent;
+  color: var(--text-on-aqua);
+}
+
+/* Tras pasar el hero: crema sólido, texto oscuro */
+.solid {
+  background: var(--cream);
+  color: var(--text-on-cream);
+  border-bottom-color: var(--hairline-on-cream);
+}
+
+.inner {
+  height: var(--header-h);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 24px;
+}
+
+.nav {
+  display: flex;
+  justify-content: center;
+  gap: 34px;
+}
+
+.navItem {
+  position: relative;
+  font-size: var(--fs-nav);
+  font-weight: 400;
+  letter-spacing: var(--tr-nav);
+  text-transform: uppercase;
+  padding-block: 6px;
+  color: inherit;
+  background: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.navItem::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -6px;
+  height: 2px;
+  background: var(--pacific-sunset);
+  opacity: 0;
+  transition: opacity var(--t-fast);
+}
+.navItem:hover::after,
+.navItem:focus-visible::after,
+.navItem[aria-expanded='true']::after,
+.navItem.active::after { opacity: 1; }
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 20px;
+}
+
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
+  transition: color var(--t-fast);
+}
+.iconButton:hover { color: var(--pacific-sunset); }
+
+.cart { position: relative; }
+
+/* Contramarca, no relleno en Pacific Sunset: ese cupo lo usa el CTA del hero */
+.badge {
+  position: absolute;
+  top: -7px;
+  right: -9px;
+  min-width: 17px;
+  height: 17px;
+  padding-inline: 4px;
+  border-radius: 9px;
+  background: currentColor;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1;
+}
+.badgeText { color: var(--cream); }
+.solid .badgeText { color: var(--cream); }
+.transparent .badgeText { color: var(--deep-aqua); }
+
+.menuToggle { display: none; }
+
+@media (max-width: 1023px) {
+  .nav { display: none; }
+  .inner { grid-template-columns: auto 1fr auto; }
+  .menuToggle { display: inline-flex; }
+}

@@ -105,18 +105,20 @@ export function CardHeader({ title, action }: { title: string; action?: React.Re
 
 // KPI card
 export function KpiCard({
-  label, value, sub, trend, trendPositive,
+  label, value, sub, trend, trendPositive, color,
 }: {
   label: string
   value: string
   sub?: string
   trend?: string
   trendPositive?: boolean
+  /** Color del valor. Usar tokens del tema (var(--accent), var(--warn)…) */
+  color?: string
 }) {
   return (
     <Card style={{ padding: '18px 20px', animation: 'fadeUp 0.3s ease' }}>
       <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--muted)', marginBottom: 8 }}>{label}</div>
-      <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.5px', fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+      <div style={{ fontSize: 24, fontWeight: 700, color: color ?? 'var(--text)', letterSpacing: '-0.5px', fontVariantNumeric: 'tabular-nums' }}>{value}</div>
       {(trend || sub) && (
         <div style={{ marginTop: 6, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
           {trend && (
@@ -163,9 +165,9 @@ export function PaginationFooter({ total, page, pageSize, onPage, unit = 'regist
 }
 
 // Ghost button — thin wrapper so existing call sites need no changes
-export function GhostBtn({ onClick, children, style, disabled }: { onClick?: () => void; children: React.ReactNode; style?: React.CSSProperties; disabled?: boolean }) {
+export function GhostBtn({ onClick, children, style, disabled, title }: { onClick?: () => void; children: React.ReactNode; style?: React.CSSProperties; disabled?: boolean; title?: string }) {
   return (
-    <Button variant="ghost" size="sm" onClick={onClick} style={style} disabled={disabled}>
+    <Button variant="ghost" size="sm" onClick={onClick} style={style} disabled={disabled} title={title}>
       {children}
     </Button>
   )

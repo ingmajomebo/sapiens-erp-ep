@@ -1,0 +1,65 @@
+name: sapiens-erp
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${PGDATABASE}
+      POSTGRES_USER: ${PGUSER}
+      POSTGRES_PASSWORD: ${PGPASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    # Sin `ports`: la BD solo es alcanzable desde la red interna de Compose.
+    # Nunca la expongas al VPS público.
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      PORT: 8080
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: ${PGDATABASE}
+      PGUSER: ${PGUSER}
+      PGPASSWORD: ${PGPASSWORD}
+      DB_SSLMODE: disable          # red interna de Docker, no sale del host
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      UPLOADS_DIR: /app/uploads/qa
+      UPLOADS_PRODUCTS_DIR: /app/uploads/products
+      AI_ANTHROPIC_API_KEY: ${AI_ANTHROPIC_API_KEY:-}
+    volumes:
+      - uploads:/app/uploads
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  frontend:
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      # Solo en loopback: el Nginx del host termina TLS y hace proxy aquí
+      - "127.0.0.1:8081:80"
+
+volumes:
+  pgdata:
+  uploads:

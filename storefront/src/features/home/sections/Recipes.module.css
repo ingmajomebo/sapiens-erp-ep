@@ -1,0 +1,17 @@
+.head { display: flex; align-items: baseline; justify-content: space-between; gap: 24px; margin-bottom: 44px; }
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+.card { display: block; }
+.media { position: relative; overflow: hidden; border-radius: var(--radius-sm); }
+.image { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; transition: transform 600ms var(--ease-out); }
+.card:hover .image { transform: scale(1.03); }
+.time {
+  position: absolute; top: 14px; left: 14px;
+  padding: 5px 11px;
+  background: var(--cream);
+  font-size: 11px; font-weight: 700;
+  letter-spacing: var(--tr-eyebrow); text-transform: uppercase;
+}
+.title { margin-top: 18px; font-size: 20px; font-weight: 700; letter-spacing: var(--tr-h3); }
+.link { margin-top: 8px; font-size: 14px; color: var(--text-on-cream-muted); }
+.card:hover .link { color: var(--pacific-sunset); }
+@media (max-width: 1023px) { .grid { grid-template-columns: 1fr; gap: 32px; } }

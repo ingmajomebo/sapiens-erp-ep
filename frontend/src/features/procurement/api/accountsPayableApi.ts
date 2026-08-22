@@ -36,6 +36,7 @@ export interface PaymentRequestDto {
   supplierAccount?: string | null
   referenceNumber?: string | null
   notes?: string | null
+  financialAccountId?: string | null
 }
 
 export const accountsPayableApi = {

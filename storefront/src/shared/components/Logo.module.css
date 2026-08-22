@@ -1,0 +1,10 @@
+.logo {
+  display: block;
+  height: 40px;
+  width: auto;
+  transition: opacity var(--t-medium);
+}
+
+@media (max-width: 640px) {
+  .logo { height: 34px; }
+}

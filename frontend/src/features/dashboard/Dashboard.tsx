@@ -68,8 +68,6 @@ const AGING_SLICES = [
   { key: 'D60_PLUS', label: '+60 días', color: '#dc2626' },
 ] as const
 
-const labelSm: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: 'var(--muted)', letterSpacing: '0.03em' }
-
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
 export function Dashboard() {
@@ -126,9 +124,11 @@ export function Dashboard() {
   const openInvoices = invoices.filter(i => i.status === 'ISSUED' || i.status === 'PARTIALLY_PAID').length
 
   // ── Alertas de inventario y vencimientos ───────────────────────────────────
+  const urgency = (s: { stockStatus: string }) =>
+    s.stockStatus === 'OUT_OF_STOCK' ? 0 : s.stockStatus === 'CRITICAL' ? 1 : 2
   const lowStock = stock
     .filter(s => s.stockStatus === 'LOW' || s.stockStatus === 'CRITICAL' || s.stockStatus === 'OUT_OF_STOCK')
-    .sort((a, b) => (a.stockStatus === 'CRITICAL' || a.stockStatus === 'OUT_OF_STOCK' ? -1 : 1))
+    .sort((a, b) => urgency(a) - urgency(b))
   const expiringSoon = [...expiring].sort((a, b) => (a.expiresAt ?? '').localeCompare(b.expiresAt ?? ''))
 
   const recentInvoices = [...invoices].slice(0, 6)

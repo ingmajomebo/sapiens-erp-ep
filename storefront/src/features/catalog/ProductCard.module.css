@@ -1,0 +1,35 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border: 1px solid var(--hairline-on-cream);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--cream);
+}
+.media { position: relative; background: var(--product-bg); }
+.image { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; display: block; }
+.soldOutVeil { position: absolute; inset: 0; background: var(--soldout-veil); }
+.soldOutTag {
+  position: absolute;
+  top: 14px; left: 14px;
+  padding: 5px 11px;
+  background: var(--deep-aqua);
+  color: var(--sunlight-charm);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: var(--tr-eyebrow);
+  text-transform: uppercase;
+}
+.body { padding: 20px; display: flex; flex-direction: column; flex: 1; }
+.origin {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: var(--tr-eyebrow);
+  text-transform: uppercase;
+  color: var(--text-on-cream-soft);
+}
+.name { margin-top: 10px; font-size: 20px; font-weight: 700; letter-spacing: var(--tr-h3); }
+.presentation { margin-top: 4px; font-size: 15px; color: var(--text-on-cream-soft); }
+.price { margin-top: 10px; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.action { margin-top: 18px; }

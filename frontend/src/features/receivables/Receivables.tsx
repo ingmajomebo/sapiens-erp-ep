@@ -40,11 +40,6 @@ function BucketBadge({ bucket }: { bucket: AgingBucket }) {
 const fmtDate = (v: string) =>
   new Date(v.length === 10 ? v + 'T00:00:00' : v).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })
 
-const inputStyle: React.CSSProperties = {
-  padding: '8px 11px', borderRadius: 8, border: '1px solid var(--border)',
-  background: 'var(--bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit',
-}
-
 const PAGE_SIZE = 15
 
 // ─── Detalle expandible: recibos aplicados a una CxC ─────────────────────────

@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
-import { aiApi } from '../api/projectApi'
+import { aiApi, type AiContextDto } from '../api/projectApi'
 import { toast } from '../../../shared/toast'
-import { labelStyle, inputStyle, btnPrimaryStyle, btnSecondaryStyle } from './shared'
+import { btnPrimaryStyle, btnSecondaryStyle } from './shared'
 
 // ─── Config Tab ───────────────────────────────────────────────────────────────
 

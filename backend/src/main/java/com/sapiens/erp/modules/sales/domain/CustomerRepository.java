@@ -12,6 +12,9 @@ public interface CustomerRepository extends JpaRepository<Customer, UUID> {
 
     Optional<Customer> findByIdAndDeletedAtIsNull(UUID id);
 
+    /** Reconoce al hogar que vuelve a pedir con el mismo teléfono. */
+    Optional<Customer> findFirstByPhoneAndDeletedAtIsNull(String phone);
+
     boolean existsByDocumentTypeAndDocumentNumberAndDeletedAtIsNull(DocumentType documentType, String documentNumber);
 
     boolean existsByDocumentTypeAndDocumentNumberAndIdNotAndDeletedAtIsNull(DocumentType documentType, String documentNumber, UUID id);

@@ -1,0 +1,23 @@
+.wrap { max-width: 800px; margin-inline: auto; }
+.head { text-align: center; margin-bottom: 52px; }
+.row { border-bottom: 1px solid var(--hairline-on-cream); }
+.row:first-child { border-top: 1px solid var(--hairline-on-cream); }
+.trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding-block: 26px;
+  font-size: 18px;
+  font-weight: 400;
+  text-align: left;
+  color: inherit;
+}
+.sign {
+  flex-shrink: 0;
+  display: inline-flex;
+  color: var(--pacific-sunset);
+}
+.panel { overflow: hidden; transition: height var(--t-medium); }
+.answer { padding-bottom: 28px; color: var(--text-on-cream-muted); max-width: 68ch; }

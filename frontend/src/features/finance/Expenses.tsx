@@ -271,12 +271,6 @@ const MONTH_OPTIONS: { value: string; label: string }[] = [
   })),
 ]
 
-const selectStyle: React.CSSProperties = {
-  fontSize: 11.5, padding: '3px 6px', borderRadius: 6, colorScheme: 'light dark',
-  border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)',
-  fontFamily: 'inherit', cursor: 'pointer',
-}
-
 export function Expenses() {
   const [formModal, setFormModal] = useState<{ open: boolean; expense: ExpenseDto | null }>({ open: false, expense: null })
   const [deleteTarget, setDeleteTarget] = useState<ExpenseDto | null>(null)
@@ -388,8 +382,8 @@ export function Expenses() {
             )}
           </div>
         </Card>
-        <KpiCard label="Gasto total" value={formatCOP(totalAll)} color="orange" />
-        <KpiCard label="Registros activos" value={String(expenses.length)} color="blue" />
+        <KpiCard label="Gasto total" value={formatCOP(totalAll)} color="var(--warn)" />
+        <KpiCard label="Registros activos" value={String(expenses.length)} color="var(--accent)" />
       </div>
 
       {/* Filtro por categoría */}

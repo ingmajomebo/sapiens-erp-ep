@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es-CO">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/favicon-512.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#001d28" />
+
+    <title>Encanto Pacífico · Pesca artesanal del Pacífico colombiano</title>
+    <meta
+      name="description"
+      content="Pescado y mariscos capturados por pescadores artesanales del Chocó. Empacados el mismo día que salen del agua y enviados con cadena de frío a toda Colombia."
+    />
+
+    <!--
+      Open Graph estáticos de respaldo.
+      Esta es una SPA: los crawlers de WhatsApp, Facebook e Instagram no
+      ejecutan JavaScript y solo leen este HTML inicial. Los meta por ruta
+      (react-helmet-async) cubren la pestaña del navegador; estos garantizan
+      que cualquier enlace compartido muestre una tarjeta de marca correcta.
+    -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Encanto Pacífico" />
+    <meta property="og:locale" content="es_CO" />
+    <meta property="og:title" content="Encanto Pacífico · Pesca artesanal del Pacífico colombiano" />
+    <meta
+      property="og:description"
+      content="Pescado y mariscos capturados por pescadores artesanales del Chocó. Empacados el mismo día que salen del agua."
+    />
+    <meta property="og:image" content="/og-default.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Pescador artesanal remando en canoa al amanecer en el Pacífico colombiano" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Encanto Pacífico · Pesca artesanal del Pacífico colombiano" />
+    <meta
+      name="twitter:description"
+      content="Pescado y mariscos capturados por pescadores artesanales del Chocó."
+    />
+    <meta name="twitter:image" content="/og-default.jpg" />
+
+    <!-- Respaldo mientras Alte Haas Grotesk no esté en public/fonts/ -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Serif editorial: solo manifiesto, Recetas, Nuestra costa y ficha de producto -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

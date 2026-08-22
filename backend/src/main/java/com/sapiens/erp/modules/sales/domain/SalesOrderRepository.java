@@ -20,6 +20,10 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, UUID> {
 
     Optional<SalesOrder> findByIdAndDeletedAtIsNull(UUID id);
 
+    Optional<SalesOrder> findByTrackingTokenAndDeletedAtIsNull(String trackingToken);
+
+    List<SalesOrder> findAllByCustomerIdAndDeletedAtIsNullOrderByCreatedAtDesc(UUID customerId);
+
     @Query(value = "SELECT nextval('so_number_seq')", nativeQuery = true)
     long nextOrderNumberValue();
 

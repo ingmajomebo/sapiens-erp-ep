@@ -1,0 +1,27 @@
+.section { position: relative; overflow: hidden; }
+.fish {
+  position: absolute;
+  right: -60px; bottom: -40px;
+  width: 520px;
+  color: var(--pacific-sunset);
+  opacity: 0.14;
+  pointer-events: none;
+}
+.inner { position: relative; max-width: 620px; margin-inline: auto; text-align: center; }
+.subtitle { margin-top: 18px; color: var(--text-on-aqua-muted); }
+.form { margin-top: 36px; display: flex; gap: 16px; align-items: flex-end; justify-content: center; flex-wrap: wrap; }
+.field { flex: 1; min-width: 260px; text-align: left; }
+.input {
+  width: 100%;
+  padding: 12px 2px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--hairline-on-aqua);
+  color: var(--text-on-aqua);
+  font-size: 16px;
+}
+.input::placeholder { color: var(--text-on-aqua-soft); }
+.input:focus { outline: none; border-bottom-color: var(--sunlight-charm); }
+.error { margin-top: 8px; font-size: 13px; color: var(--saffron); }
+.done { margin-top: 30px; color: var(--dreamy-green); font-size: 15px; }
+@media (max-width: 640px) { .fish { width: 340px; right: -80px; } }

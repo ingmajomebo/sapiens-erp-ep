@@ -1,0 +1,126 @@
+/* ============================================================================
+   Encanto Pacífico — tokens de diseño
+   Paleta oficial del Brand Guideline (Sapiens Studio), sección 2 "Color".
+   Ningún color debe escribirse fuera de este archivo.
+   ========================================================================== */
+
+:root {
+  /* ── Paleta de marca ───────────────────────────────────────────────────── */
+  --deep-aqua:      #001d28;
+  --sunlight-charm: #e9d8a5;
+  --cream:          #faf8f4;
+  --white:          #ffffff;
+  --pacific-sunset: #c15402;   /* SOLO acción — nunca fondo de sección */
+  --saffron:        #ffa10b;
+  --scarlet-red:    #9a2327;
+  --lake-sea:       #099fa1;
+  --dreamy-green:   #92d1bb;
+
+  /* ── Derivados: texto ──────────────────────────────────────────────────── */
+  /* Sobre crema */
+  --text-on-cream:        var(--deep-aqua);
+  --text-on-cream-muted:  rgba(0, 29, 40, 0.72);
+  --text-on-cream-soft:   rgba(0, 29, 40, 0.5);
+  /* Sobre Deep Aqua */
+  --text-on-aqua:         var(--sunlight-charm);
+  --text-on-aqua-muted:   rgba(233, 216, 165, 0.75);
+  --text-on-aqua-soft:    rgba(233, 216, 165, 0.5);
+
+  /* ── Derivados: bordes hairline ────────────────────────────────────────── */
+  --hairline-on-cream: rgba(0, 29, 40, 0.12);
+  --hairline-on-aqua:  rgba(233, 216, 165, 0.18);
+
+  /* Única excepción a "sin gradientes decorativos": el overlay del hero */
+  --hero-overlay: linear-gradient(
+    100deg,
+    rgba(0, 29, 40, 0.82),
+    rgba(0, 29, 40, 0.55) 45%,
+    rgba(0, 29, 40, 0.18)
+  );
+
+  /* Velo sobre las imágenes de los tiles de categoría */
+  --tile-veil: rgba(0, 29, 40, 0.35);
+
+  /* Números de paso como marca de agua sobre Deep Aqua */
+  --watermark: rgba(233, 216, 165, 0.28);
+
+  /* Barra de caption sobre fotografía */
+  --caption-veil: rgba(0, 29, 40, 0.72);
+
+  /* Velo de la sección de frase a sangre */
+  --quote-veil: rgba(0, 29, 40, 0.78);
+
+  /* Fondo de la imagen de producto: Sunlight Charm al 30% */
+  --product-bg: rgba(233, 216, 165, 0.3);
+  --soldout-veil: rgba(250, 248, 244, 0.55);
+
+  /* Borde de las cajas del selector de presentación */
+  --option-border: rgba(0, 29, 40, 0.25);
+
+  /* Bloque de garantía: Sunlight Charm al 40% */
+  --guarantee-bg: rgba(233, 216, 165, 0.4);
+
+  /* Fondo oscurecido tras el drawer del carrito */
+  --backdrop: rgba(0, 29, 40, 0.45);
+  --progress-track: rgba(0, 29, 40, 0.12);
+
+  /* ── Estados ───────────────────────────────────────────────────────────── */
+  --sunset-hover:  #a44502;
+  --error:         var(--scarlet-red);
+  --warning:       var(--saffron);
+
+  /* ── Tipografía ────────────────────────────────────────────────────────── */
+  /* Alte Haas Grotesk es la fuente institucional (Brand Guideline, sección 3).
+     Coastal Hand está reservada al logotipo y NO se usa en texto. */
+  --font-sans: 'Alte Haas Grotesk', 'Inter', -apple-system, BlinkMacSystemFont,
+               'Segoe UI', Roboto, sans-serif;
+
+  /*
+   * Serif editorial. El brand book permite elegir una fuente acorde a la
+   * intención en piezas de campaña. Su uso está restringido a cuatro sitios:
+   * la frase del manifiesto, el título de Recetas, el de Nuestra costa y el
+   * nombre del producto en su ficha. En interfaz — nav, botones, precios,
+   * formularios, carrito, checkout — nunca.
+   */
+  --font-display: 'Cormorant Garamond', Georgia, serif;
+
+  --fs-hero:    clamp(2.75rem, 6vw, 5.5rem);
+  --fs-h2:      clamp(2rem, 3.4vw, 3rem);
+  --fs-h3:      1.5rem;
+  --fs-body:    17px;
+  --fs-eyebrow: 12px;
+  --fs-nav:     13px;
+
+  --lh-hero: 1.02;
+  --lh-h2:   1.1;
+  --lh-h3:   1.2;
+  --lh-body: 1.65;
+
+  --tr-hero:    -0.02em;
+  --tr-h2:      -0.015em;
+  --tr-h3:      -0.01em;
+  --tr-eyebrow: 0.16em;
+  --tr-nav:     0.14em;
+
+  /* ── Layout ────────────────────────────────────────────────────────────── */
+  --container: 1280px;
+  --gutter: 24px;
+  --section-y: 120px;
+  --radius: 4px;
+  --radius-sm: 2px;   /* botones y tarjetas */
+  --header-h: 76px;
+  --announce-h: 40px;
+
+  /* ── Movimiento ────────────────────────────────────────────────────────── */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --t-fast:   200ms ease;
+  --t-medium: 300ms ease;
+  --t-slow:   600ms var(--ease-out);
+}
+
+@media (max-width: 640px) {
+  :root {
+    --section-y: 72px;
+    --gutter: 20px;
+  }
+}

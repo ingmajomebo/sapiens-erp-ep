@@ -1,0 +1,12 @@
+.section {
+  padding-block: var(--section-y);
+}
+
+/* Fondos: cada sección usa como máximo 2 colores */
+.cream { background: var(--cream); color: var(--text-on-cream); }
+.aqua  { background: var(--deep-aqua); color: var(--text-on-aqua-muted); }
+.white { background: var(--white); color: var(--text-on-cream); }
+
+.aqua :global(h1),
+.aqua :global(h2),
+.aqua :global(h3) { color: var(--text-on-aqua); }
