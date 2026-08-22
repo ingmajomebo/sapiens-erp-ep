@@ -66,8 +66,14 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    # Publicado en loopback para poder diagnosticar desde el propio servidor
     ports:
       - "127.0.0.1:${ERP_PORT}:80"
+    networks:
+      default:
+      edge:
+        aliases:
+          - ${STACK_NAME}-erp
 
   # Tienda pública
   storefront:
@@ -78,6 +84,20 @@ services:
         condition: service_healthy
     ports:
       - "127.0.0.1:${STOREFRONT_PORT}:80"
+    networks:
+      default:
+      edge:
+        aliases:
+          - ${STACK_NAME}-storefront
+
+networks:
+  # Red por defecto del stack: postgres y backend viven solo aquí
+  default:
+  # Red compartida con el Caddy que ya sirve el VPS. Se declara externa para
+  # no recrearla en cada despliegue ni interferir con el otro proyecto.
+  edge:
+    external: true
+    name: edge
 
 volumes:
   pgdata:

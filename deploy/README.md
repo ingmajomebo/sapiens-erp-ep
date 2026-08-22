@@ -5,11 +5,11 @@ y a producción va **exactamente esa imagen**.
 
 ```
 VPS Hostinger
-├── encantopacifico.com          tienda      :8080   ┐
-├── admin.encantopacifico.com    ERP         :8081   ├ stack encanto-prod
+├── encantopacificoerp.online          tienda      :8080   ┐
+├── admin.encantopacificoerp.online    ERP         :8081   ├ stack encanto-prod
 │                                pgdata_prod         ┘
-├── dev.encantopacifico.com      tienda      :8090   ┐
-└── dev-admin.encantopacifico.com ERP        :8091   ├ stack encanto-dev
+├── dev.encantopacificoerp.online      tienda      :8090   ┐
+└── dev-admin.encantopacificoerp.online ERP        :8091   ├ stack encanto-dev
                                  pgdata_dev          ┘
 ```
 
@@ -24,10 +24,10 @@ básica de Nginx y con `X-Robots-Tag: noindex`.
 ```
 1. Trabajas en la rama develop
 2. ./deploy/build-push.sh              (en tu Mac)  -> sube ghcr.io/…:a3f9c21
-3. release.sh dev a3f9c21              (en el VPS)  -> dev.encantopacifico.com
+3. release.sh dev a3f9c21              (en el VPS)  -> dev.encantopacificoerp.online
 4. Pruebas en dev
 5. merge develop -> main
-6. release.sh prod a3f9c21             (en el VPS)  -> encantopacifico.com
+6. release.sh prod a3f9c21             (en el VPS)  -> encantopacificoerp.online
 ```
 
 El paso 6 usa **la misma etiqueta** del paso 3. No se vuelve a compilar nada:
@@ -82,29 +82,30 @@ echo "$GHCR_TOKEN" | docker login ghcr.io -u ingmajomebo --password-stdin
 
 ---
 
-## 2. Nginx y certificados
+## 2. Caddy y certificados
+
+El VPS ya sirve otro proyecto con **Caddy** en los puertos 80 y 443. En vez de
+montar un segundo servidor web, Encanto se cuelga del que ya está.
 
 ```bash
-cp deploy/nginx-host.conf /etc/nginx/sites-available/encanto
-sed -i 's/TUDOMINIO.COM/encantopacifico.com/g' /etc/nginx/sites-available/encanto
-ln -sf /etc/nginx/sites-available/encanto /etc/nginx/sites-enabled/
-rm -f /etc/nginx/sites-enabled/default
+# Red compartida entre el Caddy existente y los stacks de Encanto
+docker network create edge
+docker network connect edge agenda-caddy-1
 
 # Contraseña para los ambientes de desarrollo
-htpasswd -c /etc/nginx/.htpasswd-dev equipo
+docker run --rm caddy:2-alpine caddy hash-password --plaintext 'TU_CLAVE'
+# pegar el hash en deploy/caddy/encanto.caddy (dos veces)
 
-nginx -t && systemctl reload nginx
-
-apt install -y certbot python3-certbot-nginx
-certbot --nginx \
-  -d encantopacifico.com -d www.encantopacifico.com \
-  -d admin.encantopacifico.com \
-  -d dev.encantopacifico.com -d dev-admin.encantopacifico.com
+# Importar los bloques desde el Caddyfile que ya existe
+echo 'import /opt/encanto/deploy/caddy/encanto.caddy' >> /opt/agenda/Caddyfile
+docker exec agenda-caddy-1 caddy reload --config /etc/caddy/Caddyfile
 ```
 
-Antes de esto, los cinco subdominios deben tener registro **A** apuntando a la IP.
+Caddy pide y renueva los certificados solo. No hay certbot ni cron que
+mantener.
 
----
+**Antes de esto**, los subdominios deben tener registro A apuntando a la IP
+del VPS: `admin.`, `dev.` y `dev-admin.`. El dominio raíz ya apunta.
 
 ## 3. Construir y publicar
 
@@ -126,7 +127,7 @@ cd /opt/encanto && git pull
 ./deploy/release.sh dev a3f9c21
 ```
 
-Pruebas en `dev.encantopacifico.com`. Cuando esté bien:
+Pruebas en `dev.encantopacificoerp.online`. Cuando esté bien:
 
 ```bash
 ./deploy/release.sh prod a3f9c21
