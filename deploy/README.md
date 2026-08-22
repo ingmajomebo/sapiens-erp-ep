@@ -74,11 +74,38 @@ nano deploy/env/dev.env
 chmod 600 deploy/env/*.env
 ```
 
-Acceso al registro de imágenes (token de GitHub con permiso `read:packages`):
+### Acceso al registro de imágenes
+
+Las imágenes viven en `ghcr.io` y son **privadas**. Hacen falta dos tokens
+distintos, y la diferencia importa:
+
+| Dónde | Permiso | Para qué |
+|---|---|---|
+| Tu máquina | `write:packages`, `read:packages` | Construir y subir |
+| El VPS | `read:packages` | Solo descargar |
+
+El del servidor es de **solo lectura** a propósito: si alguien compromete el
+VPS, con esa credencial no puede publicar una imagen envenenada que después
+se despliegue como si fuera tuya.
+
+Los dos se crean en `github.com/settings/tokens` → *Generate new token
+(classic)*. Los fine-grained todavía no cubren bien GHCR.
+
+**En el VPS:**
 
 ```bash
-echo "$GHCR_TOKEN" | docker login ghcr.io -u ingmajomebo --password-stdin
+# Pega el token cuando lo pida; no queda en el historial de shell
+docker login ghcr.io -u ingmajomebo
+
+# Comprobar que puede descargar
+docker pull ghcr.io/ingmajomebo/erp-backend:ALGUNA_ETIQUETA
 ```
+
+La credencial queda en `/root/.docker/config.json` codificada en base64, no
+cifrada. Ese archivo debe ser `chmod 600` y solo de root.
+
+> Si el token caduca, `release.sh` falla al hacer `pull` con un
+> `denied`/`unauthorized`. Se renueva repitiendo el `docker login`.
 
 ---
 
@@ -112,7 +139,7 @@ del VPS: `admin.`, `dev.` y `dev-admin.`. El dominio raíz ya apunta.
 **En tu máquina**, con el árbol limpio:
 
 ```bash
-echo "$GHCR_TOKEN" | docker login ghcr.io -u ingmajomebo --password-stdin
+docker login ghcr.io -u ingmajomebo    # el token CON write:packages
 ./deploy/build-push.sh
 ```
 

@@ -21,6 +21,14 @@ if [[ -n "$(git status --porcelain)" ]]; then
     exit 1
 fi
 
+# Comprobar la sesión antes de gastar varios minutos construyendo
+if ! grep -q "ghcr.io" ~/.docker/config.json 2>/dev/null; then
+    echo "!! Sin sesión en ghcr.io. Ejecuta primero:" >&2
+    echo "     docker login ghcr.io -u ingmajomebo" >&2
+    echo "   con un token que tenga write:packages." >&2
+    exit 1
+fi
+
 TAG="$(git rev-parse --short HEAD)"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 

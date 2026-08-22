@@ -43,7 +43,15 @@ fi
 sed -i.rollback "s/^IMAGE_TAG=.*/IMAGE_TAG=$TAG/" "$ENV_FILE"
 
 echo "==> Descargando imágenes $TAG"
-IMAGE_TAG="$TAG" $COMPOSE pull
+if ! IMAGE_TAG="$TAG" $COMPOSE pull; then
+    echo >&2
+    echo "!! No se pudieron descargar las imágenes." >&2
+    echo "   Si el error dice 'denied' o 'unauthorized', la sesión del" >&2
+    echo "   registro caducó. Renuévala con:" >&2
+    echo "     docker login ghcr.io -u ingmajomebo" >&2
+    echo "   usando un token con read:packages." >&2
+    exit 1
+fi
 
 echo "==> Levantando $ENVIRONMENT"
 IMAGE_TAG="$TAG" $COMPOSE up -d --remove-orphans
