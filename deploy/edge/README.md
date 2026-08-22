@@ -1,124 +1,103 @@
-# Estructura del VPS
+# Convivencia en el VPS
 
-Un proxy de borde, varios proyectos independientes.
+Dos sistemas en el mismo servidor, y **ninguno se corta para levantar el otro**.
 
 ```
-/opt/
-├── edge/                  Caddy. Único dueño de los puertos 80 y 443.
-│   ├── docker-compose.yml
-│   ├── Caddyfile          Solo opciones globales + import sites/*.caddy
-│   └── sites/
-│       ├── agenda.caddy               sapiensflowmas.online
-│       ├── encanto.caddy              producción
-│       └── encanto-dev.caddy.example  desarrollo (inactivo hasta renombrarlo)
-├── agenda/                Proyecto (sin proxy propio)
-└── encanto/               Proyecto (sin proxy propio)
+VPS
+├── agenda    sapiensflowmas.online          ← ya en producción, intacto
+└── encanto   encantopacificoerp.online      ← se suma
+                admin. / dev. / dev-admin.
 ```
 
-El borde **no pertenece a ningún proyecto**. Cada proyecto:
+## Cómo comparten el puerto 443
 
-1. deja su archivo en `sites/`,
-2. une sus servicios web a la red externa `edge` con un alias estable.
+Solo un proceso puede escuchar en el 443 de una IP, y ese proceso es el Caddy
+que ya sirve a `agenda`. En vez de sustituirlo —lo que obligaría a pararlo—,
+Encanto **se cuelga de él**:
 
-Añadir o retirar un proyecto no toca el archivo de los demás.
+1. Sus contenedores web se unen a la red `edge` con un alias estable.
+2. `apply-sites.sh` añade los bloques de Encanto a la configuración de Caddy.
+3. `caddy reload` intercambia la configuración **en caliente**.
 
-## Por qué así y no un Caddyfile único
+`caddy reload` no reinicia el proceso ni cierra conexiones: cambia la
+configuración en memoria. Y si la nueva es inválida, la rechaza y sigue
+sirviendo la anterior. `docker network connect` tampoco reinicia nada.
 
-Un solo archivo con todos los sitios funciona, pero cada despliegue obliga a
-editar la configuración compartida, y un error de sintaxis afecta a todos.
-Con un archivo por proyecto, el dueño de cada uno edita el suyo.
+**agenda no se detiene en ningún momento.**
 
-`caddy reload` **valida antes de aplicar**: si un archivo tiene un error, la
-recarga se rechaza y Caddy sigue sirviendo la configuración anterior. Un
-proyecto mal configurado no tumba a los demás.
-
-## Reglas de la casa
-
-1. **Solo `edge` publica puertos al exterior.** Los proyectos exponen como
-   mucho en `127.0.0.1`, para diagnosticar desde el propio servidor.
-2. **Solo los servicios web se unen a `edge`.** Las bases de datos y las APIs
-   internas se quedan en la red interna del stack, fuera del alcance del proxy.
-3. **Alias de red, no nombres de contenedor.** Un redespliegue cambia el
-   contenedor; el alias no.
-4. **Un archivo por proyecto en `sites/`**, con el nombre del proyecto.
-5. **Los certificados los pide y renueva Caddy.** No hay certbot ni cron.
-6. **Un sitio que necesite un secreto se ships como `.example`.** El import
-   solo recoge `*.caddy`: si el secreto está mal puesto, Caddy no arranca y
-   se lleva por delante TODOS los sitios. Mejor que nazca inactivo.
-
-## Montaje inicial
+## Publicar o actualizar los sitios
 
 ```bash
-mkdir -p /opt/edge && cd /opt/edge
-# copiar docker-compose.yml, Caddyfile y sites/ desde deploy/edge/
-cp .env.example .env && nano .env        # ACME_EMAIL
-
-docker network create edge
-docker compose up -d
+cd /opt/encanto
+./deploy/edge/apply-sites.sh
 ```
 
-Antes de arrancarlo hay que liberar los puertos 80 y 443:
-ver [MIGRAR-AGENDA.md](MIGRAR-AGENDA.md).
+El script:
 
-## Añadir un proyecto nuevo
+- guarda la configuración original de agenda como `Caddyfile.base` la primera
+  vez, y a partir de ahí esa base es la fuente de verdad de agenda;
+- crea la red `edge` y conecta el proxy si hace falta;
+- genera la configuración final concatenando la base con `sites/*.caddy`;
+- **la valida dentro del contenedor antes de tocar el archivo en producción**;
+- aplica y recarga, con vuelta atrás automática si la recarga falla.
 
-**1.** En su compose, al servicio que deba ser público:
+Nuestra configuración vive en este repositorio. La de agenda, en su base.
+Ninguno edita el archivo del otro.
 
-```yaml
-    networks:
-      default:
-      edge:
-        aliases:
-          - miproyecto-web
+## Por qué el Caddyfile es generado
 
-networks:
-  default:
-  edge:
-    external: true
-    name: edge
-```
+El Caddy de agenda monta **un solo archivo**, no un directorio. No se puede
+importar el nuestro desde fuera sin recrear el contenedor — y recrearlo sí
+sería un corte. Generar el archivo combinado es lo que permite mantener las
+dos configuraciones separadas sin tocar el contenedor.
 
-**2.** Un archivo `/opt/edge/sites/miproyecto.caddy`:
+Por eso `/opt/agenda/Caddyfile` lleva una marca de generado. Para cambiar la
+configuración de agenda se edita `Caddyfile.base` y se vuelve a ejecutar el
+script.
 
-```caddy
-midominio.com {
-	encode gzip
-	reverse_proxy miproyecto-web:80
-}
-```
+## Los archivos de sitio
 
-**3.** Recargar:
+| Archivo | Estado |
+|---|---|
+| `sites/encanto.caddy` | Producción: tienda y panel |
+| `sites/encanto-dev.caddy.example` | Desarrollo: **inactivo** hasta renombrarlo |
+
+Desarrollo nace inactivo a propósito. Lleva una contraseña, y un hash mal
+pegado impide cargar la configuración **completa** — se llevaría por delante
+también a agenda. Como `apply-sites.sh` solo recoge `*.caddy`, mientras no lo
+renombres no puede afectar a nada.
+
+Para activarlo:
 
 ```bash
-docker exec edge-caddy-1 caddy reload --config /etc/caddy/Caddyfile
+docker run --rm caddy:2-alpine caddy hash-password --plaintext 'TU_CLAVE'
+# pegar el hash en los dos bloques
+mv sites/encanto-dev.caddy.example sites/encanto-dev.caddy
+./deploy/edge/apply-sites.sh
 ```
 
-Caddy emite el certificado solo. No hace falta reiniciar nada.
+## Añadir otro proyecto en el futuro
 
-## Retirar un proyecto
-
-```bash
-rm /opt/edge/sites/miproyecto.caddy
-docker exec edge-caddy-1 caddy reload --config /etc/caddy/Caddyfile
-```
+Mismo patrón: unir sus servicios web a la red `edge` con un alias, dejar su
+archivo en un `sites/` y regenerar. Si llegan a ser tres o cuatro proyectos,
+conviene mover el proxy a `/opt/edge` como infraestructura sin dueño — pero
+eso sí pide una ventana de mantenimiento, y hoy no hace falta.
 
 ## Diagnóstico
 
 ```bash
-docker logs -f edge-caddy-1                                    # certificados, errores
-docker exec edge-caddy-1 caddy validate --config /etc/caddy/Caddyfile
-
-# Validar cambios ANTES de subirlos, desde tu máquina:
-docker run --rm -v "$PWD/deploy/edge/Caddyfile:/etc/caddy/Caddyfile:ro" \
-  -v "$PWD/deploy/edge/sites:/etc/caddy/sites:ro" -e ACME_EMAIL=x@y.z \
-  caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
+docker logs -f agenda-caddy-1                                  # certificados, errores
+docker exec agenda-caddy-1 caddy validate --config /etc/caddy/Caddyfile
 docker network inspect edge --format '{{range .Containers}}{{.Name}} {{end}}'
+
+# Volver a la configuración inmediatamente anterior
+cp /opt/agenda/Caddyfile.prev /opt/agenda/Caddyfile
+docker exec agenda-caddy-1 caddy reload --config /etc/caddy/Caddyfile
 ```
 
 | Síntoma | Causa habitual |
 |---|---|
-| 502 desde Caddy | El contenedor no está en la red `edge`, o el alias no coincide |
+| 502 desde Caddy | El contenedor no está en `edge`, o el alias no coincide |
 | Certificado no emite | El DNS del host no apunta al VPS, o el 80 no llega desde fuera |
-| `caddy reload` falla | Error de sintaxis: `caddy validate` dice en qué archivo y línea |
-| `Bind for 0.0.0.0:443 failed` | Otro proceso tiene el puerto: `ss -tlnp \| grep 443` |
-| Certificados reemitidos sin motivo | Se perdió el volumen `caddy_data`. Ojo con los límites de Let's Encrypt |
+| `apply-sites.sh` falla al validar | Error de sintaxis en `sites/`. No se cambió nada |
+| agenda deja de responder | No debería. Restaurar con `Caddyfile.prev` y recargar |
