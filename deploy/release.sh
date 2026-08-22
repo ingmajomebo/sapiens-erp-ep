@@ -31,8 +31,13 @@ COMPOSE="docker compose --env-file $ENV_FILE -f docker-compose.stack.yml"
 if [[ "$ENVIRONMENT" == "prod" ]]; then
     CURRENT="$(grep '^IMAGE_TAG=' "$ENV_FILE" | cut -d= -f2)"
     echo "Producción: ${CURRENT:-ninguna} -> $TAG"
-    read -r -p "¿Confirmas? (escribe: publicar) " answer
-    [[ "$answer" == "publicar" ]] || { echo "Cancelado."; exit 1; }
+
+    # En el pipeline la aprobación ya la dio una persona en el entorno
+    # protegido de GitHub; volver a pedirla por consola colgaría el proceso.
+    if [[ "${DEPLOY_YES:-}" != "1" ]]; then
+        read -r -p "¿Confirmas? (escribe: publicar) " answer
+        [[ "$answer" == "publicar" ]] || { echo "Cancelado."; exit 1; }
+    fi
 
     # Respaldo antes de tocar producción: las migraciones no se deshacen solas
     echo "==> Respaldando la base antes de migrar"

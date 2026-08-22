@@ -1,0 +1,81 @@
+# Paso de despliegue, compartido por desarrollo y producción.
+# Está aparte para que las dos ramas ejecuten exactamente el mismo
+# procedimiento y no se desincronicen con el tiempo.
+
+name: Desplegar en el VPS
+description: Descarga la etiqueta indicada y levanta el stack por SSH
+
+inputs:
+  environment:
+    description: dev o prod
+    required: true
+  tag:
+    description: Etiqueta de imagen a desplegar
+    required: true
+  host:
+    required: true
+  user:
+    required: true
+  ssh-key:
+    description: Clave privada del usuario de despliegue
+    required: true
+  ghcr-user:
+    required: true
+  ghcr-token:
+    description: Token con read:packages para que el VPS descargue
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Preparar SSH
+      shell: bash
+      run: |
+        mkdir -p ~/.ssh && chmod 700 ~/.ssh
+        printf '%s\n' "${{ inputs.ssh-key }}" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        # Se fija la huella del servidor: sin esto, un DNS secuestrado
+        # bastaría para que el despliegue entregue el stack a otra máquina.
+        ssh-keyscan -H "${{ inputs.host }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+    - name: Desplegar
+      shell: bash
+      env:
+        SSH_TARGET: ${{ inputs.user }}@${{ inputs.host }}
+        ENVIRONMENT: ${{ inputs.environment }}
+        TAG: ${{ inputs.tag }}
+        GHCR_USER: ${{ inputs.ghcr-user }}
+        GHCR_TOKEN: ${{ inputs.ghcr-token }}
+      run: |
+        set -euo pipefail
+        ssh -i ~/.ssh/deploy_key -o BatchMode=yes "$SSH_TARGET" \
+          "GHCR_USER='$GHCR_USER' GHCR_TOKEN='$GHCR_TOKEN' bash -s" <<EOF
+        set -euo pipefail
+        cd /opt/encanto
+
+        # El código del servidor debe coincidir con el que produjo la imagen:
+        # los archivos de despliegue y las migraciones vienen del repositorio.
+        git fetch -q origin
+        git checkout -q -B "$ENVIRONMENT-current" "$TAG"
+
+        # Sesión en el registro, solo lectura
+        printf '%s' "\$GHCR_TOKEN" | docker login ghcr.io -u "\$GHCR_USER" --password-stdin
+
+        DEPLOY_YES=1 ./deploy/release.sh "$ENVIRONMENT" "$TAG"
+        EOF
+
+    - name: Comprobar que responde
+      shell: bash
+      env:
+        SSH_TARGET: ${{ inputs.user }}@${{ inputs.host }}
+        ENVIRONMENT: ${{ inputs.environment }}
+      run: |
+        set -euo pipefail
+        PORT=$([ "$ENVIRONMENT" = "prod" ] && echo 8080 || echo 8090)
+        ssh -i ~/.ssh/deploy_key -o BatchMode=yes "$SSH_TARGET" \
+          "curl -fsS -o /dev/null -w 'tienda -> HTTP %{http_code}\n' http://127.0.0.1:$PORT/"
+
+    - name: Borrar la clave
+      if: always()
+      shell: bash
+      run: rm -f ~/.ssh/deploy_key

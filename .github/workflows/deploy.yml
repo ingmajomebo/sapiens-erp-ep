@@ -1,0 +1,140 @@
+# Despliegue automático.
+#
+#   merge a develop  ->  dev.encantopacificoerp.online
+#   merge a main     ->  encantopacificoerp.online   (con aprobación manual)
+#
+# Las imágenes se construyen UNA vez, etiquetadas con el commit, y el VPS
+# descarga exactamente esas. No se compila en el servidor.
+#
+# Para exigir aprobación antes de producción:
+#   Settings -> Environments -> production -> Required reviewers
+
+name: Deploy
+
+on:
+  push:
+    branches: [develop, main]
+  # Permite reponer un despliegue a mano desde la pestaña Actions
+  workflow_dispatch:
+
+# Nunca dos despliegues del mismo ambiente a la vez. Y aquí NO se cancela el
+# que está en curso: cortar a mitad deja el stack a medias.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io/${{ github.repository_owner }}
+
+jobs:
+  # ── 1. Verificar antes de construir ─────────────────────────────────────
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - working-directory: backend
+        run: ./gradlew test --no-daemon
+
+  # ── 2. Construir y publicar las tres imágenes ───────────────────────────
+  build:
+    name: Construir imágenes
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Es lo que permite publicar en ghcr.io sin ningún token manual
+      packages: write
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: meta
+        run: echo "tag=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Entrar al registro
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          platforms: linux/amd64
+          tags: ${{ env.REGISTRY }}/erp-backend:${{ steps.meta.outputs.tag }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: erp
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          platforms: linux/amd64
+          tags: ${{ env.REGISTRY }}/erp-frontend:${{ steps.meta.outputs.tag }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+      - name: storefront
+        uses: docker/build-push-action@v6
+        with:
+          context: ./storefront
+          push: true
+          platforms: linux/amd64
+          tags: ${{ env.REGISTRY }}/storefront:${{ steps.meta.outputs.tag }}
+          cache-from: type=gha,scope=storefront
+          cache-to: type=gha,mode=max,scope=storefront
+
+  # ── 3. Desarrollo: automático ───────────────────────────────────────────
+  dev:
+    name: Desplegar en desarrollo
+    if: github.ref == 'refs/heads/develop'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: development
+      url: https://dev.encantopacificoerp.online
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/deploy-vps
+        with:
+          environment: dev
+          tag: ${{ needs.build.outputs.tag }}
+          ssh-key: ${{ secrets.VPS_SSH_KEY }}
+          host: ${{ secrets.VPS_HOST }}
+          user: ${{ secrets.VPS_USER }}
+          ghcr-token: ${{ secrets.GHCR_READ_TOKEN }}
+          ghcr-user: ${{ github.repository_owner }}
+
+  # ── 4. Producción: con aprobación ───────────────────────────────────────
+  prod:
+    name: Desplegar en producción
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://encantopacificoerp.online
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/deploy-vps
+        with:
+          environment: prod
+          tag: ${{ needs.build.outputs.tag }}
+          ssh-key: ${{ secrets.VPS_SSH_KEY }}
+          host: ${{ secrets.VPS_HOST }}
+          user: ${{ secrets.VPS_USER }}
+          ghcr-token: ${{ secrets.GHCR_READ_TOKEN }}
+          ghcr-user: ${{ github.repository_owner }}
