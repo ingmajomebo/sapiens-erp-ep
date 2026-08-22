@@ -1,0 +1,61 @@
+# Encanto Pacífico — ambiente de DESARROLLO.
+#
+# Este archivo termina en .example a propósito: el import del borde solo
+# recoge *.caddy, así que mientras no lo actives no puede afectar a nada.
+#
+# Para activarlo:
+#   1. docker run --rm caddy:2-alpine caddy hash-password --plaintext 'TU_CLAVE'
+#   2. pegar el hash en los dos bloques de abajo
+#   3. mv encanto-dev.caddy.example encanto-dev.caddy
+#   4. docker exec edge-caddy-1 caddy reload --config /etc/caddy/Caddyfile
+#
+# Si el hash queda mal, `caddy reload` rechaza el cambio y sigue sirviendo la
+# configuración anterior. Por eso conviene activarlo en un archivo aparte y
+# no dentro del de producción.
+
+# ── Desarrollo ───────────────────────────────────────────────────────────────
+# Tras contraseña y fuera de los buscadores: es un ambiente de pruebas, no una
+# segunda tienda. Indexarlo sería contenido duplicado y expondría ensayos.
+#
+# Generar el hash con:
+#   docker run --rm caddy:2-alpine caddy hash-password --plaintext 'TU_CLAVE'
+
+dev.encantopacificoerp.online {
+	encode gzip
+
+	basic_auth {
+		equipo REEMPLAZAR_POR_HASH
+	}
+
+	header {
+		X-Robots-Tag "noindex, nofollow"
+		X-Content-Type-Options "nosniff"
+		-Server
+	}
+
+	reverse_proxy encanto-dev-storefront:80
+
+	request_body {
+		max_size 10MB
+	}
+}
+
+dev-admin.encantopacificoerp.online {
+	encode gzip
+
+	basic_auth {
+		equipo REEMPLAZAR_POR_HASH
+	}
+
+	header {
+		X-Robots-Tag "noindex, nofollow"
+		X-Content-Type-Options "nosniff"
+		-Server
+	}
+
+	reverse_proxy encanto-dev-erp:80
+
+	request_body {
+		max_size 10MB
+	}
+}

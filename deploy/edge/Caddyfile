@@ -9,7 +9,6 @@
 # Si un archivo tiene un error de sintaxis, `caddy reload` lo rechaza y sigue
 # sirviendo la configuración anterior. Un proyecto mal configurado no tumba
 # a los demás.
-
 {
 	# Correo para los avisos de caducidad de Let's Encrypt
 	email {$ACME_EMAIL}

@@ -8,8 +8,9 @@ Un proxy de borde, varios proyectos independientes.
 │   ├── docker-compose.yml
 │   ├── Caddyfile          Solo opciones globales + import sites/*.caddy
 │   └── sites/
-│       ├── agenda.caddy   sapiensflowmas.online
-│       └── encanto.caddy  encantopacificoerp.online + admin/dev/dev-admin
+│       ├── agenda.caddy               sapiensflowmas.online
+│       ├── encanto.caddy              producción
+│       └── encanto-dev.caddy.example  desarrollo (inactivo hasta renombrarlo)
 ├── agenda/                Proyecto (sin proxy propio)
 └── encanto/               Proyecto (sin proxy propio)
 ```
@@ -41,6 +42,9 @@ proyecto mal configurado no tumba a los demás.
    contenedor; el alias no.
 4. **Un archivo por proyecto en `sites/`**, con el nombre del proyecto.
 5. **Los certificados los pide y renueva Caddy.** No hay certbot ni cron.
+6. **Un sitio que necesite un secreto se ships como `.example`.** El import
+   solo recoge `*.caddy`: si el secreto está mal puesto, Caddy no arranca y
+   se lleva por delante TODOS los sitios. Mejor que nazca inactivo.
 
 ## Montaje inicial
 
@@ -103,6 +107,11 @@ docker exec edge-caddy-1 caddy reload --config /etc/caddy/Caddyfile
 ```bash
 docker logs -f edge-caddy-1                                    # certificados, errores
 docker exec edge-caddy-1 caddy validate --config /etc/caddy/Caddyfile
+
+# Validar cambios ANTES de subirlos, desde tu máquina:
+docker run --rm -v "$PWD/deploy/edge/Caddyfile:/etc/caddy/Caddyfile:ro" \
+  -v "$PWD/deploy/edge/sites:/etc/caddy/sites:ro" -e ACME_EMAIL=x@y.z \
+  caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
 docker network inspect edge --format '{{range .Containers}}{{.Name}} {{end}}'
 ```
 
