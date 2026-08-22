@@ -1,0 +1,47 @@
+# Proxy de borde del VPS. Es el único que ocupa los puertos 80 y 443.
+#
+# Cada proyecto (agenda, encanto, …) es un stack aparte que se une a la red
+# `edge` y declara sus rutas con etiquetas. Añadir o retirar un proyecto no
+# toca este archivo ni el de los demás.
+#
+#   docker network create edge     # una sola vez
+#   docker compose up -d
+
+name: edge
+
+services:
+  traefik:
+    image: traefik:v3.3
+    restart: unless-stopped
+    command:
+      - --configFile=/etc/traefik/traefik.yml
+    ports:
+      - "80:80"
+      - "443:443"
+      # Panel solo en loopback: se ve con
+      #   ssh -L 8088:127.0.0.1:8088 <vps>
+      - "127.0.0.1:8088:8080"
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      # Solo lectura: Traefik necesita ver los contenedores, no manejarlos
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik.yml:/etc/traefik/traefik.yml:ro
+      - letsencrypt:/letsencrypt
+      - logs:/var/log/traefik
+    networks:
+      - edge
+    labels:
+      # El panel de Traefik, servido por el propio Traefik
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.entrypoints=traefik-internal"
+      - "traefik.http.routers.dashboard.service=api@internal"
+
+networks:
+  edge:
+    external: true
+    name: edge
+
+volumes:
+  letsencrypt:
+  logs:

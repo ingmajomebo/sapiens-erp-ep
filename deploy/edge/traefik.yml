@@ -1,0 +1,47 @@
+# Configuración estática de Traefik. Lo que cambia aquí exige reiniciar el
+# contenedor; el enrutamiento de cada proyecto vive en SUS etiquetas y se
+# recarga solo.
+
+api:
+  dashboard: true
+  # El panel no se publica: se consulta con un túnel SSH contra 127.0.0.1:8088
+  insecure: false
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
+  websecure:
+    address: ":443"
+    http:
+      tls:
+        certResolver: letsencrypt
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    # Solo se enruta lo que lo pide explícitamente con traefik.enable=true.
+    # Un contenedor nuevo no queda expuesto por accidente.
+    exposedByDefault: false
+    network: edge
+    watch: true
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: "${ACME_EMAIL}"
+      storage: /letsencrypt/acme.json
+      httpChallenge:
+        entryPoint: web
+
+log:
+  level: INFO
+
+accessLog:
+  filePath: /var/log/traefik/access.log
+  bufferingSize: 100
