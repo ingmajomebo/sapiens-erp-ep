@@ -1,56 +1,47 @@
-# Migrar `agenda` detrás de Traefik
+# Mover `agenda` al Caddy del borde
 
-`agenda` hoy tiene su propio Caddy ocupando los puertos 80 y 443. Para que
-Traefik sea el único borde del VPS, ese Caddy debe soltarlos.
+`agenda` tiene hoy su propio Caddy ocupando los puertos 80 y 443. La
+migración es sencilla porque **es el mismo software**: su configuración se
+traslada casi literal a `sites/agenda.caddy`.
 
-Su enrutamiento actual es sencillo y se traduce sin pérdida:
+Y hay una ventaja concreta: el borde **reutiliza el volumen de certificados
+del Caddy de agenda** (`agenda_caddy_data`). Los certificados ya emitidos
+siguen ahí, así que no hay que pedirlos de nuevo ni gastar cuota de
+Let's Encrypt. El corte se reduce a lo que tarda un contenedor en arrancar.
 
-| Caddy | Traefik |
-|---|---|
-| `handle /api/*` → `api:3001` | router con `PathPrefix(/api)` |
-| `handle /v1/*` → `api:3001` | mismo router, segundo prefijo |
-| `handle` (resto) → `web:3000` | router sin prefijo, prioridad menor |
-| `request_body max_size 25MB` | `buffering.maxRequestBodyBytes` |
+Único cambio en la configuración: los destinos pasan de `api:3001` y
+`web:3000` a `agenda-api:3001` y `agenda-web:3000`, porque el Caddy ya no
+vive dentro de la red del proyecto.
 
 ---
 
-## 1. Editar `/opt/agenda/docker-compose.yml`
+## 1. Preparar agenda
 
-En el servicio **`web`**, añadir:
+En `/opt/agenda/docker-compose.yml`:
 
-```yaml
-    networks: [default, edge]
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=edge"
-      - "traefik.http.routers.agenda-web.rule=Host(`sapiensflowmas.online`) || Host(`www.sapiensflowmas.online`)"
-      - "traefik.http.routers.agenda-web.entrypoints=websecure"
-      - "traefik.http.routers.agenda-web.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.agenda-web.priority=1"
-      - "traefik.http.services.agenda-web.loadbalancer.server.port=3000"
-```
-
-En el servicio **`api`**, añadir:
+**Servicio `web`** — añadir:
 
 ```yaml
-    networks: [default, edge]
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=edge"
-      - "traefik.http.routers.agenda-api.rule=(Host(`sapiensflowmas.online`) || Host(`www.sapiensflowmas.online`)) && (PathPrefix(`/api`) || PathPrefix(`/v1`))"
-      - "traefik.http.routers.agenda-api.entrypoints=websecure"
-      - "traefik.http.routers.agenda-api.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.agenda-api.priority=10"
-      - "traefik.http.routers.agenda-api.middlewares=agenda-body@docker"
-      - "traefik.http.services.agenda-api.loadbalancer.server.port=3001"
-      - "traefik.http.middlewares.agenda-body.buffering.maxRequestBodyBytes=26214400"
+    networks:
+      default:
+      edge:
+        aliases:
+          - agenda-web
 ```
 
-> La prioridad importa: `api` es 10 y `web` es 1, para que las rutas con
-> prefijo ganen sobre el comodín. Caddy resolvía esto por especificidad;
-> Traefik quiere el número explícito.
+**Servicio `api`** — añadir:
 
-**Comentar o borrar el servicio `caddy` completo**, y añadir al final:
+```yaml
+    networks:
+      default:
+      edge:
+        aliases:
+          - agenda-api
+```
+
+**Servicio `caddy`** — comentarlo entero.
+
+Al final del archivo:
 
 ```yaml
 networks:
@@ -62,24 +53,24 @@ networks:
 
 ---
 
-## 2. La ventana de corte
-
-Entre que Caddy suelta los puertos y Traefik obtiene el certificado,
-`sapiensflowmas.online` no responde. Suele durar **menos de un minuto**.
+## 2. El corte
 
 ```bash
 cd /opt/agenda
-cp docker-compose.yml docker-compose.yml.bak      # para poder volver
-cp Caddyfile Caddyfile.bak
+cp docker-compose.yml docker-compose.yml.bak    # para poder volver
 
-docker compose stop caddy                          # libera 80 y 443
+docker network create edge
 
-cd /opt/edge && docker compose up -d               # Traefik toma los puertos
+# Conectar agenda a la red del borde sin reiniciar nada
+docker compose up -d web api
 
-cd /opt/agenda && docker compose up -d web api     # se registran solos
+# Soltar los puertos
+docker compose stop caddy
 
-# Seguir la emisión del certificado
-docker logs -f edge-traefik-1
+# Levantar el borde (hereda los certificados del volumen)
+cd /opt/edge && docker compose up -d
+
+docker logs -f edge-caddy-1
 ```
 
 Comprobar:
@@ -94,11 +85,14 @@ curl -I https://sapiensflowmas.online
 
 ```bash
 cd /opt/edge   && docker compose down
-cd /opt/agenda && cp docker-compose.yml.bak docker-compose.yml && docker compose up -d
+cd /opt/agenda && docker compose start caddy
 ```
 
-Vuelve en el mismo minuto. Caddy conserva sus certificados en su volumen,
-así que no hay que reemitir nada.
+Vuelve en segundos. El Caddy de agenda conserva su configuración y sus
+certificados intactos.
+
+> El volumen `agenda_caddy_data` lo comparten los dos mientras dure la
+> transición. No lo borres: es donde viven los certificados.
 
 ---
 
@@ -109,7 +103,9 @@ Retirar el Caddy de agenda del todo:
 ```bash
 cd /opt/agenda
 docker compose rm -f caddy
-docker volume rm agenda_caddy_data agenda_caddy_config agenda_caddy_logs
+rm Caddyfile docker-compose.yml.bak
 ```
 
-No antes: mientras existan, el rollback es inmediato.
+**No borres `agenda_caddy_data`**: ahora es el almacén de certificados del
+borde. Si lo eliminas, Caddy los vuelve a pedir todos y Let's Encrypt tiene
+un límite de cinco emisiones por dominio y semana.

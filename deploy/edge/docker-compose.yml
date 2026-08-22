@@ -1,8 +1,8 @@
-# Proxy de borde del VPS. Es el único que ocupa los puertos 80 y 443.
+# Proxy de borde del VPS. Es el único que ocupa los puertos 80 y 443, y no
+# pertenece a ningún proyecto: los proyectos se cuelgan de él.
 #
-# Cada proyecto (agenda, encanto, …) es un stack aparte que se une a la red
-# `edge` y declara sus rutas con etiquetas. Añadir o retirar un proyecto no
-# toca este archivo ni el de los demás.
+# Cada proyecto deja su archivo en sites/ y se une a la red `edge`.
+# Añadir o retirar uno no toca la configuración de los demás.
 #
 #   docker network create edge     # una sola vez
 #   docker compose up -d
@@ -10,32 +10,26 @@
 name: edge
 
 services:
-  traefik:
-    image: traefik:v3.3
+  caddy:
+    image: caddy:2-alpine
     restart: unless-stopped
-    command:
-      - --configFile=/etc/traefik/traefik.yml
     ports:
       - "80:80"
       - "443:443"
-      # Panel solo en loopback: se ve con
-      #   ssh -L 8088:127.0.0.1:8088 <vps>
-      - "127.0.0.1:8088:8080"
     environment:
+      # Lo lee {$ACME_EMAIL} en el Caddyfile
       ACME_EMAIL: ${ACME_EMAIL}
     volumes:
-      # Solo lectura: Traefik necesita ver los contenedores, no manejarlos
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./traefik.yml:/etc/traefik/traefik.yml:ro
-      - letsencrypt:/letsencrypt
-      - logs:/var/log/traefik
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./sites:/etc/caddy/sites:ro
+      # Los certificados se conservan aquí. El volumen es externo y viene del
+      # Caddy que servía agenda: así los certificados ya emitidos se reutilizan
+      # y la migración no tiene que pedirlos de nuevo.
+      - caddy_data:/data
+      - caddy_config:/config
+      - caddy_logs:/var/log/caddy
     networks:
       - edge
-    labels:
-      # El panel de Traefik, servido por el propio Traefik
-      - "traefik.enable=true"
-      - "traefik.http.routers.dashboard.entrypoints=traefik-internal"
-      - "traefik.http.routers.dashboard.service=api@internal"
 
 networks:
   edge:
@@ -43,5 +37,10 @@ networks:
     name: edge
 
 volumes:
-  letsencrypt:
-  logs:
+  # Se reutiliza el volumen del Caddy anterior para heredar los certificados.
+  # Si se prefiere empezar de cero, quitar `external` y cambiar el nombre.
+  caddy_data:
+    external: true
+    name: agenda_caddy_data
+  caddy_config:
+  caddy_logs:

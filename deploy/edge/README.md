@@ -4,36 +4,49 @@ Un proxy de borde, varios proyectos independientes.
 
 ```
 /opt/
-├── edge/          Traefik. Único dueño de los puertos 80 y 443.
-├── agenda/        sapiensflowmas.online
-└── encanto/       encantopacificoerp.online + admin/dev/dev-admin
+├── edge/                  Caddy. Único dueño de los puertos 80 y 443.
+│   ├── docker-compose.yml
+│   ├── Caddyfile          Solo opciones globales + import sites/*.caddy
+│   └── sites/
+│       ├── agenda.caddy   sapiensflowmas.online
+│       └── encanto.caddy  encantopacificoerp.online + admin/dev/dev-admin
+├── agenda/                Proyecto (sin proxy propio)
+└── encanto/               Proyecto (sin proxy propio)
 ```
 
-Todos los proyectos se unen a la red externa **`edge`** y declaran sus rutas
-con **etiquetas en su propio compose**. Traefik las descubre por el socket de
-Docker y recarga solo.
+El borde **no pertenece a ningún proyecto**. Cada proyecto:
 
-Eso es lo que da la independencia: **añadir o retirar un proyecto no toca ni
-un archivo de los demás**. Con Nginx habría un archivo central que editar cada
-vez, y un `nginx -t` que puede tumbar todos los sitios a la vez.
+1. deja su archivo en `sites/`,
+2. une sus servicios web a la red externa `edge` con un alias estable.
+
+Añadir o retirar un proyecto no toca el archivo de los demás.
+
+## Por qué así y no un Caddyfile único
+
+Un solo archivo con todos los sitios funciona, pero cada despliegue obliga a
+editar la configuración compartida, y un error de sintaxis afecta a todos.
+Con un archivo por proyecto, el dueño de cada uno edita el suyo.
+
+`caddy reload` **valida antes de aplicar**: si un archivo tiene un error, la
+recarga se rechaza y Caddy sigue sirviendo la configuración anterior. Un
+proyecto mal configurado no tumba a los demás.
 
 ## Reglas de la casa
 
-1. **Solo `edge` publica puertos al exterior.** Los proyectos exponen sus
-   servicios en `127.0.0.1` como mucho, para diagnosticar desde el servidor.
-2. **`exposedByDefault: false`.** Un contenedor sin `traefik.enable=true` no
-   queda expuesto por accidente.
-3. **El socket de Docker se monta de solo lectura.** Traefik necesita ver los
-   contenedores, no manejarlos.
-4. **Un router por sitio, con nombre prefijado por el proyecto.** Dos
-   proyectos no pueden pisarse el nombre del router.
-5. **Los certificados los pide y renueva Traefik.** No hay certbot ni cron.
+1. **Solo `edge` publica puertos al exterior.** Los proyectos exponen como
+   mucho en `127.0.0.1`, para diagnosticar desde el propio servidor.
+2. **Solo los servicios web se unen a `edge`.** Las bases de datos y las APIs
+   internas se quedan en la red interna del stack, fuera del alcance del proxy.
+3. **Alias de red, no nombres de contenedor.** Un redespliegue cambia el
+   contenedor; el alias no.
+4. **Un archivo por proyecto en `sites/`**, con el nombre del proyecto.
+5. **Los certificados los pide y renueva Caddy.** No hay certbot ni cron.
 
 ## Montaje inicial
 
 ```bash
 mkdir -p /opt/edge && cd /opt/edge
-# copiar docker-compose.yml, traefik.yml y .env desde deploy/edge/
+# copiar docker-compose.yml, Caddyfile y sites/ desde deploy/edge/
 cp .env.example .env && nano .env        # ACME_EMAIL
 
 docker network create edge
@@ -45,22 +58,15 @@ ver [MIGRAR-AGENDA.md](MIGRAR-AGENDA.md).
 
 ## Añadir un proyecto nuevo
 
-En su compose, al servicio que deba ser público:
+**1.** En su compose, al servicio que deba ser público:
 
 ```yaml
-    networks: [default, edge]
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=edge"
-      - "traefik.http.routers.MIPROYECTO.rule=Host(`midominio.com`)"
-      - "traefik.http.routers.MIPROYECTO.entrypoints=websecure"
-      - "traefik.http.routers.MIPROYECTO.tls.certresolver=letsencrypt"
-      - "traefik.http.services.MIPROYECTO.loadbalancer.server.port=80"
-```
+    networks:
+      default:
+      edge:
+        aliases:
+          - miproyecto-web
 
-Y al final del archivo:
-
-```yaml
 networks:
   default:
   edge:
@@ -68,28 +74,42 @@ networks:
     name: edge
 ```
 
-`docker compose up -d` y listo. No hay que reiniciar Traefik ni avisar a nadie.
+**2.** Un archivo `/opt/edge/sites/miproyecto.caddy`:
 
-## Ver el panel de Traefik
+```caddy
+midominio.com {
+	encode gzip
+	reverse_proxy miproyecto-web:80
+}
+```
 
-No está publicado. Se consulta con un túnel:
+**3.** Recargar:
 
 ```bash
-ssh -L 8088:127.0.0.1:8088 agenda-vps
-# abrir http://localhost:8088/dashboard/
+docker exec edge-caddy-1 caddy reload --config /etc/caddy/Caddyfile
+```
+
+Caddy emite el certificado solo. No hace falta reiniciar nada.
+
+## Retirar un proyecto
+
+```bash
+rm /opt/edge/sites/miproyecto.caddy
+docker exec edge-caddy-1 caddy reload --config /etc/caddy/Caddyfile
 ```
 
 ## Diagnóstico
 
 ```bash
-docker logs -f edge-traefik-1                  # emisión de certificados, rutas
-docker network inspect edge                    # quién está conectado
-docker exec edge-traefik-1 cat /letsencrypt/acme.json | head -5
+docker logs -f edge-caddy-1                                    # certificados, errores
+docker exec edge-caddy-1 caddy validate --config /etc/caddy/Caddyfile
+docker network inspect edge --format '{{range .Containers}}{{.Name}} {{end}}'
 ```
 
 | Síntoma | Causa habitual |
 |---|---|
-| 404 de Traefik | El contenedor no está en la red `edge`, o le falta `traefik.enable=true` |
+| 502 desde Caddy | El contenedor no está en la red `edge`, o el alias no coincide |
 | Certificado no emite | El DNS del host no apunta al VPS, o el 80 no llega desde fuera |
-| Sitio equivocado responde | Dos routers con la misma regla: revisar `priority` |
+| `caddy reload` falla | Error de sintaxis: `caddy validate` dice en qué archivo y línea |
 | `Bind for 0.0.0.0:443 failed` | Otro proceso tiene el puerto: `ss -tlnp \| grep 443` |
+| Certificados reemitidos sin motivo | Se perdió el volumen `caddy_data`. Ojo con los límites de Let's Encrypt |

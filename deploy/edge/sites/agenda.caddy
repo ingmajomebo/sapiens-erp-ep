@@ -1,0 +1,39 @@
+# Agenda — sapiensflowmas.online
+#
+# Traído tal cual desde /opt/agenda/Caddyfile al migrar el proxy al borde
+# compartido. La única diferencia: los destinos llevan el prefijo del
+# proyecto, porque ahora el Caddy vive fuera de su red.
+
+sapiensflowmas.online, www.sapiensflowmas.online {
+	encode gzip
+
+	# El contrato interno del panel. Va antes del comodín porque Caddy
+	# resuelve por especificidad de ruta.
+	handle /api/* {
+		reverse_proxy agenda-api:3001
+	}
+
+	# La API publicada, con su propio prefijo porque tiene su propio ciclo
+	# de vida — ver decisión 16 en el CLAUDE.md de agenda.
+	handle /v1/* {
+		reverse_proxy agenda-api:3001
+	}
+
+	handle {
+		reverse_proxy agenda-web:3000
+	}
+
+	# Las importaciones de Excel suben un archivo entero. El tope por defecto
+	# es generoso pero no infinito, y una lista de clientes que falla al subir
+	# sin explicación es una mala tarde.
+	request_body {
+		max_size 25MB
+	}
+
+	log {
+		output file /var/log/caddy/agenda.log {
+			roll_size 20MB
+			roll_keep 5
+		}
+	}
+}
