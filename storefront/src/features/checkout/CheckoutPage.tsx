@@ -10,16 +10,19 @@ import {
 } from '../../shared/components/ui-icons'
 import { formatPrice } from '../../shared/format'
 import { calculateShipping } from '../../api/shipping'
+import { COVERED_CITIES } from '../../content/coverage'
 import { storeApi } from '../../api/storeApi'
 import { InsufficientStockError, type PaymentMethod } from '../../api/types'
 import { useCartStore, useCartSubtotal } from '../../store/useCartStore'
 import { useCheckoutForm } from './useCheckoutForm'
 import styles from './CheckoutPage.module.css'
 
-const CITIES = [
-  'Medellín', 'Bogotá', 'Cali', 'Barranquilla', 'Cartagena',
-  'Bucaramanga', 'Pereira', 'Manizales', 'Santa Marta', 'Ibagué',
-]
+/*
+ * Las ciudades salen de la cobertura real, no de una lista suelta. Antes se
+ * ofrecía Bogotá, Cali y Barranquilla, donde no entregamos: el cliente podía
+ * terminar la compra y quedarse esperando.
+ */
+const CITIES = COVERED_CITIES.map(c => c.name)
 
 const PAYMENT_OPTIONS: { id: PaymentMethod; title: string; text: string }[] = [
   { id: 'CASH_ON_DELIVERY', title: 'Contra entrega', text: 'Pagas en efectivo cuando recibas tu pedido.' },

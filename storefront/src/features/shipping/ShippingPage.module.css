@@ -1,0 +1,217 @@
+/* ── Portada ──────────────────────────────────────────────────────────────── */
+.hero {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: flex-end;
+  min-height: 420px;
+  padding: 80px 0 52px;
+  background: var(--deep-aqua);
+  overflow: hidden;
+}
+
+.heroImage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -2;
+  background: var(--deep-aqua);
+}
+
+/* Velo desde abajo: la foto es el amanecer y ahí está su valor; se oscurece
+   solo la franja donde va el texto. */
+.heroVeil {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    to top,
+    rgba(0, 29, 40, 0.88) 0%,
+    rgba(0, 29, 40, 0.55) 34%,
+    rgba(0, 29, 40, 0.08) 70%
+  );
+}
+
+.heroContent { position: relative; }
+
+.heroTitle {
+  margin: 18px 0 0;
+  font-size: var(--fs-h2);
+  line-height: var(--lh-h2);
+  letter-spacing: var(--tr-h2);
+  color: var(--text-on-aqua);
+}
+
+.heroLead {
+  max-width: 44ch;
+  margin: 14px 0 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-on-aqua-muted);
+}
+
+/* ── Secciones ────────────────────────────────────────────────────────────── */
+.section { padding: 72px 0; }
+
+.tinted { background: var(--white); }
+
+.title {
+  margin: 0;
+  font-size: 1.75rem;
+  line-height: var(--lh-h3);
+  letter-spacing: var(--tr-h3);
+  color: var(--text-on-cream);
+}
+
+.lead {
+  max-width: 56ch;
+  margin: 12px 0 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-on-cream-muted);
+}
+
+.mapHolder { margin-top: 36px; }
+
+.aside {
+  max-width: 62ch;
+  margin: 28px 0 0;
+  font-size: 0.9375rem;
+  line-height: var(--lh-body);
+  color: var(--text-on-cream-muted);
+}
+
+.aside a {
+  color: var(--pacific-sunset);
+  text-underline-offset: 2px;
+}
+
+/* ── Tarifas ──────────────────────────────────────────────────────────────── */
+.rates {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 32px;
+}
+
+.rate {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 28px 24px;
+  background: var(--cream);
+  border: 1px solid var(--hairline-on-cream);
+  border-radius: var(--radius-sm);
+}
+
+.rateFree {
+  color: var(--cream);
+  background: var(--deep-aqua);
+  border-color: var(--deep-aqua);
+}
+
+.rateValue {
+  font-size: 1.625rem;
+  font-weight: 600;
+  letter-spacing: var(--tr-h3);
+}
+
+.rateLabel {
+  font-size: 0.875rem;
+  color: var(--text-on-cream-muted);
+}
+
+.rateFree .rateLabel { color: var(--text-on-aqua-muted); }
+
+/* ── Horarios ─────────────────────────────────────────────────────────────── */
+.schedule {
+  display: grid;
+  gap: 4px;
+  margin: 32px 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: paso;
+}
+
+.step {
+  display: flex;
+  gap: 20px;
+  padding: 22px 0;
+  border-bottom: 1px solid var(--hairline-on-cream);
+}
+
+.step:last-child { border-bottom: 0; }
+
+.stepNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--cream);
+  background: var(--deep-aqua);
+  border-radius: 50%;
+}
+
+.stepTitle {
+  margin: 4px 0 0;
+  font-size: 1.0625rem;
+  letter-spacing: var(--tr-h3);
+  color: var(--text-on-cream);
+}
+
+.stepText {
+  max-width: 62ch;
+  margin: 6px 0 0;
+  font-size: 0.9375rem;
+  line-height: var(--lh-body);
+  color: var(--text-on-cream-muted);
+}
+
+/* ── Empaque ──────────────────────────────────────────────────────────────── */
+.notes {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 32px;
+}
+
+.noteTitle {
+  margin: 0;
+  font-size: 1.0625rem;
+  letter-spacing: var(--tr-h3);
+  color: var(--text-on-cream);
+}
+
+.noteText {
+  margin: 8px 0 0;
+  font-size: 0.9375rem;
+  line-height: var(--lh-body);
+  color: var(--text-on-cream-muted);
+}
+
+.cta {
+  display: inline-block;
+  margin-top: 32px;
+  padding: 13px 26px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: var(--tr-nav);
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--cream);
+  background: var(--pacific-sunset);
+  border-radius: var(--radius-sm);
+}
+
+.cta:hover { background: var(--sunset-hover); }
+
+@media (max-width: 860px) {
+  .hero { min-height: 320px; padding: 56px 0 36px; }
+  .section { padding: 52px 0; }
+  .rates, .notes { grid-template-columns: 1fr; }
+}

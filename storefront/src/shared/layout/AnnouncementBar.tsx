@@ -2,8 +2,13 @@ import { useEffect, useState } from 'react'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import styles from './AnnouncementBar.module.css'
 
+/*
+ * Solo afirmaciones verificadas. Decía "Envíos a toda Colombia" mientras la
+ * cobertura real son ocho municipios de Antioquia: el cliente de Bogotá podía
+ * llegar hasta el checkout y quedarse esperando un pedido que no sale.
+ */
 const MESSAGES = [
-  'Envíos a toda Colombia · Cadena de frío garantizada',
+  'Entrega con cadena de frío en Antioquia',
   'Pedidos antes de las 2:00 p.m. salen el mismo día',
   'Pesca artesanal directa de comunidades del Chocó',
 ]

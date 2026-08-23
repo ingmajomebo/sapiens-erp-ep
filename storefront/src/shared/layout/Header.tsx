@@ -92,6 +92,11 @@ export function Header({ scrolled, onOpenMobileMenu, onOpenCart }: HeaderProps) 
             <a href="/#recetas" className={styles.navItem} onMouseEnter={scheduleClose}>
               Recetas
             </a>
+            {/* Página propia, no un ancla del home: va con NavLink para que no
+                recargue toda la aplicación al entrar. */}
+            <NavLink to="/envios" className={styles.navItem} onMouseEnter={scheduleClose}>
+              Envíos
+            </NavLink>
             <a href="/#contacto" className={styles.navItem} onMouseEnter={scheduleClose}>
               Contacto
             </a>

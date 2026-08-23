@@ -13,6 +13,7 @@ const PRODUCT_LINKS = [
 ]
 
 const ABOUT_LINKS = [
+  { label: 'Envíos y cobertura', href: '/envios' },
   { label: 'Nuestra costa', href: '/#nuestra-costa' },
   { label: 'Cómo funciona', href: '/#como-funciona' },
   { label: 'Recetas', href: '/#recetas' },
