@@ -74,6 +74,19 @@ WHERE s.deleted_at IS NULL
 UPDATE storefront_categories SET deleted_at = NOW()
 WHERE kind = 'SPECIES' AND deleted_at IS NULL;
 
+-- Portadas que se quedaron sin productos. Pasa al reorganizar: "Carne Roja"
+-- tenía siete productos, se reasignaron a su especie y la página quedó vacía
+-- pero seguía en el menú. Este barrido hace el script autocorrectivo: se
+-- puede correr después de cualquier cambio de clasificación.
+UPDATE storefront_categories sc
+SET deleted_at = NOW()
+WHERE sc.kind = 'SUBCATEGORY' AND sc.deleted_at IS NULL
+  AND NOT EXISTS (
+      SELECT 1 FROM products p
+      JOIN storefront_products sp ON sp.product_id = p.id AND sp.published AND sp.deleted_at IS NULL
+      WHERE p.subcategory_id = sc.subcategory_id AND p.deleted_at IS NULL
+  );
+
 -- ── 3. Atributo "presentación" desde el corte que ya está capturado ─────────
 -- No se inventa nada: usa `axis_presentation`, que es lo que el panel ya llena.
 INSERT INTO storefront_product_attributes (id, product_id, attribute_key, attribute_value)
