@@ -10,6 +10,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -79,13 +81,32 @@ public class ProductController {
         return ResponseEntity.ok(productImageService.upload(id, file));
     }
 
-    /** Público (solo GET): las etiquetas <img> del frontend no pueden enviar el JWT. */
+    /**
+     * Público (solo GET): las etiquetas <img> del frontend no pueden enviar el JWT.
+     *
+     * @param w ancho deseado. La rejilla del catálogo pide 400 y baja de 380 KB
+     *          a unas decenas. Sin el parámetro se sirve el original.
+     */
     @GetMapping("/{id}/image")
-    public ResponseEntity<byte[]> getImage(@PathVariable UUID id) {
-        ProductImageService.LoadedImage image = productImageService.load(id);
+    public ResponseEntity<byte[]> getImage(
+            @PathVariable UUID id,
+            @RequestParam(name = "w", required = false, defaultValue = "0") int w,
+            @RequestHeader(name = HttpHeaders.IF_NONE_MATCH, required = false) String ifNoneMatch
+    ) {
+        ProductImageService.LoadedImage image = productImageService.load(id, w);
+        String etag = "\"" + image.version() + "-" + w + "\"";
+
+        // La URL no lleva hash: si la foto se reemplaza, la dirección es la
+        // misma. Por eso la caché es larga PERO revalidada — el navegador
+        // pregunta y casi siempre recibe un 304 de unos pocos bytes.
+        if (etag.equals(ifNoneMatch)) {
+            return ResponseEntity.status(HttpStatus.NOT_MODIFIED).eTag(etag).build();
+        }
+
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(image.contentType()))
-                .cacheControl(CacheControl.maxAge(Duration.ofMinutes(5)))
+                .eTag(etag)
+                .cacheControl(CacheControl.maxAge(Duration.ofDays(7)).cachePublic().mustRevalidate())
                 .body(image.content());
     }
 

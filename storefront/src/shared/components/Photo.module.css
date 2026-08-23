@@ -1,0 +1,25 @@
+.frame {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  /* El hueco tintado ocupa el tamaño final desde el primer momento: sin esto
+     la página salta cuando entran las fotos de más abajo. */
+  background: var(--product-bg);
+}
+
+.image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 400ms var(--ease-out);
+}
+
+.ready { opacity: 1; }
+
+/* Sin movimiento: la imagen sigue apareciendo entera, pero de golpe */
+@media (prefers-reduced-motion: reduce) {
+  .image { transition: none; }
+}

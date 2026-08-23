@@ -37,6 +37,7 @@ public class ProductImageService {
             "jpg", "image/jpeg", "jpeg", "image/jpeg", "png", "image/png", "webp", "image/webp");
 
     private final ProductRepository productRepository;
+    private final ProductThumbnailService thumbnailService;
 
     @Value("${app.uploads.products-dir:uploads/products}")
     private String uploadsDir;
@@ -77,6 +78,15 @@ public class ProductImageService {
 
     @Transactional(readOnly = true)
     public LoadedImage load(UUID productId) {
+        return load(productId, 0);
+    }
+
+    /**
+     * @param width ancho deseado en px, o 0 para el original. Si la miniatura
+     *              no se puede generar se devuelve el original: una foto
+     *              pesada es mejor que ninguna foto.
+     */
+    public LoadedImage load(UUID productId, int width) {
         Product product = findActive(productId);
         if (product.getImagePath() == null) {
             // 404: el recurso imagen no existe para este producto
@@ -84,8 +94,16 @@ public class ProductImageService {
         }
         try {
             Path path = Paths.get(product.getImagePath());
+
+            if (width > 0) {
+                byte[] thumb = thumbnailService.thumbnail(path, thumbnailService.normalize(width));
+                if (thumb != null) {
+                    return new LoadedImage("image/jpeg", thumb, versionOf(path));
+                }
+            }
+
             byte[] content = Files.readAllBytes(path);
-            return new LoadedImage(contentTypeFor(path), content);
+            return new LoadedImage(contentTypeFor(path), content, versionOf(path));
         } catch (IOException e) {
             throw new UncheckedIOException("No se pudo leer la imagen del producto " + productId, e);
         }
@@ -148,5 +166,17 @@ public class ProductImageService {
         return CONTENT_TYPE_BY_EXTENSION.getOrDefault(ext, "application/octet-stream");
     }
 
-    public record LoadedImage(String contentType, byte[] content) {}
+    /**
+     * Huella del archivo para el ETag. Con ella el navegador pregunta "¿cambió?"
+     * y recibe un 304 de unos pocos bytes en vez de la foto entera.
+     */
+    private String versionOf(Path path) {
+        try {
+            return Files.getLastModifiedTime(path).toMillis() + "-" + Files.size(path);
+        } catch (IOException e) {
+            return "0";
+        }
+    }
+
+    public record LoadedImage(String contentType, byte[] content, String version) {}
 }
