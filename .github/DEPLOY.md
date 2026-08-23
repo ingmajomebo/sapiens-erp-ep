@@ -12,6 +12,28 @@ en desarrollo es el mismo binario que sale a producción.
 
 ---
 
+## Qué corre y cuándo
+
+| Workflow | Cuándo | Qué hace |
+|---|---|---|
+| **CI** | Pull request | Tests, migraciones sobre base real, lint, compilación y análisis de vulnerabilidades de las tres imágenes |
+| **Secretos** | PR y push | Busca credenciales filtradas en todo el historial |
+| **Deploy** | Push a `develop` / `main` | Tests → construye y publica → despliega |
+| **Rollback** | Manual | Vuelve a la etiqueta anterior, o a una concreta |
+| **Mantenimiento** | Diario 08:00 UTC | Comprueba producción, verifica que hay respaldo reciente, vigila el disco y retira imágenes viejas |
+
+### Lo que bloquea y lo que solo informa
+
+| Comprobación | ¿Bloquea? |
+|---|---|
+| Tests del backend | Sí |
+| Migraciones | Sí — se aplican dos veces, como en un redespliegue real |
+| Compilación (incluye `tsc`) | Sí |
+| Lint de la tienda | Sí |
+| Lint del ERP | **No** — 61 errores heredados. Se informa hasta saldarlos |
+| Secretos filtrados | Sí |
+| Vulnerabilidades de imagen | **No** todavía — primero hay que ver cuántas salen |
+
 ## Configuración inicial
 
 ### 1. Clave de despliegue
@@ -104,10 +126,17 @@ Construye, y **espera tu aprobación** antes de publicar.
 | Dónde falla | Qué significa |
 |---|---|
 | `test` | Un test roto. No se construye ni se despliega nada |
+| `migraciones` | Una migración no aplica, o rompe al reaplicarse. Se detuvo antes de tocar ningún servidor |
 | `build` | Una imagen no compila. Nada llegó al servidor |
 | `dev` / `prod` | El código llegó pero el stack no arrancó. `release.sh` imprime los logs del backend |
+| `Comprobar que responde` | Los contenedores arrancaron pero la aplicación no sirve. `smoke.sh` dice qué comprobación falló |
 
-Volver atrás, en el VPS:
+Volver atrás: pestaña **Actions** → **Rollback** → elegir ambiente → *Run*.
+
+Sin etiqueta vuelve a la inmediatamente anterior; con etiqueta, a la que
+indiques. También sirve para reponer una versión concreta.
+
+O a mano en el VPS:
 
 ```bash
 cd /opt/encanto && ./deploy/rollback.sh prod

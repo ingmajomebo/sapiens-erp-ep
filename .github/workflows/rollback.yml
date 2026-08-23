@@ -1,0 +1,76 @@
+# Vuelta atrás con un clic, desde la pestaña Actions.
+#
+# El día que producción se rompe no es el día para recordar la ruta exacta
+# de un script en un servidor.
+
+name: Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Ambiente a revertir
+        required: true
+        type: choice
+        options: [dev, prod]
+      tag:
+        description: >-
+          Etiqueta a la que volver. Vacío = la inmediatamente anterior.
+        required: false
+        type: string
+
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    name: Revertir ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment == 'prod' && 'production' || 'development' }}
+    steps:
+      - name: Preparar SSH
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Revertir
+        env:
+          SSH_TARGET: ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          TAG: ${{ inputs.tag }}
+          GHCR_USER: ${{ github.repository_owner }}
+          GHCR_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes "$SSH_TARGET" \
+            "GHCR_USER='$GHCR_USER' GHCR_TOKEN='$GHCR_TOKEN' bash -s" <<EOF
+          set -euo pipefail
+          cd /opt/encanto
+          printf '%s' "\$GHCR_TOKEN" | docker login ghcr.io -u "\$GHCR_USER" --password-stdin
+          if [ -n "$TAG" ]; then
+            DEPLOY_YES=1 ./deploy/release.sh "$ENVIRONMENT" "$TAG"
+          else
+            ROLLBACK_YES=1 ./deploy/rollback.sh "$ENVIRONMENT"
+          fi
+          EOF
+
+      - name: Comprobar que responde
+        env:
+          SSH_TARGET: ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes "$SSH_TARGET" \
+            "cd /opt/encanto && ./deploy/smoke.sh ${{ inputs.environment }}"
+
+      - name: Aviso sobre la base de datos
+        run: |
+          echo "::warning::El código volvió atrás, la base de datos NO."
+          echo "Si el despliegue revertido aplicó migraciones, siguen aplicadas."
+          echo "Para revertir datos hay que restaurar el respaldo previo:"
+          echo "  /var/backups/encanto/${{ inputs.environment }}/"
+
+      - if: always()
+        run: rm -f ~/.ssh/deploy_key

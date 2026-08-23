@@ -1,0 +1,14 @@
+# Revisión obligatoria en lo que puede tumbar producción o filtrar datos.
+* @ingmajomebo
+
+# Infraestructura y despliegue
+/deploy/            @ingmajomebo
+/.github/           @ingmajomebo
+/docker-compose*    @ingmajomebo
+
+# Migraciones: el cambio más difícil de deshacer
+/backend/src/main/resources/db/migration/   @ingmajomebo
+
+# Seguridad
+/backend/src/main/java/com/sapiens/erp/modules/identity/       @ingmajomebo
+/backend/src/main/java/com/sapiens/erp/modules/storefront/infrastructure/  @ingmajomebo

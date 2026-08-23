@@ -1,0 +1,91 @@
+# Tareas programadas.
+#
+# Dos cosas que se rompen en silencio si nadie mira: los respaldos que dejan
+# de correr, y el registro que se llena de etiquetas viejas hasta que un
+# despliegue falla por falta de espacio.
+
+name: Mantenimiento
+
+on:
+  schedule:
+    # 08:00 UTC = 03:00 en Colombia, después del respaldo de las 03:00 local
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+jobs:
+  salud:
+    name: Producción · sigue en pie
+    runs-on: ubuntu-latest
+    steps:
+      - name: Preparar SSH
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Comprobar que producción responde
+        env:
+          SSH_TARGET: ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes "$SSH_TARGET" \
+            "cd /opt/encanto && ./deploy/smoke.sh prod"
+
+      - name: Comprobar que hay un respaldo reciente
+        env:
+          SSH_TARGET: ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}
+        run: |
+          # Un respaldo que dejó de correr hace tres semanas se descubre
+          # el día que hace falta. Mejor que avise solo.
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes "$SSH_TARGET" bash -s <<'EOF'
+          set -euo pipefail
+          DIR=/var/backups/encanto/prod
+          ULTIMO=$(ls -t "$DIR"/db-*.dump 2>/dev/null | head -1 || true)
+          if [ -z "$ULTIMO" ]; then
+            echo "::error::No hay ningún respaldo en $DIR"
+            exit 1
+          fi
+          EDAD_H=$(( ( $(date +%s) - $(stat -c %Y "$ULTIMO") ) / 3600 ))
+          TAM=$(du -h "$ULTIMO" | cut -f1)
+          echo "Último respaldo: $(basename "$ULTIMO") · $TAM · hace ${EDAD_H} h"
+          if [ "$EDAD_H" -gt 30 ]; then
+            echo "::error::El respaldo más reciente tiene ${EDAD_H} horas. ¿Dejó de correr el cron?"
+            exit 1
+          fi
+          # Un dump de pocos bytes es un dump fallido que nadie miró
+          if [ "$(stat -c %s "$ULTIMO")" -lt 10240 ]; then
+            echo "::error::El respaldo pesa menos de 10 KB: probablemente falló"
+            exit 1
+          fi
+          EOF
+
+      - name: Espacio en disco
+        env:
+          SSH_TARGET: ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes "$SSH_TARGET" bash -s <<'EOF'
+          USADO=$(df / | awk 'NR==2 {print $5}' | tr -d '%')
+          echo "Disco al ${USADO}%"
+          [ "$USADO" -lt 85 ] || echo "::warning::El disco está al ${USADO}%"
+          EOF
+
+      - if: always()
+        run: rm -f ~/.ssh/deploy_key
+
+  limpieza:
+    name: Registro · retirar imágenes viejas
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    strategy:
+      matrix:
+        paquete: [erp-backend, erp-frontend, storefront]
+    steps:
+      # Se conservan 15 versiones: suficiente para volver atrás varias veces
+      # y para que el rollback siempre encuentre la etiqueta anterior.
+      - uses: actions/delete-package-versions@v5
+        with:
+          package-name: ${{ matrix.paquete }}
+          package-type: container
+          min-versions-to-keep: 15
+          delete-only-untagged-versions: false

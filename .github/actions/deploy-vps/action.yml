@@ -64,6 +64,9 @@ runs:
         DEPLOY_YES=1 ./deploy/release.sh "$ENVIRONMENT" "$TAG"
         EOF
 
+    # Un contenedor healthy no significa que la aplicación sirva. Esto
+    # recorre el camino real: portada, ruta de SPA, API a través del proxy,
+    # estado del backend y que el panel siga pidiendo autenticación.
     - name: Comprobar que responde
       shell: bash
       env:
@@ -71,9 +74,8 @@ runs:
         ENVIRONMENT: ${{ inputs.environment }}
       run: |
         set -euo pipefail
-        PORT=$([ "$ENVIRONMENT" = "prod" ] && echo 8080 || echo 8090)
         ssh -i ~/.ssh/deploy_key -o BatchMode=yes "$SSH_TARGET" \
-          "curl -fsS -o /dev/null -w 'tienda -> HTTP %{http_code}\n' http://127.0.0.1:$PORT/"
+          "cd /opt/encanto && ./deploy/smoke.sh $ENVIRONMENT"
 
     - name: Borrar la clave
       if: always()

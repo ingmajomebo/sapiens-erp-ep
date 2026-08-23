@@ -1,0 +1,46 @@
+# Actualizaciones de dependencias.
+#
+# Agrupadas y semanales a propósito: veinte pull requests sueltos cada lunes
+# no se revisan, se ignoran. Y una dependencia que nadie mira es peor que
+# una desactualizada que sí se vigila.
+
+version: 2
+updates:
+  - package-ecosystem: gradle
+    directory: /backend
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 3
+    groups:
+      spring:
+        patterns: ['org.springframework*']
+      resto:
+        patterns: ['*']
+        exclude-patterns: ['org.springframework*']
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 3
+    groups:
+      # Las menores y de parche van juntas; las mayores, sueltas, porque
+      # suelen traer cambios que rompen
+      menores:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /storefront
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 3
+    groups:
+      menores:
+        update-types: [minor, patch]
+
+  - package-ecosystem: docker
+    directories: ['/backend', '/frontend', '/storefront']
+    schedule: { interval: monthly }
+    open-pull-requests-limit: 2
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }
+    open-pull-requests-limit: 2

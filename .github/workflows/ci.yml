@@ -1,48 +1,112 @@
-# Verificación en cada cambio. Corre en pull requests y en las dos ramas
-# desplegables, para que nada llegue a un servidor sin haber compilado y
-# pasado los tests.
+# Verificación de cada propuesta de cambio.
+#
+# Solo corre en pull requests: los pushes a develop y main los cubre
+# deploy.yml, que repite los tests antes de construir. Duplicarlo aquí
+# gastaría el doble de minutos para el mismo resultado.
 
 name: CI
 
 on:
   pull_request:
-  push:
-    branches: [develop, main]
+  workflow_dispatch:
 
-# Un push nuevo cancela la verificación anterior de la misma rama: no tiene
-# sentido gastar minutos comprobando un commit que ya quedó atrás.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   backend:
-    name: Backend · compilar y probar
+    name: Backend · tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Java 17
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
           cache: gradle
-
-      - name: Tests
-        working-directory: backend
+      - working-directory: backend
         run: ./gradlew test --no-daemon
-
-      - name: Publicar el informe de tests
-        if: always()
+      - if: always()
         uses: actions/upload-artifact@v4
         with:
           name: backend-test-report
           path: backend/build/reports/tests/test
           retention-days: 7
 
-  frontend:
-    name: ERP · compilar
+  # Las migraciones son el cambio más difícil de deshacer en producción.
+  # Aquí se aplican sobre una base limpia y, después, otra vez sobre el
+  # esquema ya migrado: eso es lo que pasa en cada redespliegue.
+  migraciones:
+    name: Migraciones · aplicar sobre base real
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Levantar PostgreSQL
+        run: |
+          docker network create mignet
+          docker run -d --name migpg --network mignet \
+            -e POSTGRES_DB=migracion_test -e POSTGRES_USER=sapiens -e POSTGRES_PASSWORD=sapiens \
+            postgres:16
+          for i in $(seq 1 30); do
+            docker exec migpg pg_isready -U sapiens -d migracion_test >/dev/null 2>&1 && break
+            sleep 2
+          done
+
+      - name: Construir el backend
+        run: docker build -q -t migracheck ./backend
+
+      - name: Primer arranque · aplicar todas las migraciones
+        run: |
+          docker run -d --name mig --network mignet \
+            -e SPRING_PROFILES_ACTIVE=prod \
+            -e PGHOST=migpg -e PGDATABASE=migracion_test \
+            -e PGUSER=sapiens -e PGPASSWORD=sapiens \
+            -e JWT_SECRET="$(openssl rand -base64 48)" \
+            -e ADMIN_EMAIL=ci@ejemplo.com -e ADMIN_PASSWORD="$(openssl rand -base64 18)" \
+            migracheck
+          for i in $(seq 1 40); do
+            docker exec mig curl -fsS http://localhost:8080/actuator/health 2>/dev/null | grep -q UP && break
+            sleep 5
+          done
+          docker exec mig curl -fsS http://localhost:8080/actuator/health 2>/dev/null | grep -q UP || {
+            echo "::error::El backend no arrancó tras migrar"
+            docker logs mig 2>&1 | tail -50
+            exit 1
+          }
+
+      - name: Comprobar que ninguna migración falló
+        run: |
+          FALLIDAS=$(docker exec migpg psql -U sapiens -d migracion_test -tAc \
+            "select count(*) from flyway_schema_history where not success")
+          TOTAL=$(docker exec migpg psql -U sapiens -d migracion_test -tAc \
+            "select count(*) from flyway_schema_history")
+          echo "$TOTAL migraciones aplicadas, $FALLIDAS fallidas"
+          [ "$FALLIDAS" = "0" ] || { echo "::error::Hay migraciones fallidas"; exit 1; }
+
+      # Un redespliegue vuelve a arrancar contra un esquema ya migrado.
+      # Si algo ahí revienta, se descubre aquí y no en producción.
+      - name: Segundo arranque · sobre el esquema ya migrado
+        run: |
+          docker restart mig >/dev/null
+          for i in $(seq 1 40); do
+            docker exec mig curl -fsS http://localhost:8080/actuator/health 2>/dev/null | grep -q UP && break
+            sleep 5
+          done
+          docker exec mig curl -fsS http://localhost:8080/actuator/health 2>/dev/null | grep -q UP || {
+            echo "::error::Volver a arrancar sobre el esquema migrado falla"
+            docker logs mig 2>&1 | tail -50
+            exit 1
+          }
+          echo "Segundo arranque correcto"
+
+      - name: Recoger
+        if: always()
+        run: docker rm -f mig migpg 2>/dev/null; docker network rm mignet 2>/dev/null || true
+
+  erp:
+    name: ERP · lint y compilación
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -53,12 +117,18 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - working-directory: frontend
         run: npm ci
-      # `npm run build` incluye `tsc -b`: un error de tipos detiene el pipeline
+      # Deuda conocida: 61 errores heredados. Se informa pero no bloquea.
+      # Cuando estén resueltos, quitar continue-on-error y esta nota.
+      - name: Lint (informativo)
+        working-directory: frontend
+        run: npm run lint
+        continue-on-error: true
+      # `npm run build` incluye `tsc -b`: un error de tipos sí detiene todo
       - working-directory: frontend
         run: npm run build
 
-  storefront:
-    name: Tienda · compilar
+  tienda:
+    name: Tienda · lint y compilación
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -69,35 +139,43 @@ jobs:
           cache-dependency-path: storefront/package-lock.json
       - working-directory: storefront
         run: npm ci
+      # La tienda nace limpia: aquí el lint SÍ bloquea, para que siga así
+      - working-directory: storefront
+        run: npm run lint
       - working-directory: storefront
         run: npm run build
 
-  # Vale más descubrir aquí que una imagen no construye, que descubrirlo
-  # en mitad de un despliegue.
-  images:
-    name: Imágenes · construir
+  imagenes:
+    name: Imágenes · construir y analizar
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { nombre: backend,    contexto: ./backend }
+          - { nombre: frontend,   contexto: ./frontend }
+          - { nombre: storefront, contexto: ./storefront }
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
-      - name: backend
+
+      - name: Construir
         uses: docker/build-push-action@v6
         with:
-          context: ./backend
+          context: ${{ matrix.contexto }}
           push: false
-          cache-from: type=gha,scope=backend
-          cache-to: type=gha,mode=max,scope=backend
-      - name: erp
-        uses: docker/build-push-action@v6
+          load: true
+          tags: candidata:${{ matrix.nombre }}
+          cache-from: type=gha,scope=${{ matrix.nombre }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.nombre }}
+
+      # Analiza la imagen ya construida, no solo las dependencias declaradas:
+      # así se ven también las del sistema base.
+      - name: Vulnerabilidades
+        uses: aquasecurity/trivy-action@0.28.0
         with:
-          context: ./frontend
-          push: false
-          cache-from: type=gha,scope=frontend
-          cache-to: type=gha,mode=max,scope=frontend
-      - name: storefront
-        uses: docker/build-push-action@v6
-        with:
-          context: ./storefront
-          push: false
-          cache-from: type=gha,scope=storefront
-          cache-to: type=gha,mode=max,scope=storefront
+          image-ref: candidata:${{ matrix.nombre }}
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '0'   # informa; no bloquea todavía

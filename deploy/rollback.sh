@@ -23,8 +23,12 @@ CURRENT="$(grep '^IMAGE_TAG=' "$ENV_FILE" | cut -d= -f2)"
 
 echo "Volviendo $ENVIRONMENT de $CURRENT a $PREVIOUS"
 echo "Recuerda: esto NO revierte migraciones de base de datos."
-read -r -p "¿Confirmas? (s/N) " answer
-[[ "$answer" =~ ^[sS]$ ]] || { echo "Cancelado."; exit 1; }
+
+# Desde el pipeline la decisión ya la tomó una persona al lanzar el workflow
+if [[ "${ROLLBACK_YES:-}" != "1" ]]; then
+    read -r -p "¿Confirmas? (s/N) " answer
+    [[ "$answer" =~ ^[sS]$ ]] || { echo "Cancelado."; exit 1; }
+fi
 
 cp "$BACKUP" "$ENV_FILE"
 COMPOSE="docker compose --env-file $ENV_FILE -f docker-compose.stack.yml"
