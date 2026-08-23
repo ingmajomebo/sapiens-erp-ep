@@ -49,8 +49,11 @@ comprobar "Tienda · catálogo (ruta SPA)" "http://127.0.0.1:$STORE_PORT/product
 contiene "Tienda · API en su mismo origen" \
          "http://127.0.0.1:$STORE_PORT/api/v1/public/catalog" '"products"'
 
-# El backend está sano y llegó a la base
-contiene "Backend · estado"             "http://127.0.0.1:$STORE_PORT/actuator/health" '"status":"UP"'
+# El backend está sano y llegó a la base.
+# Se consulta por el puerto del ERP, no por el de la tienda: el nginx de la
+# tienda solo proxya /api/, y cualquier otra ruta cae en el index.html de la
+# SPA — devolvería 200 con HTML y la comprobación no valdría nada.
+contiene "Backend · estado"             "http://127.0.0.1:$ERP_PORT/actuator/health" '"status":"UP"'
 
 # El panel administrativo carga
 comprobar "ERP · portada"               "http://127.0.0.1:$ERP_PORT/"             200
