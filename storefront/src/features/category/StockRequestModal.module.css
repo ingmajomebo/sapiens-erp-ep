@@ -1,0 +1,139 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: var(--backdrop);
+  overflow-y: auto;
+}
+
+.dialog {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  padding: 32px;
+  background: var(--cream);
+  border-radius: var(--radius);
+}
+
+.close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: inline-flex;
+  padding: 6px;
+  color: var(--text-on-cream-muted);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.close:hover { color: var(--text-on-cream); }
+
+.title {
+  margin: 0 0 18px;
+  font-size: 1.375rem;
+  line-height: var(--lh-h3);
+  letter-spacing: var(--tr-h3);
+  color: var(--text-on-cream);
+}
+
+.product {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--white);
+  border: 1px solid var(--hairline-on-cream);
+  border-radius: var(--radius-sm);
+}
+
+.thumb {
+  width: 54px;
+  height: 54px;
+  flex: none;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+}
+
+.productName {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text-on-cream);
+}
+
+.productVariant {
+  margin: 2px 0 0;
+  font-size: 0.875rem;
+  color: var(--text-on-cream-muted);
+}
+
+.text {
+  margin: 16px 0 0;
+  font-size: 0.9375rem;
+  line-height: var(--lh-body);
+  color: var(--text-on-cream-muted);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.row { display: flex; gap: 12px; }
+
+.field {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.8125rem;
+  color: var(--text-on-cream);
+}
+
+.field em { font-style: normal; color: var(--text-on-cream-soft); }
+
+.narrow { max-width: 110px; }
+
+.field input {
+  padding: 11px 12px;
+  font: inherit;
+  font-size: var(--fs-body);
+  color: var(--text-on-cream);
+  background: var(--white);
+  border: 1px solid var(--option-border);
+  border-radius: var(--radius-sm);
+}
+
+.field input:focus-visible {
+  outline: 2px solid var(--deep-aqua);
+  outline-offset: 1px;
+}
+
+/* Fuera de pantalla en vez de display:none: algunos bots ignoran lo oculto */
+.honeypot {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.error {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--error);
+}
+
+@media (max-width: 480px) {
+  .backdrop { align-items: flex-end; padding: 0; }
+  .dialog {
+    max-width: none;
+    padding: 24px 20px 28px;
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+}

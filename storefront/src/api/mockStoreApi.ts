@@ -3,12 +3,17 @@ import { calculateShipping } from './shipping'
 import {
   InsufficientStockError,
   OrderNotFoundError,
+  type Availability,
   type Catalog,
+  type CatalogItem,
+  type CategoryHero,
+  type CategoryPage,
   type CreateOrderInput,
   type OrderLine,
   type OrderResult,
   type OrderStatus,
   type Product,
+  type StockRequestResult,
 } from './types'
 import type { StoreApi } from './storeApi'
 
@@ -75,9 +80,117 @@ function resolvePresentation(presentationId: string): ResolvedPresentation | nul
   return null
 }
 
+/**
+ * Deriva las portadas del catálogo simulado: una por categoría y una por
+ * producto. En modo `mock` no hay tabla de portadas, así que se construye a
+ * partir de lo que ya existe en vez de duplicar contenido a mano.
+ */
+function mockCategories(): CategoryHero[] {
+  const raiz: CategoryHero[] = MOCK_CATALOG.categories.map(c => ({
+    slug: slugOf(c.name),
+    kind: 'CATEGORY',
+    parentSlug: null,
+    title: c.name,
+    description: c.description,
+    bannerUrl: null,
+    bannerAlt: c.name,
+  }))
+
+  const especies: CategoryHero[] = MOCK_CATALOG.products.map(p => ({
+    slug: p.slug,
+    kind: 'SPECIES',
+    parentSlug: slugOf(
+      MOCK_CATALOG.categories.find(c => c.id === p.categoryId)?.name ?? '',
+    ),
+    title: p.name,
+    description: p.description,
+    bannerUrl: p.imageUrl,
+    bannerAlt: p.imageAlt,
+  }))
+
+  return [...raiz, ...especies]
+}
+
+function slugOf(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+}
+
+/** Convierte un producto simulado en sus presentaciones como ítems del catálogo. */
+function mockItems(products: Product[]): CatalogItem[] {
+  return products.flatMap(p =>
+    p.presentations.map((pr, i) => ({
+      id: pr.id,
+      slug: `${p.slug}-${i}`,
+      groupSlug: p.slug,
+      groupName: p.name,
+      variantName: pr.name,
+      axisPresentation: pr.axisPresentation,
+      axisSize: pr.axisSize,
+      price: pr.price,
+      pricePerKg: null,
+      weightValue: null,
+      weightUnit: null,
+      origin: p.origin,
+      originKind: null,
+      imageUrl: p.imageUrl,
+      secondaryImageUrl: null,
+      imageAlt: p.imageAlt,
+      availability: (pr.available ? 'AVAILABLE' : 'OUT_OF_STOCK') as Availability,
+      attributes: (pr.axisPresentation
+        ? { presentacion: [pr.axisPresentation] }
+        : {}) as Record<string, string[]>,
+      categoryId: p.categoryId,
+      categoryName: MOCK_CATALOG.categories.find(c => c.id === p.categoryId)?.name ?? null,
+      subcategoryId: null,
+      subcategoryName: null,
+      sortOrder: p.webSortOrder,
+      publishedAt: new Date(0).toISOString(),
+    })),
+  )
+}
+
 export const mockStoreApi: StoreApi = {
   async getCatalog(): Promise<Catalog> {
     return delay(MOCK_CATALOG)
+  },
+
+  async getCategories(): Promise<CategoryHero[]> {
+    return delay(mockCategories())
+  },
+
+  async getCategoryPage(slug: string): Promise<CategoryPage> {
+    const hero = mockCategories().find(c => c.slug === slug)
+    if (!hero) throw new Error(`Categoría no encontrada: ${slug}`)
+
+    const alcance =
+      hero.kind === 'SPECIES'
+        ? MOCK_CATALOG.products.filter(p => p.slug === slug)
+        : MOCK_CATALOG.products.filter(
+            p => slugOf(MOCK_CATALOG.categories.find(c => c.id === p.categoryId)?.name ?? '') === slug,
+          )
+
+    return delay({
+      hero,
+      breadcrumbs: [
+        { label: 'Inicio', path: '/' },
+        ...(hero.parentSlug ? [{ label: hero.parentSlug, path: `/${hero.parentSlug}` }] : []),
+        { label: hero.title, path: hero.parentSlug ? `/${hero.parentSlug}/${slug}` : `/${slug}` },
+      ],
+      items: mockItems(alcance),
+      attributeDefinitions: [
+        { key: 'presentacion', label: 'Presentación', filterable: true, sortOrder: 10 },
+      ],
+      children: mockCategories().filter(c => c.parentSlug === slug),
+    })
+  },
+
+  async requestStock(): Promise<StockRequestResult> {
+    return delay({ id: crypto.randomUUID(), status: 'WAITING_STOCK', alreadyRegistered: false })
   },
 
   async getProduct(slug: string): Promise<Product> {

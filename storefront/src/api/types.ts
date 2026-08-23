@@ -50,7 +50,113 @@ export interface Catalog {
   products: Product[]
 }
 
+
+/* ── Catálogo especializado de categoría ─────────────────────────────────── */
+
+/** Tres niveles. El umbral de POCO sale del stock mínimo que el ERP ya usa. */
+export type Availability = 'AVAILABLE' | 'LOW_STOCK' | 'OUT_OF_STOCK'
+
+/*
+ * Sin existencias NO es "agotado": el producto se sigue consiguiendo, solo que
+ * bajo encargo. Decir "agotado" invita a irse; decir "sobre pedido" invita a
+ * dejar el contacto, que es lo que de verdad queremos.
+ */
+export const AVAILABILITY_LABELS: Record<Availability, string> = {
+  AVAILABLE:    'Disponible',
+  LOW_STOCK:    'Últimas unidades',
+  OUT_OF_STOCK: 'Sobre pedido',
+}
+
+export interface StockRequestInput {
+  presentationId: string
+  customerName: string
+  phone: string
+  email?: string
+  desiredQuantity?: number
+  /** Honeypot antispam: debe llegar vacío. */
+  website: string
+}
+
+export interface StockRequestResult {
+  id: string
+  status: string
+  /** Ya existía una solicitud abierta de este teléfono para este producto. */
+  alreadyRegistered: boolean
+}
+
+export type CategoryKind = 'CATEGORY' | 'SUBCATEGORY' | 'SPECIES'
+
+/** Portada de una página de catálogo: el hero viene de datos, no del código. */
+export interface CategoryHero {
+  slug: string
+  kind: CategoryKind
+  parentSlug: string | null
+  title: string
+  description: string
+  /** Null cuando no se cargó banner: la página cae a la foto del primer producto. */
+  bannerUrl: string | null
+  bannerAlt: string
+}
+
+export interface Breadcrumb {
+  label: string
+  path: string
+}
+
+/** Declara un eje de filtro: su etiqueta y su lugar en la barra lateral. */
+export interface AttributeDefinition {
+  key: string
+  label: string
+  filterable: boolean
+  sortOrder: number
+}
+
+/**
+ * Un ítem del catálogo ES una presentación: lo que tiene precio, stock y SKU
+ * propios, y lo que el cliente compara sin entrar a la ficha.
+ */
+export interface CatalogItem {
+  id: string
+  slug: string
+  groupSlug: string
+  groupName: string
+  /** Ej. "Lomo 400 g" */
+  variantName: string
+  axisPresentation: string | null
+  axisSize: string
+  price: number
+  /** Null cuando la unidad no es masa: un paquete no tiene precio por kilo. */
+  pricePerKg: number | null
+  weightValue: number | null
+  weightUnit: string | null
+  origin: string | null
+  originKind: string | null
+  imageUrl: string | null
+  /** Null cuando no hay segunda foto: entonces la tarjeta no hace hover. */
+  secondaryImageUrl: string | null
+  imageAlt: string
+  availability: Availability
+  /** Atributos comerciales dinámicos: presentacion, procedencia, etiqueta… */
+  attributes: Record<string, string[]>
+  categoryId: string | null
+  categoryName: string | null
+  subcategoryId: string | null
+  subcategoryName: string | null
+  sortOrder: number
+  /** Fecha de publicación en la vitrina. Es lo que hace real "Más recientes". */
+  publishedAt: string
+}
+
+export interface CategoryPage {
+  hero: CategoryHero
+  breadcrumbs: Breadcrumb[]
+  items: CatalogItem[]
+  attributeDefinitions: AttributeDefinition[]
+  children: CategoryHero[]
+}
+
 /* ── Pedido ──────────────────────────────────────────────────────────────── */
+
 
 export type PaymentMethod = 'CASH_ON_DELIVERY' | 'BANK_TRANSFER'
 

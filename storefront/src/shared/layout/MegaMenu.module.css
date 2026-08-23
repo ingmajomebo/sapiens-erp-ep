@@ -94,3 +94,11 @@
 @media (max-width: 1023px) {
   .panel { display: none; }
 }
+
+/* El encabezado de la columna también es un enlace: llega a la categoría */
+.headingLink {
+  color: inherit;
+  text-decoration: none;
+}
+
+.headingLink:hover { color: var(--pacific-sunset); }

@@ -1,0 +1,45 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  background: var(--white);
+  border: 1px solid var(--hairline-on-cream);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.media {
+  aspect-ratio: 4 / 5;
+  background: var(--product-bg);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 16px 24px;
+}
+
+.line {
+  height: 11px;
+  border-radius: var(--radius-sm);
+  background: var(--progress-track);
+}
+
+.short  { width: 40%; height: 9px; }
+.title  { width: 72%; height: 15px; }
+.medium { width: 55%; }
+.price  { width: 34%; height: 15px; margin-top: 6px; }
+
+/* Pulso lento y de bajo contraste: informa que algo viene sin parpadear */
+.media,
+.line { animation: pulso 1.6s ease-in-out infinite; }
+
+@keyframes pulso {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .media,
+  .line { animation: none; }
+}

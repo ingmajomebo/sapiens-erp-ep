@@ -3,10 +3,15 @@ import {
   InsufficientStockError,
   OrderNotFoundError,
   type Catalog,
+  type CatalogItem,
+  type CategoryHero,
+  type CategoryPage,
   type CreateOrderInput,
   type OrderResult,
   type OrderStatus,
   type Product,
+  type StockRequestInput,
+  type StockRequestResult,
 } from './types'
 import type { StoreApi } from './storeApi'
 
@@ -48,10 +53,46 @@ function absoluteImage<T extends { imageUrl: string | null }>(item: T): T {
   return { ...item, imageUrl: `${base}${item.imageUrl}` }
 }
 
+/**
+ * Las presentaciones traen DOS imágenes relativas. La segunda solo existe
+ * cuando se cargó una foto de hover, y ahí `null` es un dato con significado:
+ * la tarjeta no debe animar nada.
+ */
+/**
+ * Ancho que pide la rejilla. Las tarjetas se pintan a unos 300 px; el original
+ * mide 1000 y pesa hasta 380 KB. Se pide 400 para que en pantallas de doble
+ * densidad siga viéndose nítido.
+ */
+const GRID_WIDTH = 400
+
+function absoluteItemImages(item: CatalogItem): CatalogItem {
+  const base = import.meta.env.VITE_API_URL ?? ''
+  const abs = (url: string | null) => {
+    if (!url || !url.startsWith('/api/')) return url
+    return `${base}${url}?w=${GRID_WIDTH}`
+  }
+  return { ...item, imageUrl: abs(item.imageUrl), secondaryImageUrl: abs(item.secondaryImageUrl) }
+}
+
 export const httpStoreApi: StoreApi = {
   async getCatalog(): Promise<Catalog> {
     const { data } = await client.get<Catalog>('/api/v1/public/catalog')
     return { ...data, products: data.products.map(absoluteImage) }
+  },
+
+  async getCategories(): Promise<CategoryHero[]> {
+    const { data } = await client.get<CategoryHero[]>('/api/v1/public/catalog/categories')
+    return data
+  },
+
+  async getCategoryPage(slug: string): Promise<CategoryPage> {
+    const { data } = await client.get<CategoryPage>(`/api/v1/public/catalog/categories/${slug}`)
+    return { ...data, items: data.items.map(absoluteItemImages) }
+  },
+
+  async requestStock(input: StockRequestInput): Promise<StockRequestResult> {
+    const { data } = await client.post<StockRequestResult>('/api/v1/public/stock-requests', input)
+    return data
   },
 
   async getProduct(slug: string): Promise<Product> {

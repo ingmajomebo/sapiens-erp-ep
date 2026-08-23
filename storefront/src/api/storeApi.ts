@@ -1,9 +1,13 @@
 import type {
   Catalog,
+  CategoryHero,
+  CategoryPage,
   CreateOrderInput,
   OrderResult,
   OrderStatus,
   Product,
+  StockRequestInput,
+  StockRequestResult,
 } from './types'
 
 /**
@@ -12,9 +16,15 @@ import type {
  */
 export interface StoreApi {
   getCatalog(): Promise<Catalog>
+  /** Portadas publicadas, para la navegación. */
+  getCategories(): Promise<CategoryHero[]>
+  /** Página completa de una categoría: portada, migas y presentaciones. */
+  getCategoryPage(slug: string): Promise<CategoryPage>
   getProduct(slug: string): Promise<Product>
   createOrder(input: CreateOrderInput): Promise<OrderResult>
   trackOrder(token: string): Promise<OrderStatus>
+  /** Registra el interés por una presentación sin existencias. */
+  requestStock(input: StockRequestInput): Promise<StockRequestResult>
 }
 
 export type DataSource = 'mock' | 'api'
