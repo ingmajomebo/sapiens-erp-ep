@@ -1,0 +1,31 @@
+.head {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 20px; flex-wrap: wrap; padding: 18px 22px;
+}
+.title { font-size: 13px; font-weight: 700; color: var(--text); }
+.sub { font-size: 12.5px; color: var(--muted); margin-top: 4px; max-width: 62ch; }
+
+.table { width: 100%; border-collapse: collapse; }
+.table th {
+  text-align: left; font-size: 11.5px; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--muted);
+  padding: 10px 12px; border-bottom: 1px solid var(--border);
+}
+.table td { padding: 12px; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+.name { font-weight: 700; }
+.email { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+.inactive { opacity: 0.5; }
+.actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+.form { padding: 18px 22px; border-top: 1px solid var(--border); }
+.row { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
+.field { display: flex; flex-direction: column; }
+.label { font-size: 12px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; }
+.input {
+  padding: 9px 11px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--text); font-size: 13px; font-family: inherit;
+}
+.hint { font-size: 11.5px; color: var(--muted); margin-top: 5px; }
+.error { margin-top: 10px; font-size: 12.5px; color: var(--neg); }
+.formActions { margin-top: 16px; display: flex; gap: 10px; }
+.empty { padding: 40px 22px; text-align: center; color: var(--muted); font-size: 13px; }

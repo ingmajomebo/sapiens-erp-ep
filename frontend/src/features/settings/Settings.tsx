@@ -11,6 +11,7 @@ import { toast } from '../../shared/toast'
 import client from '../../api/client'
 import { rolesApi } from './api/rolesApi'
 import { StorefrontSection } from './StorefrontSection'
+import { UsersSection } from './UsersSection'
 import type { RoleDto, PermissionDto } from './api/rolesApi'
 
 const adminApi = {
@@ -68,7 +69,7 @@ export function Settings() {
   const { lang, theme, brandLogo, companyName, brandColors, setBrandLogo, setCompanyName, setBrandColors, resetBrandColors } = useAppStore()
   const t = translations[lang]
 
-  const [tab, setTab] = useState<'brand' | 'colors' | 'storefront' | 'warehouses' | 'data' | 'roles'>('brand')
+  const [tab, setTab] = useState<'brand' | 'colors' | 'storefront' | 'warehouses' | 'data' | 'users' | 'roles'>('brand')
   const [nameInput, setNameInput] = useState(companyName)
   const [saved, setSaved] = useState(false)
   const [logoError, setLogoError] = useState('')
@@ -147,6 +148,9 @@ export function Settings() {
         </button>
         <button style={tabStyle(tab === 'data')} onClick={() => setTab('data')}>
           Datos
+        </button>
+        <button style={tabStyle(tab === 'users')} onClick={() => setTab('users')}>
+          Usuarios
         </button>
         <button style={tabStyle(tab === 'roles')} onClick={() => setTab('roles')}>
           Roles
@@ -478,6 +482,8 @@ export function Settings() {
       {tab === 'data' && <DataSection />}
 
       {/* ── ROLES TAB ── */}
+      {tab === 'users' && <UsersSection />}
+
       {tab === 'roles' && <RolesSection />}
     </div>
   )
