@@ -19,5 +19,15 @@
   display: inline-flex;
   color: var(--pacific-sunset);
 }
-.panel { overflow: hidden; transition: height var(--t-medium); }
+/* Se anima con grid en vez de medir el alto con un ref: leer un ref durante
+   el render no está garantizado, y aquí el navegador hace el cálculo solo. */
+.panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--t-medium) var(--ease-out);
+}
+
+.panelOpen { grid-template-rows: 1fr; }
+
+.panelInner { overflow: hidden; }
 .answer { padding-bottom: 28px; color: var(--text-on-cream-muted); max-width: 68ch; }

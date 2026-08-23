@@ -1,0 +1,46 @@
+.footer {
+  margin-top: 64px;
+  padding: 28px 0 40px;
+  border-top: 1px solid var(--hairline-on-cream);
+}
+
+.inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 32px;
+  font-size: 0.8125rem;
+  color: var(--ink-muted, #5b6b6e);
+}
+
+.trust {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-weight: 500;
+}
+
+.icon {
+  flex: none;
+  color: var(--deep-aqua);
+}
+
+.help,
+.legal { margin: 0; }
+
+.help a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.help a:hover { color: var(--deep-aqua); }
+
+@media (max-width: 720px) {
+  .inner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

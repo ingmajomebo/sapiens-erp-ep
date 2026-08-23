@@ -5,6 +5,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Fish,
   MapPin,
   Menu,
   Minus,
@@ -35,8 +36,8 @@ import type { LucideIcon, LucideProps } from 'lucide-react'
 
 const STROKE = 1.5
 
-/** Tamaños permitidos: 18 inline · 20 interfaz · 24 acciones · 32 sección. */
-export type IconSize = 18 | 20 | 24 | 32
+/** Tamaños permitidos: 18 inline · 20 interfaz · 24 acciones · 32 sección · 64 estado vacío. */
+export type IconSize = 18 | 20 | 24 | 32 | 64
 
 interface IconProps extends Omit<LucideProps, 'size' | 'strokeWidth'> {
   size?: IconSize
@@ -79,6 +80,10 @@ export const PackagingIcon = bind(Package,      18)
 /* ── Mensajes ────────────────────────────────────────────────────────────── */
 export const ErrorIcon     = bind(AlertCircle,  18)
 export const GuaranteeIcon = bind(ShieldCheck,  24)
+
+/* ── Estados vacíos ──────────────────────────────────────────────────────── */
+/** El carrito sin nada. Grande y a trazo fino: acompaña, no regaña. */
+export const EmptyCartIcon = bind(Fish,         64)
 
 /** Los cuatro pilares del brand book, cada uno con su símbolo propio. */
 export const PILLAR_ICONS = {

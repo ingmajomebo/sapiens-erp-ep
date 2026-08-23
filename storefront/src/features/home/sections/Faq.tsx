@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { Container } from '../../../shared/components/Container'
 import { Section } from '../../../shared/components/Section'
 import { Eyebrow } from '../../../shared/components/Eyebrow'
@@ -30,7 +30,6 @@ const ITEMS = [
 
 export function Faq() {
   const [openIndex, setOpenIndex] = useState<number | null>(0)
-  const panelRefs = useRef<Array<HTMLDivElement | null>>([])
 
   return (
     <Section id="faq" tone="cream" aria-labelledby="faq-title">
@@ -45,7 +44,6 @@ export function Faq() {
             const isOpen = openIndex === i
             const panelId = `faq-panel-${i}`
             const buttonId = `faq-button-${i}`
-            const height = isOpen ? panelRefs.current[i]?.scrollHeight ?? 0 : 0
 
             return (
               <div key={item.q} className={styles.row}>
@@ -68,10 +66,9 @@ export function Faq() {
                   id={panelId}
                   role="region"
                   aria-labelledby={buttonId}
-                  className={styles.panel}
-                  style={{ height }}
+                  className={`${styles.panel} ${isOpen ? styles.panelOpen : ''}`}
                 >
-                  <div ref={el => { panelRefs.current[i] = el }}>
+                  <div className={styles.panelInner}>
                     <p className={styles.answer}>{item.a}</p>
                   </div>
                 </div>

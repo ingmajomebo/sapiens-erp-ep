@@ -1,30 +1,32 @@
-# Encanto Pacífico — ambiente de DESARROLLO.
+# Encanto Pacífico — ambiente de DESARROLLO.  (PLANTILLA)
 #
-# Este archivo termina en .example a propósito: el import del borde solo
-# recoge *.caddy, así que mientras no lo actives no puede afectar a nada.
+# Este archivo termina en .example a propósito: el borde solo recoge *.caddy,
+# así que mientras no lo actives no puede afectar a nada.
 #
-# Para activarlo:
+# Para activarlo, en el servidor:
 #   1. docker run --rm caddy:2-alpine caddy hash-password --plaintext 'TU_CLAVE'
-#   2. pegar el hash en los dos bloques de abajo
-#   3. mv encanto-dev.caddy.example encanto-dev.caddy
-#   4. docker exec edge-caddy-1 caddy reload --config /etc/caddy/Caddyfile
+#   2. reemplazar PEGAR_AQUI_EL_HASH en los dos bloques
+#   3. cp encanto-dev.caddy.example encanto-dev.caddy
+#   4. ./deploy/edge/apply-sites.sh
 #
-# Si el hash queda mal, `caddy reload` rechaza el cambio y sigue sirviendo la
-# configuración anterior. Por eso conviene activarlo en un archivo aparte y
-# no dentro del de producción.
-
-# ── Desarrollo ───────────────────────────────────────────────────────────────
-# Tras contraseña y fuera de los buscadores: es un ambiente de pruebas, no una
-# segunda tienda. Indexarlo sería contenido duplicado y expondría ensayos.
+# El candado básico cubre la PÁGINA, nunca /api/*.
 #
-# Generar el hash con:
-#   docker run --rm caddy:2-alpine caddy hash-password --plaintext 'TU_CLAVE'
+# Motivo: HTTP tiene una sola cabecera Authorization. Caddy la usa para el
+# candado básico y la aplicación la usa para el token JWT. Si el candado
+# cubriera /api/*, cada llamada de la app llegaría con "Bearer ..." donde Caddy
+# espera "Basic ...", y Caddy respondería 401 sin pasarla al backend: se puede
+# iniciar sesión pero ninguna pantalla carga.
+#
+# La API no queda desprotegida: exige JWT por su cuenta, que es la barrera real.
+# El candado solo evita que un curioso o un buscador vea el ambiente de pruebas.
 
+# ── Desarrollo · tienda ──────────────────────────────────────────────────────
 dev.encantopacificoerp.online {
 	encode gzip
 
-	basic_auth {
-		equipo REEMPLAZAR_POR_HASH
+	@pagina not path /api/*
+	basic_auth @pagina {
+		equipo PEGAR_AQUI_EL_HASH
 	}
 
 	header {
@@ -40,11 +42,13 @@ dev.encantopacificoerp.online {
 	}
 }
 
+# ── Desarrollo · panel administrativo ────────────────────────────────────────
 dev-admin.encantopacificoerp.online {
 	encode gzip
 
-	basic_auth {
-		equipo REEMPLAZAR_POR_HASH
+	@pagina not path /api/*
+	basic_auth @pagina {
+		equipo PEGAR_AQUI_EL_HASH
 	}
 
 	header {

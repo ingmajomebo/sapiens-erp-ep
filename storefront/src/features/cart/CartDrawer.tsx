@@ -2,25 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button, ButtonLink } from '../../shared/components/Button'
 import {
-  CloseIcon, DecreaseIcon, IncreaseIcon, RemoveIcon, ShippingIcon,
+  CloseIcon, DecreaseIcon, EmptyCartIcon, IncreaseIcon, RemoveIcon, ShippingIcon,
 } from '../../shared/components/ui-icons'
 import { formatPrice } from '../../shared/format'
 import { COLD_CHAIN_MINIMUM, FREE_SHIPPING_THRESHOLD } from '../../api/shipping'
 import { MAX_NOTE_LENGTH, MAX_UNITS_PER_LINE, useCartStore, useCartSubtotal } from '../../store/useCartStore'
 import styles from './CartDrawer.module.css'
-
-/** Pez a línea para el carrito vacío. */
-function EmptyFish() {
-  return (
-    <svg width="120" height="70" viewBox="0 0 200 120" className={styles.emptyFish}
-      aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round">
-      <path d="M12 60c26-30 60-44 90-44s64 14 86 44c-22 30-56 44-86 44S38 90 12 60Z" />
-      <path d="M188 60l-24-18v36l24-18Z" />
-      <circle cx="62" cy="46" r="4" />
-      <path d="M84 34c8 14 8 38 0 52M110 30c9 17 9 43 0 60M136 36c8 14 8 34 0 48" />
-    </svg>
-  )
-}
 
 export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate()
@@ -87,7 +74,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
 
         {items.length === 0 ? (
           <div className={styles.empty}>
-            <EmptyFish />
+            <EmptyCartIcon className={styles.emptyFish} aria-hidden="true" />
             <p className={styles.emptyText}>Tu carrito está vacío</p>
             <ButtonLink to="/productos" variant="secondary">Ver productos</ButtonLink>
           </div>

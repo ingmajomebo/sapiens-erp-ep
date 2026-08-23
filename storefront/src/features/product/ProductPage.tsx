@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Helmet } from 'react-helmet-async'
@@ -34,20 +34,28 @@ export function ProductPage() {
     queryFn: () => storeApi.getProduct(slug),
   })
 
-  // Al cargar, se preselecciona la primera presentación disponible
-  useEffect(() => {
-    if (!product) return
-    const first = product.presentations.find(p => p.available) ?? product.presentations[0]
-    setSelectedId(first?.id ?? '')
+  /*
+   * Al cambiar de producto se reinicia la elección. Se ajusta durante el
+   * render en vez de con un efecto: un setState dentro de useEffect provoca
+   * un segundo render en cascada y deja ver un instante el estado viejo.
+   */
+  const [slugAnterior, setSlugAnterior] = useState(slug)
+  if (slugAnterior !== slug) {
+    setSlugAnterior(slug)
+    setSelectedId('')
     setQuantity(1)
-  }, [product])
+  }
 
   if (isLoading) return <Container><p className={styles.state}>Cargando…</p></Container>
   if (isError || !product) {
     return <Container><p className={styles.state}>No encontramos ese producto.</p></Container>
   }
 
-  const selected = product.presentations.find(p => p.id === selectedId) ?? product.presentations[0]
+  // Sin selección propia cae a la primera disponible: ofrecer de entrada una
+  // presentación agotada obliga a un clic extra para nada.
+  const selected = product.presentations.find(p => p.id === selectedId)
+    ?? product.presentations.find(p => p.available)
+    ?? product.presentations[0]
   const total = selected ? selected.price * quantity : 0
   const canBuy = Boolean(selected?.available)
 
