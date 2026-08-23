@@ -67,12 +67,35 @@ publicar nada.
 
 `Settings` → `Secrets and variables` → `Actions` → *New repository secret*
 
+**Secretos del repositorio** — comunes a los dos ambientes:
+
 | Secreto | Valor |
 |---|---|
 | `VPS_HOST` | `177.7.36.148` |
 | `VPS_USER` | `root` |
 | `VPS_SSH_KEY` | Contenido de `~/.ssh/encanto_deploy` (la privada, completa) |
 | `GHCR_READ_TOKEN` | El token con `read:packages` |
+
+**Secretos de cada entorno** — `Settings` → `Environments` → elegir el
+entorno → *Add environment secret*. Producción y desarrollo llevan
+administradores **distintos**:
+
+| Secreto | Qué es |
+|---|---|
+| `ADMIN_EMAIL` | Correo del primer administrador. Debe ser una dirección real: es por donde se recupera el acceso |
+| `ADMIN_PASSWORD` | Su contraseña. Mínimo 12 caracteres |
+
+Nacen con el valor `CAMBIAR` y **el despliegue se detiene** mientras sigan
+así, con un mensaje que dice dónde cambiarlos. Es preferible a desplegar con
+una credencial de ejemplo.
+
+> Solo se aplican **la primera vez**, cuando el backend crea el usuario. A
+> partir de ahí las personas se dan de alta en **Ajustes › Usuarios**, y
+> cambiar el secreto ya no cambia la contraseña: eso se hace desde el panel.
+>
+> Si el secreto llega vacío, el despliegue **conserva** lo que haya en el
+> servidor. Un secreto borrado por accidente no deja el sistema sin
+> administrador.
 
 ### 4. Entornos
 

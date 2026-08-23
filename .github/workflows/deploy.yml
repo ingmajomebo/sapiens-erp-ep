@@ -131,6 +131,10 @@ jobs:
           user: ${{ secrets.VPS_USER }}
           ghcr-token: ${{ secrets.GHCR_READ_TOKEN }}
           ghcr-user: ${{ github.repository_owner }}
+          # Secretos del ENTORNO: producción y desarrollo tienen
+          # administradores distintos.
+          admin-email: ${{ secrets.ADMIN_EMAIL }}
+          admin-password: ${{ secrets.ADMIN_PASSWORD }}
 
   # ── 4. Producción: con aprobación ───────────────────────────────────────
   prod:
@@ -152,3 +156,7 @@ jobs:
           user: ${{ secrets.VPS_USER }}
           ghcr-token: ${{ secrets.GHCR_READ_TOKEN }}
           ghcr-user: ${{ github.repository_owner }}
+          # Secretos del ENTORNO: producción y desarrollo tienen
+          # administradores distintos.
+          admin-email: ${{ secrets.ADMIN_EMAIL }}
+          admin-password: ${{ secrets.ADMIN_PASSWORD }}

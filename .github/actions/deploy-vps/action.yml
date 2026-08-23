@@ -24,6 +24,17 @@ inputs:
   ghcr-token:
     description: Token con read:packages para que el VPS descargue
     required: true
+  admin-email:
+    description: >-
+      Correo del administrador inicial. Solo se aplica la primera vez, cuando
+      el backend crea el usuario; después, los usuarios se gestionan desde el
+      panel. Vacío = no se toca lo que ya haya en el servidor.
+    required: false
+    default: ''
+  admin-password:
+    description: Contraseña del administrador inicial. Ver admin-email.
+    required: false
+    default: ''
 
 runs:
   using: composite
@@ -38,6 +49,26 @@ runs:
         # bastaría para que el despliegue entregue el stack a otra máquina.
         ssh-keyscan -H "${{ inputs.host }}" >> ~/.ssh/known_hosts 2>/dev/null
 
+    # Las credenciales del administrador viven en los secretos del entorno,
+    # no en un archivo del servidor. Se escriben en el .env al desplegar.
+    # Si el secreto viene vacío o sin cambiar, NO se toca lo que ya exista:
+    # un secreto mal puesto no debe dejar el sistema sin administrador.
+    - name: Comprobar las credenciales del administrador
+      shell: bash
+      env:
+        ADMIN_EMAIL: ${{ inputs.admin-email }}
+        ADMIN_PASSWORD: ${{ inputs.admin-password }}
+      run: |
+        set -euo pipefail
+        if [ "$ADMIN_EMAIL" = "CAMBIAR" ] || [ "$ADMIN_PASSWORD" = "CAMBIAR" ]; then
+          echo "::error::Los secretos ADMIN_EMAIL/ADMIN_PASSWORD siguen con el valor CAMBIAR."
+          echo "Defínelos en Settings > Environments > este entorno > Secrets."
+          exit 1
+        fi
+        if [ -z "$ADMIN_EMAIL" ] || [ -z "$ADMIN_PASSWORD" ]; then
+          echo "::notice::Sin credenciales de administrador en los secretos: se conserva lo que haya en el servidor."
+        fi
+
     - name: Desplegar
       shell: bash
       env:
@@ -46,10 +77,12 @@ runs:
         TAG: ${{ inputs.tag }}
         GHCR_USER: ${{ inputs.ghcr-user }}
         GHCR_TOKEN: ${{ inputs.ghcr-token }}
+        ADMIN_EMAIL: ${{ inputs.admin-email }}
+        ADMIN_PASSWORD: ${{ inputs.admin-password }}
       run: |
         set -euo pipefail
         ssh -i ~/.ssh/deploy_key -o BatchMode=yes "$SSH_TARGET" \
-          "GHCR_USER='$GHCR_USER' GHCR_TOKEN='$GHCR_TOKEN' bash -s" <<EOF
+          "GHCR_USER='$GHCR_USER' GHCR_TOKEN='$GHCR_TOKEN' ADMIN_EMAIL='$ADMIN_EMAIL' ADMIN_PASSWORD='$ADMIN_PASSWORD' bash -s" <<EOF
         set -euo pipefail
         cd /opt/encanto
 
@@ -60,6 +93,16 @@ runs:
 
         # Sesión en el registro, solo lectura
         printf '%s' "\$GHCR_TOKEN" | docker login ghcr.io -u "\$GHCR_USER" --password-stdin
+
+        # Credenciales del administrador, solo si vienen definidas
+        ENV_FILE="deploy/env/$ENVIRONMENT.env"
+        if [ -n "\$ADMIN_EMAIL" ] && [ -n "\$ADMIN_PASSWORD" ]; then
+          # Delimitador poco habitual: una contraseña puede llevar / o &
+          sed -i "s|^ADMIN_EMAIL=.*|ADMIN_EMAIL=\$ADMIN_EMAIL|"       "\$ENV_FILE"
+          sed -i "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=\$ADMIN_PASSWORD|" "\$ENV_FILE"
+          chmod 600 "\$ENV_FILE"
+          echo "Credenciales de administrador tomadas de los secretos"
+        fi
 
         DEPLOY_YES=1 ./deploy/release.sh "$ENVIRONMENT" "$TAG"
         EOF
