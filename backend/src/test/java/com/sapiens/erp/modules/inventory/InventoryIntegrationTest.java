@@ -53,13 +53,7 @@ class InventoryIntegrationTest {
 
     private UUID createProduct(String name) throws Exception {
         UUID catId = createCategory();
-        ProductRequest req = new ProductRequest(
-                name, catId, UnitOfMeasure.KG, new BigDecimal("1.000"),
-                null, null, null,
-                ProductType.RAW_MATERIAL,
-                null, BigDecimal.ZERO,
-                true, "main", null, null
-        );
+        ProductRequest req = new ProductRequest(name, catId, null, UnitOfMeasure.KG, new BigDecimal("1.000"), null, null, null, ProductType.RAW_MATERIAL, null, BigDecimal.ZERO, true, "main", null, null, null);
         MvcResult result = mockMvc.perform(post("/api/v1/products")
                         .with(adminUser)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -70,7 +64,7 @@ class InventoryIntegrationTest {
     }
 
     private MovementResponse registerEntry(UUID productId, BigDecimal qty) throws Exception {
-        EntryRequest req = new EntryRequest(productId, qty, new BigDecimal("4.00"), LocalDate.now(), null, "INV-TEST", null, "test-user");
+        EntryRequest req = new EntryRequest(productId, qty, new BigDecimal("4.00"), LocalDate.now(), null, "INV-TEST", null, "test-user", null);
         MvcResult result = mockMvc.perform(post("/api/v1/inventory/entries")
                         .with(adminUser)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -100,7 +94,7 @@ class InventoryIntegrationTest {
         UUID productId = createProduct("Shrimp-" + UUID.randomUUID());
         registerEntry(productId, new BigDecimal("20.000"));
 
-        ExitRequest exitReq = new ExitRequest(productId, new BigDecimal("8.000"), "sale", null, "test-user");
+        ExitRequest exitReq = new ExitRequest(productId, new BigDecimal("8.000"), null, "sale", null, "test-user");
         mockMvc.perform(post("/api/v1/inventory/exits")
                         .with(adminUser)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -119,7 +113,7 @@ class InventoryIntegrationTest {
         UUID productId = createProduct("Tuna-" + UUID.randomUUID());
         registerEntry(productId, new BigDecimal("5.000"));
 
-        ExitRequest exitReq = new ExitRequest(productId, new BigDecimal("99.000"), null, null, "test-user");
+        ExitRequest exitReq = new ExitRequest(productId, new BigDecimal("99.000"), null, null, null, "test-user");
         mockMvc.perform(post("/api/v1/inventory/exits")
                         .with(adminUser)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -134,7 +128,7 @@ class InventoryIntegrationTest {
         UUID productId = createProduct("Oyster-" + UUID.randomUUID());
         registerEntry(productId, new BigDecimal("5.000"));
 
-        WasteRequest wasteReq = new WasteRequest(productId, new BigDecimal("1.000"), "", null, "test-user");
+        WasteRequest wasteReq = new WasteRequest(productId, new BigDecimal("1.000"), null, "", null, "test-user");
         mockMvc.perform(post("/api/v1/inventory/wastes")
                         .with(adminUser)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -148,7 +142,7 @@ class InventoryIntegrationTest {
         UUID productId = createProduct("Sardine-" + UUID.randomUUID());
         registerEntry(productId, new BigDecimal("10.000"));
 
-        WasteRequest wasteReq = new WasteRequest(productId, new BigDecimal("2.000"), "Expired packaging", null, "test-user");
+        WasteRequest wasteReq = new WasteRequest(productId, new BigDecimal("2.000"), null, "Expired packaging", null, "test-user");
         mockMvc.perform(post("/api/v1/inventory/wastes")
                         .with(adminUser)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -166,10 +160,8 @@ class InventoryIntegrationTest {
     void fifoConsumesOldestLotFirst() throws Exception {
         UUID productId = createProduct("Squid-" + UUID.randomUUID());
 
-        EntryRequest entry1 = new EntryRequest(productId, new BigDecimal("5.000"), new BigDecimal("3.00"),
-                LocalDate.now().minusDays(5), null, "OLD-001", null, "test-user");
-        EntryRequest entry2 = new EntryRequest(productId, new BigDecimal("5.000"), new BigDecimal("4.00"),
-                LocalDate.now(), null, "NEW-001", null, "test-user");
+        EntryRequest entry1 = new EntryRequest(productId, new BigDecimal("5.000"), new BigDecimal("3.00"), LocalDate.now().minusDays(5), null, "OLD-001", null, "test-user", null);
+        EntryRequest entry2 = new EntryRequest(productId, new BigDecimal("5.000"), new BigDecimal("4.00"), LocalDate.now(), null, "NEW-001", null, "test-user", null);
 
         mockMvc.perform(post("/api/v1/inventory/entries").with(adminUser)
                 .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(entry1)))
@@ -178,7 +170,7 @@ class InventoryIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(entry2)))
                 .andExpect(status().isCreated());
 
-        ExitRequest exitReq = new ExitRequest(productId, new BigDecimal("5.000"), null, null, "test-user");
+        ExitRequest exitReq = new ExitRequest(productId, new BigDecimal("5.000"), null, null, null, "test-user");
         mockMvc.perform(post("/api/v1/inventory/exits").with(adminUser)
                 .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(exitReq)))
                 .andExpect(status().isOk());
@@ -199,7 +191,7 @@ class InventoryIntegrationTest {
         UUID productId = createProduct("Mackerel-" + UUID.randomUUID());
         registerEntry(productId, new BigDecimal("10.000"));
 
-        ExitRequest exitReq = new ExitRequest(productId, new BigDecimal("3.000"), null, null, "test-user");
+        ExitRequest exitReq = new ExitRequest(productId, new BigDecimal("3.000"), null, null, null, "test-user");
         mockMvc.perform(post("/api/v1/inventory/exits").with(adminUser)
                 .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(exitReq)))
                 .andExpect(status().isOk());

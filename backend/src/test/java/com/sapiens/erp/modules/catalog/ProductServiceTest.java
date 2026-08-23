@@ -48,7 +48,7 @@ class ProductServiceTest {
     }
 
     private static ProductRequest minimalRequest(String name, UUID catId, UnitOfMeasure unit, BigDecimal minStock, String desc) {
-        return new ProductRequest(name, catId, unit, minStock, desc, null, null, null, null, null, null, null, null, null);
+        return new ProductRequest(name, catId, null, unit, minStock, desc, null, null, null, null, null, null, null, null, null, null);
     }
 
     @Nested

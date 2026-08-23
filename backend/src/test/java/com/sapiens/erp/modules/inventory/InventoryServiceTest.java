@@ -54,7 +54,7 @@ class InventoryServiceTest {
     }
 
     private Lot buildLot(BigDecimal qty, int daysAgo) {
-        return Lot.create(product, qty, BigDecimal.ONE, LocalDate.now().minusDays(daysAgo), null, null, null);
+        return Lot.create(product, qty, BigDecimal.ONE, LocalDate.now().minusDays(daysAgo), null, null, null, null);
     }
 
     // ── ENTRY ─────────────────────────────────────────────────────────────────
@@ -67,10 +67,7 @@ class InventoryServiceTest {
         @DisplayName("creates lot and ENTRY movement")
         void createsLotAndMovement() {
             stubSaves();
-            EntryRequest req = new EntryRequest(
-                    productId, new BigDecimal("10.000"), new BigDecimal("5.50"),
-                    LocalDate.now(), null, "INV-001", null, "test"
-            );
+            EntryRequest req = new EntryRequest(productId, new BigDecimal("10.000"), new BigDecimal("5.50"), LocalDate.now(), null, "INV-001", null, "test", null);
 
             MovementResponse response = service.registerEntry(req);
 
@@ -87,7 +84,7 @@ class InventoryServiceTest {
             UUID unknownId = UUID.randomUUID();
             when(productRepository.findByIdAndDeletedAtIsNull(unknownId)).thenReturn(Optional.empty());
 
-            EntryRequest req = new EntryRequest(unknownId, BigDecimal.ONE, BigDecimal.ONE, null, null, null, null, null);
+            EntryRequest req = new EntryRequest(unknownId, BigDecimal.ONE, BigDecimal.ONE, null, null, null, null, null, null);
             assertThatThrownBy(() -> service.registerEntry(req)).isInstanceOf(RuntimeException.class);
         }
     }
@@ -107,7 +104,7 @@ class InventoryServiceTest {
             when(lotRepository.findAvailableByProductFIFO(any())).thenReturn(List.of(lot));
             when(lotRepository.calculateAvailableQuantity(any())).thenReturn(new BigDecimal("20.000"));
 
-            ExitRequest req = new ExitRequest(productId, new BigDecimal("5.000"), "sale", null, "test");
+            ExitRequest req = new ExitRequest(productId, new BigDecimal("5.000"), null, "sale", null, "test");
             MovementResponse response = service.registerExit(req);
 
             assertThat(response.movementType()).isEqualTo(MovementType.EXIT);
@@ -120,7 +117,7 @@ class InventoryServiceTest {
         void throwsWhenInsufficientStock() {
             when(movementRepository.calculateCurrentStock(any())).thenReturn(new BigDecimal("3.000"));
 
-            ExitRequest req = new ExitRequest(productId, new BigDecimal("10.000"), null, null, "test");
+            ExitRequest req = new ExitRequest(productId, new BigDecimal("10.000"), null, null, null, "test");
             assertThatThrownBy(() -> service.registerExit(req))
                     .isInstanceOf(InsufficientStockException.class);
         }
@@ -138,7 +135,7 @@ class InventoryServiceTest {
             when(lotRepository.calculateAvailableQuantity(lot1.getId())).thenReturn(new BigDecimal("5.000"));
             when(lotRepository.calculateAvailableQuantity(lot2.getId())).thenReturn(new BigDecimal("10.000"));
 
-            ExitRequest req = new ExitRequest(productId, new BigDecimal("8.000"), null, null, "test");
+            ExitRequest req = new ExitRequest(productId, new BigDecimal("8.000"), null, null, null, "test");
             service.registerExit(req);
 
             verify(movementLotRepository, times(2)).save(any(MovementLot.class));
@@ -160,7 +157,7 @@ class InventoryServiceTest {
             when(lotRepository.findAvailableByProductFIFO(any())).thenReturn(List.of(lot));
             when(lotRepository.calculateAvailableQuantity(any())).thenReturn(new BigDecimal("5.000"));
 
-            WasteRequest req = new WasteRequest(productId, new BigDecimal("1.500"), "Damaged packaging", null, "test");
+            WasteRequest req = new WasteRequest(productId, new BigDecimal("1.500"), null, "Damaged packaging", null, "test");
             MovementResponse response = service.registerWaste(req);
 
             assertThat(response.movementType()).isEqualTo(MovementType.WASTE);
@@ -172,7 +169,7 @@ class InventoryServiceTest {
         void throwsWhenInsufficientStock() {
             when(movementRepository.calculateCurrentStock(any())).thenReturn(BigDecimal.ZERO);
 
-            WasteRequest req = new WasteRequest(productId, new BigDecimal("2.000"), "Spoiled", null, "test");
+            WasteRequest req = new WasteRequest(productId, new BigDecimal("2.000"), null, "Spoiled", null, "test");
             assertThatThrownBy(() -> service.registerWaste(req))
                     .isInstanceOf(InsufficientStockException.class);
         }

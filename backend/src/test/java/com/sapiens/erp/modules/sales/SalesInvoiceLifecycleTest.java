@@ -23,7 +23,7 @@ class SalesInvoiceLifecycleTest {
         Customer customer = Customer.create("Restaurante Prueba", null, null, false);
         order = SalesOrder.create("SO-000001", customer, SalesChannel.ADMIN,
                 "admin@sapiens.com", null, null, DeliveryMethod.PICKUP, null);
-        invoice = SalesInvoice.draft("FV-000001", order, null);
+        invoice = SalesInvoice.draft(order, null);
     }
 
     private SalesInvoiceLine line(double qty, double price, double discountPct, double taxRate) {
@@ -73,11 +73,11 @@ class SalesInvoiceLifecycleTest {
             assertThat(invoice.getStatus()).isEqualTo(SalesInvoiceStatus.DRAFT);
             assertThat(invoice.getIssuedAt()).isNull();
 
-            invoice.emit(PaymentForm.CREDIT, 30, InvoicePaymentMethod.TRANSFER);
+            invoice.emit("FV-000001", PaymentForm.CREDIT, 30, InvoicePaymentMethod.TRANSFER);
             assertThat(invoice.getStatus()).isEqualTo(SalesInvoiceStatus.ISSUED);
             assertThat(invoice.getDueDate()).isEqualTo(LocalDate.now().plusDays(30));
 
-            assertThatThrownBy(() -> invoice.emit(PaymentForm.CASH, 0, null))
+            assertThatThrownBy(() -> invoice.emit("FV-000001", PaymentForm.CASH, 0, null))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("borrador");
         }
@@ -85,7 +85,7 @@ class SalesInvoiceLifecycleTest {
         @Test
         @DisplayName("contado vence el mismo día aunque se pidan días de crédito")
         void cashDueToday() {
-            invoice.emit(PaymentForm.CASH, 30, InvoicePaymentMethod.CASH);
+            invoice.emit("FV-000001", PaymentForm.CASH, 30, InvoicePaymentMethod.CASH);
             assertThat(invoice.getCreditTermDays()).isZero();
             assertThat(invoice.getDueDate()).isEqualTo(LocalDate.now());
         }
@@ -95,7 +95,7 @@ class SalesInvoiceLifecycleTest {
         void paymentProgress() {
             invoice.addLine(line(1, 10000, 0, 0));
             invoice.recomputeTotals();
-            invoice.emit(PaymentForm.CASH, 0, InvoicePaymentMethod.CASH);
+            invoice.emit("FV-000001", PaymentForm.CASH, 0, InvoicePaymentMethod.CASH);
 
             invoice.applyPaymentProgress(BigDecimal.valueOf(4000));
             assertThat(invoice.getStatus()).isEqualTo(SalesInvoiceStatus.PARTIALLY_PAID);
@@ -115,7 +115,7 @@ class SalesInvoiceLifecycleTest {
         @Test
         @DisplayName("VENCIDA es derivado: emitida con vencimiento pasado")
         void overdueIsDerived() {
-            invoice.emit(PaymentForm.CREDIT, 15, null);
+            invoice.emit("FV-000001", PaymentForm.CREDIT, 15, null);
             assertThat(invoice.isOverdue()).isFalse();
 
             invoice.setDueDate(LocalDate.now().minusDays(1));

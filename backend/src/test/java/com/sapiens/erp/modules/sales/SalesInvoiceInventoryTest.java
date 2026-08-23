@@ -58,7 +58,7 @@ class SalesInvoiceInventoryTest {
         Customer customer = Customer.create("Cliente", null, null, false);
         SalesOrder order = SalesOrder.create("SO-000001", customer, SalesChannel.ADMIN,
                 "admin@sapiens.com", null, null, DeliveryMethod.PICKUP, null);
-        SalesInvoice inv = SalesInvoice.draft("FV-000001", order, null);
+        SalesInvoice inv = SalesInvoice.draft(order, null);
         for (Product p : products) {
             inv.addLine(SalesInvoiceLine.create(p, p.getName(), new BigDecimal("3"),
                     new BigDecimal("10000"), BigDecimal.ZERO, BigDecimal.ZERO));
@@ -90,7 +90,7 @@ class SalesInvoiceInventoryTest {
     void cancelRestoresStock() {
         UUID id = UUID.randomUUID();
         SalesInvoice inv = draftWith(tracked);
-        inv.emit(PaymentForm.CASH, 0, InvoicePaymentMethod.CASH); // ya EMITIDA
+        inv.emit("FV-000001", PaymentForm.CASH, 0, InvoicePaymentMethod.CASH); // ya EMITIDA
         when(invoiceRepository.findByIdAndDeletedAtIsNull(id)).thenReturn(Optional.of(inv));
         when(creditNoteRepository.nextNoteNumberValue()).thenReturn(1001L);
 
