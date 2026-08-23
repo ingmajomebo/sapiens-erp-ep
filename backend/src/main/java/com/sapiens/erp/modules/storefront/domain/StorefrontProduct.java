@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 /**
@@ -53,6 +54,27 @@ public class StorefrontProduct extends AuditableEntity {
     @Column(length = 80)
     private String origin;
 
+    /** Qué clase de lugar es el origen: sin esto no se puede agrupar el filtro. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "origin_kind", length = 20)
+    private OriginKind originKind;
+
+    /**
+     * Forma comparable de {@link #axisSize}, que sigue siendo el texto que ve
+     * el cliente ("Postas 700 g"). Sin estos dos campos no hay filtro por peso
+     * ni precio por kilo.
+     */
+    @Column(name = "weight_value", precision = 10, scale = 3)
+    private BigDecimal weightValue;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "weight_unit", length = 10)
+    private WeightUnit weightUnit;
+
+    /** Segunda foto del hover en escritorio. Opcional: si falta, no hay hover. */
+    @Column(name = "secondary_image_path", length = 500)
+    private String secondaryImagePath;
+
     @Column(columnDefinition = "TEXT")
     private String description;
 
@@ -64,6 +86,11 @@ public class StorefrontProduct extends AuditableEntity {
 
     @Column(nullable = false)
     private boolean published = false;
+
+    /** Peso normalizado a gramos, o null si la unidad no es masa. */
+    public BigDecimal weightInGrams() {
+        return weightUnit == null ? null : weightUnit.toGrams(weightValue);
+    }
 
     /** Nombre visible de la presentación: "Filete 500 g" o solo "500 g". */
     public String variantName() {

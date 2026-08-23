@@ -6,6 +6,7 @@ import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -47,7 +48,102 @@ public final class StorefrontDtos {
 
     public record CatalogResponse(List<CategoryResponse> categories, List<ProductResponse> products) {}
 
+
+    /* ── Catálogo especializado de categoría ─────────────────────────────── */
+
+    /**
+     * Disponibilidad en tres niveles. El umbral de POCO no se inventa: sale de
+     * {@code products.minimum_stock}, que el ERP ya usa para reponer.
+     */
+    public enum Availability { AVAILABLE, LOW_STOCK, OUT_OF_STOCK }
+
+    /** Portada de la página: el hero configurable desde datos, no desde el código. */
+    public record CategoryHeroResponse(
+            String slug,
+            String kind,
+            String parentSlug,
+            String title,
+            String description,
+            String bannerUrl,
+            String bannerAlt
+    ) {}
+
+    public record BreadcrumbResponse(String label, String path) {}
+
+    /** Declaración de un eje de filtro: su etiqueta y su orden en la barra. */
+    public record AttributeDefinitionResponse(
+            String key,
+            String label,
+            boolean filterable,
+            int sortOrder
+    ) {}
+
+    /**
+     * Un ítem del catálogo ES una presentación vendible, no una familia: es lo
+     * que tiene precio, stock y SKU propios, y lo que el cliente compara.
+     */
+    public record CatalogItemResponse(
+            UUID id,
+            String slug,
+            String groupSlug,
+            String groupName,
+            String variantName,
+            String axisPresentation,
+            String axisSize,
+            BigDecimal price,
+            /** Null cuando la unidad no es masa: un paquete no tiene precio por kilo. */
+            BigDecimal pricePerKg,
+            BigDecimal weightValue,
+            String weightUnit,
+            String origin,
+            String originKind,
+            String imageUrl,
+            /** Null cuando no se cargó segunda foto: entonces no hay hover. */
+            String secondaryImageUrl,
+            String imageAlt,
+            Availability availability,
+            /** Atributos comerciales: presentacion, procedencia, etiqueta… */
+            Map<String, List<String>> attributes,
+            String categoryId,
+            String categoryName,
+            String subcategoryId,
+            String subcategoryName,
+            int sortOrder,
+            /** Publicación en la vitrina: es lo que hace real el orden "Más recientes". */
+            Instant publishedAt
+    ) {}
+
+    /**
+     * Todo lo que necesita la página de una categoría en una sola respuesta.
+     * <p>
+     * Las opciones de filtro NO viajan aquí: se derivan de {@code items} en el
+     * cliente. Así filtrar es instantáneo, los contadores siempre concuerdan
+     * con lo que se ve, y no aparece nunca una opción que no exista.
+     */
+    public record CategoryPageResponse(
+            CategoryHeroResponse hero,
+            List<BreadcrumbResponse> breadcrumbs,
+            List<CatalogItemResponse> items,
+            List<AttributeDefinitionResponse> attributeDefinitions,
+            List<CategoryHeroResponse> children
+    ) {}
+
+    /* ── Solicitud de aviso de disponibilidad ────────────────────────────── */
+
+    public record StockRequestCreate(
+            @NotNull UUID presentationId,
+            @NotBlank @Size(max = 120) String customerName,
+            @NotBlank @Size(max = 40) String phone,
+            @Email @Size(max = 160) String email,
+            @DecimalMin("0.001") BigDecimal desiredQuantity,
+            /** Honeypot antispam: debe llegar vacío. */
+            String website
+    ) {}
+
+    public record StockRequestResponse(UUID id, String status, boolean alreadyRegistered) {}
+
     /* ── Pedido ──────────────────────────────────────────────────────────── */
+
 
     public record OrderCustomerRequest(
             @NotBlank @Size(max = 120) String fullName,
