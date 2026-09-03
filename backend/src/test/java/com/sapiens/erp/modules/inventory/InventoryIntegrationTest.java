@@ -53,7 +53,8 @@ class InventoryIntegrationTest {
 
     private UUID createProduct(String name) throws Exception {
         UUID catId = createCategory();
-        ProductRequest req = new ProductRequest(name, catId, null, UnitOfMeasure.KG, new BigDecimal("1.000"), null, null, null, ProductType.RAW_MATERIAL, null, BigDecimal.ZERO, true, "main", null, null, null);
+        ProductRequest req = new ProductRequest(name, catId, null, UnitOfMeasure.KG, new BigDecimal("1.000"), null, null, null, ProductType.RAW_MATERIAL, null, BigDecimal.ZERO, true, "main", null, null, null,
+                null, null);
         MvcResult result = mockMvc.perform(post("/api/v1/products")
                         .with(adminUser)
                         .contentType(MediaType.APPLICATION_JSON)

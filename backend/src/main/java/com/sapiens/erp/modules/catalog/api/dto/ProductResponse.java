@@ -34,6 +34,10 @@ public record ProductResponse(
         String warehouseName,
         ProductStatus status,
         String imageUrl,
+        /** Puede consumirse en una transformación (sale del inventario). */
+        boolean transformationInputEnabled,
+        /** Puede obtenerse de una transformación (entra al inventario). */
+        boolean transformationOutputEnabled,
         Instant createdAt,
         Instant updatedAt
 ) {
@@ -63,6 +67,8 @@ public record ProductResponse(
                 p.getWarehouse() != null ? p.getWarehouse().getName() : p.getDefaultWarehouse(),
                 p.getStatus(),
                 p.getImageUrl(),
+                p.isTransformationInputEnabled(),
+                p.isTransformationOutputEnabled(),
                 p.getCreatedAt(),
                 p.getUpdatedAt()
         );

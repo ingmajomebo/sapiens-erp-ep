@@ -133,6 +133,8 @@ public class ProductService {
         if (request.purchaseCost() != null) product.setPurchaseCost(request.purchaseCost());
         if (request.salePrice() != null) product.setSalePrice(request.salePrice());
         if (request.inventoryTrackingEnabled() != null) product.setInventoryTrackingEnabled(request.inventoryTrackingEnabled());
+        if (request.transformationInputEnabled() != null) product.setTransformationInputEnabled(request.transformationInputEnabled());
+        if (request.transformationOutputEnabled() != null) product.setTransformationOutputEnabled(request.transformationOutputEnabled());
         if (request.warehouseId() != null) {
             warehouseRepository.findByIdAndDeletedAtIsNull(request.warehouseId()).ifPresent(w -> {
                 product.setWarehouse(w);

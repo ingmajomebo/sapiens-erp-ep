@@ -45,6 +45,10 @@ export interface ProductDto {
   averageCost: number | null
   salePrice: number | null
   inventoryTrackingEnabled: boolean
+  /** Puede consumirse en una transformación (sale del inventario). */
+  transformationInputEnabled: boolean
+  /** Puede obtenerse de una transformación (entra al inventario). */
+  transformationOutputEnabled: boolean
   defaultWarehouse: string | null
   warehouseId: string | null
   warehouseName: string | null
@@ -70,6 +74,8 @@ export interface CreateProductDto {
   barcode?: string | null
   purchaseCost?: number | null
   inventoryTrackingEnabled?: boolean
+  transformationInputEnabled?: boolean
+  transformationOutputEnabled?: boolean
   status?: ProductStatus
   imageUrl?: string | null
 }

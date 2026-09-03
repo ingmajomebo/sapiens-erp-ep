@@ -88,6 +88,35 @@ public class Product extends AuditableEntity {
     @Column(name = "image_path", length = 500)
     private String imagePath;
 
+    /**
+     * Cuántas unidades base (kg) vale una unidad de este producto.
+     * <p>
+     * Solo tiene sentido cuando la unidad de venta no es masa: "1 paquete =
+     * 0.5 kg". Null significa que no se puede convertir, y entonces el
+     * rendimiento de una transformación se informa como no calculable en vez
+     * de inventar una equivalencia.
+     */
+    @Column(name = "base_unit_factor", precision = 18, scale = 9)
+    private BigDecimal baseUnitFactor;
+
+    /**
+     * El producto puede CONSUMIRSE en una transformación: sale del inventario
+     * como materia prima. Falso por defecto porque es una lista de
+     * excepciones — la mayoría del catálogo no se transforma.
+     */
+    @Column(name = "transformation_input_enabled", nullable = false)
+    private boolean transformationInputEnabled = false;
+
+    /**
+     * El producto puede OBTENERSE de una transformación: entra al inventario
+     * como producto terminado.
+     * <p>
+     * Es independiente del anterior: un filete se obtiene del atún entero y
+     * además se consume para hacer hamburguesas, así que lleva las dos.
+     */
+    @Column(name = "transformation_output_enabled", nullable = false)
+    private boolean transformationOutputEnabled = false;
+
     public static Product create(String name, Category category, UnitOfMeasure unitOfMeasure,
                                   BigDecimal minimumStock, String description) {
         Product p = new Product();

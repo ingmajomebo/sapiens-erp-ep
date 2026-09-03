@@ -27,5 +27,9 @@ public record ProductRequest(
         String defaultWarehouse,
         UUID warehouseId,
         ProductStatus status,
-        String imageUrl
+        String imageUrl,
+        /** Puede consumirse en una transformación (sale del inventario). */
+        Boolean transformationInputEnabled,
+        /** Puede obtenerse de una transformación (entra al inventario). */
+        Boolean transformationOutputEnabled
 ) {}

@@ -10,6 +10,7 @@ import com.sapiens.erp.modules.inventory.domain.*;
 import com.sapiens.erp.modules.inventory.domain.exception.*;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class InventoryService {
 
     private final ProductRepository productRepository;
@@ -295,6 +297,56 @@ public class InventoryService {
         return MovementResponse.of(movement);
     }
 
+    // ── Consumo para transformaciones ──────────────────────────────────────────
+
+    /**
+     * Consume lotes FIFO SIN bloquear cuando el stock registrado no alcanza.
+     *
+     * <p>Existe aparte de {@link #registerExit} a propósito. El invariante
+     * "stock no negativo" sigue vigente para ventas y mermas: ahí un faltante
+     * es un error que hay que resolver antes de facturar. En producción no:
+     * si se procesaron 10 kg y el sistema solo tenía 8 registrados, el pescado
+     * ya está cortado. Detener la captura no devuelve el pescado; solo impide
+     * registrar lo que ocurrió.
+     *
+     * <p>La existencia negativa resultante es la señal de que hay que hacer un
+     * conteo, y por eso se informa como advertencia en vez de esconderse.
+     *
+     * @return los lotes efectivamente consumidos, que pueden sumar MENOS que
+     *         la cantidad pedida cuando no había suficiente.
+     */
+    @Transactional
+    public List<LotConsumption> consumeForTransformation(Product product, BigDecimal required,
+                                                          Warehouse location) {
+        List<Lot> lots = location != null
+                ? lotRepository.findAvailableByProductFIFO(product.getId())
+                : lotRepository.findAvailableByProductFIFO(product.getId());
+
+        List<LotConsumption> consumptions = new ArrayList<>();
+        BigDecimal remaining = required;
+
+        for (Lot lot : lots) {
+            if (remaining.compareTo(BigDecimal.ZERO) <= 0) break;
+            BigDecimal available = lotRepository.calculateAvailableQuantity(lot.getId());
+            if (available == null || available.compareTo(BigDecimal.ZERO) <= 0) continue;
+            BigDecimal toConsume = available.min(remaining);
+            consumptions.add(new LotConsumption(lot, toConsume));
+            remaining = remaining.subtract(toConsume);
+        }
+
+        if (remaining.compareTo(BigDecimal.ZERO) > 0) {
+            log.warn("Transformación consume {} de {} pero solo había {} en lotes: la existencia quedará negativa",
+                    required, product.getName(), required.subtract(remaining));
+        }
+        return consumptions;
+    }
+
+    /** Persiste el vínculo movimiento-lote. Expuesto para las transformaciones. */
+    @Transactional
+    public void linkMovementLots(InventoryMovement movement, List<LotConsumption> consumptions) {
+        saveMovementLots(movement, consumptions);
+    }
+
     // ── FIFO helpers ───────────────────────────────────────────────────────────
 
     /** Global FIFO across all locations (backward-compatible). */
@@ -370,5 +422,5 @@ public class InventoryService {
                 .orElseThrow(() -> new ProductNotFoundException(productId));
     }
 
-    record LotConsumption(Lot lot, BigDecimal quantity) {}
+    public record LotConsumption(Lot lot, BigDecimal quantity) {}
 }

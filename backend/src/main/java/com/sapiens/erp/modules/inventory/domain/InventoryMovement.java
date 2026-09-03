@@ -59,6 +59,23 @@ public class InventoryMovement {
     @Column(name = "created_by", length = 100)
     private String createdBy;
 
+    /**
+     * Documento que originó el movimiento. Null en los movimientos sueltos y
+     * en todo el histórico anterior a que existiera este vínculo.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "source_type", length = 40)
+    private MovementSourceType sourceType;
+
+    @Column(name = "source_id")
+    private UUID sourceId;
+
+    /** Ata el movimiento a su documento. Se llama antes de persistir. */
+    public void linkTo(MovementSourceType type, UUID documentId) {
+        this.sourceType = type;
+        this.sourceId = documentId;
+    }
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 

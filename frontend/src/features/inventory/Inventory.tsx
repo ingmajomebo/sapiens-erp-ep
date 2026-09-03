@@ -588,6 +588,8 @@ function ProductDetailPage({ product, currentStock, stockStatus, warehouseStocks
   const [salePrice, setSalePrice] = useState(product.salePrice != null ? String(product.salePrice) : '')
   const [minimumStock, setMinimumStock] = useState(product.minimumStock != null ? String(product.minimumStock) : '0')
   const [inventoryTracking, setInventoryTracking] = useState(product.inventoryTrackingEnabled)
+  const [transfInput, setTransfInput] = useState(product.transformationInputEnabled)
+  const [transfOutput, setTransfOutput] = useState(product.transformationOutputEnabled)
   const [unitOfMeasure, setUnitOfMeasure] = useState<UnitOfMeasure>(product.unitOfMeasure)
   const [warehouseId, setWarehouseId] = useState(product.warehouseId ?? '')
   const [formError, setFormError] = useState<string | null>(null)
@@ -635,6 +637,10 @@ function ProductDetailPage({ product, currentStock, stockStatus, warehouseStocks
       list.push({ field: 'Código de barras', from: product.barcode || '—', to: barcode.trim() || '—' })
     if (description.trim() !== (product.description ?? ''))
       list.push({ field: 'Descripción', from: product.description || '—', to: description.trim() || '—' })
+    if (transfInput !== product.transformationInputEnabled)
+      list.push({ field: 'Se puede transformar', from: product.transformationInputEnabled ? 'Sí' : 'No', to: transfInput ? 'Sí' : 'No' })
+    if (transfOutput !== product.transformationOutputEnabled)
+      list.push({ field: 'Se obtiene de transformación', from: product.transformationOutputEnabled ? 'Sí' : 'No', to: transfOutput ? 'Sí' : 'No' })
     if (inventoryTracking !== product.inventoryTrackingEnabled)
       list.push({ field: 'Control de inventario', from: product.inventoryTrackingEnabled ? 'Activado' : 'Desactivado', to: inventoryTracking ? 'Activado' : 'Desactivado' })
     if (warehouseId !== (product.warehouseId ?? '')) {
@@ -643,7 +649,7 @@ function ProductDetailPage({ product, currentStock, stockStatus, warehouseStocks
       list.push({ field: 'Almacén', from: fromName, to: toName })
     }
     return list
-  }, [name, description, categoryId, subcategoryId, sku, barcode, productType, status, salePrice, minimumStock, inventoryTracking, unitOfMeasure, warehouseId, product, categories, subcategories, warehouseList])
+  }, [name, description, categoryId, subcategoryId, sku, barcode, productType, status, salePrice, minimumStock, inventoryTracking, transfInput, transfOutput, unitOfMeasure, warehouseId, product, categories, subcategories, warehouseList])
 
   const isDirty = changes.length > 0
 
@@ -724,6 +730,8 @@ function ProductDetailPage({ product, currentStock, stockStatus, warehouseStocks
       sku: sku.trim() || null,
       barcode: barcode.trim() || null,
       inventoryTrackingEnabled: inventoryTracking,
+      transformationInputEnabled: transfInput,
+      transformationOutputEnabled: transfOutput,
       status,
       imageUrl: product.imageUrl,
     })
@@ -1090,6 +1098,25 @@ function ProductDetailPage({ product, currentStock, stockStatus, warehouseStocks
                   <input type="checkbox" checked={inventoryTracking} onChange={(e) => setInventoryTracking(e.target.checked)} />
                   Control de inventario activado
                 </label>
+
+                {/* Deciden si el producto aparece en los selectores de
+                    transformaciones. Son independientes: un filete se obtiene
+                    del atún entero y además se consume para hacer hamburguesas. */}
+                <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--muted)', marginBottom: 8 }}>
+                    TRANSFORMACIONES
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text)', marginBottom: 8 }}>
+                    <input type="checkbox" checked={transfInput} onChange={(e) => setTransfInput(e.target.checked)} />
+                    Se puede transformar
+                    <span style={{ fontSize: 12, color: 'var(--muted)' }}>· materia prima, sale del inventario</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text)' }}>
+                    <input type="checkbox" checked={transfOutput} onChange={(e) => setTransfOutput(e.target.checked)} />
+                    Se obtiene de una transformación
+                    <span style={{ fontSize: 12, color: 'var(--muted)' }}>· producto terminado, entra al inventario</span>
+                  </label>
+                </div>
               </div>
             )}
 
