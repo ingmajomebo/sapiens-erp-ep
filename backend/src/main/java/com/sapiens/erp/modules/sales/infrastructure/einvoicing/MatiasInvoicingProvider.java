@@ -210,6 +210,18 @@ public class MatiasInvoicingProvider implements ElectronicInvoicingProvider {
         }
         if (dian != null && dian.statusMessage() != null) return dian.statusMessage();
         if (dian != null && dian.statusDescription() != null) return dian.statusDescription();
+
+        // Rechazo por validación del proveedor: el motivo útil está en `errors`,
+        // no en `message`, que siempre dice lo mismo.
+        if (r.errors() != null && !r.errors().isEmpty()) {
+            StringBuilder sb = new StringBuilder(r.message() == null ? "" : r.message());
+            r.errors().forEach((campo, motivos) -> {
+                if (motivos == null) return;
+                sb.append(sb.isEmpty() ? "" : " · ").append(campo).append(": ")
+                  .append(String.join("; ", motivos));
+            });
+            return sb.toString();
+        }
         return r.message();
     }
 
@@ -257,7 +269,7 @@ public class MatiasInvoicingProvider implements ElectronicInvoicingProvider {
             return new MatiasDtos.InvoiceResponse(
                     root.path("success").asBoolean(false),
                     root.path("message").asText(null),
-                    null, dian, null, null, null);
+                    null, null, dian, null, null, null);
         } catch (Exception e) {
             log.debug("No se pudo interpretar el estado devuelto: {}", raw, e);
             return null;

@@ -8,6 +8,7 @@ import com.sapiens.erp.modules.sales.infrastructure.einvoicing.MatiasPayloadMapp
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -75,9 +76,17 @@ public class ElectronicInvoicingService {
     /**
      * Envía a la DIAN una factura ya emitida y guarda el veredicto.
      *
+     * <p><b>REQUIRES_NEW no es decorativo.</b> Esto se llama desde un escucha
+     * AFTER_COMMIT, y ahí la sincronización de la transacción anterior sigue
+     * activa: un {@code @Transactional} normal se uniría a una transacción ya
+     * terminada y NADA de lo que se guarde aquí llegaría a la base. Ocurrió:
+     * la DIAN respondía, se veía en el log, y la factura seguía marcada como
+     * pendiente con cero intentos. Una transacción propia es lo único que
+     * garantiza que el veredicto quede escrito.
+     *
      * @return el documento actualizado, o vacío si no hay nada que enviar
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Optional<ElectronicInvoiceDocument> submit(UUID invoiceId) {
         if (!provider.isEnabled()) {
             log.debug("Envío omitido: no hay proveedor activo.");

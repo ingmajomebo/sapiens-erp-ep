@@ -109,6 +109,13 @@ final class MatiasDtos {
     record InvoiceResponse(
             Boolean success,
             String message,
+            /**
+             * Errores de validación del PROVEEDOR, antes de llegar a la DIAN.
+             * Vienen como {campo: [motivos]}. Sin ellos, un rechazo por datos
+             * solo dice "Error de validación", que no le sirve a nadie para
+             * saber qué corregir.
+             */
+            java.util.Map<String, java.util.List<String>> errors,
             /** El CUFE del documento. */
             @JsonProperty("XmlDocumentKey") String xmlDocumentKey,
             DianResponse response,
