@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { invalidarVentas } from '../../api/invalidarVentas'
+import { cashBanksApi } from '../finance/api/cashBanksApi'
 import {
   Card, KpiCard, CardHeader, StatusChip,
   PrimaryBtn, GhostBtn, Select,
@@ -14,6 +16,10 @@ import {
   type SalesInvoiceDto, type SalesInvoiceStatus,
   type InvoicePaymentMethod,
 } from '../sales/api/salesApi'
+import {
+  einvoicingApi, ELECTRONIC_LABELS, ELECTRONIC_CHIP,
+  type ElectronicStatusDto,
+} from './api/einvoicingApi'
 
 const fmtDate = (v: string | null | undefined, withTime = false) =>
   v ? new Date(v.length === 10 ? v + 'T00:00:00' : v).toLocaleDateString('es-CO',
@@ -54,8 +60,7 @@ function CancelInvoiceModal({ invoice, onClose }: { invoice: SalesInvoiceDto; on
   const cancelMut = useMutation({
     mutationFn: () => salesInvoiceApi.cancel(invoice.id, reason),
     onSuccess: inv => {
-      qc.invalidateQueries({ queryKey: ['sales-invoices'] })
-      qc.invalidateQueries({ queryKey: ['sales-orders'] })
+      invalidarVentas(qc)
       toast(invoice.status === 'DRAFT'
         ? `Borrador cancelado (pedido ${invoice.orderNumber})`
         : `Factura ${inv.invoiceNumber} cancelada · nota crédito generada`, 'info')
@@ -102,11 +107,20 @@ function DraftPaymentModal({ invoice, onClose }: { invoice: SalesInvoiceDto; onC
   const [partialAmt, setPartialAmt] = useState(String(invoice.total))
   const [method, setMethod] = useState<InvoicePaymentMethod>('CASH')
   const [creditDays, setCreditDays] = useState('30')
+  const [accountId, setAccountId] = useState('')
 
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ['sales-invoices'] })
-    qc.invalidateQueries({ queryKey: ['sales-orders'] })
-  }
+  /*
+   * La cuenta que recibe el dinero. Sin ella el backend crea el recibo pero NO
+   * mueve ningún saldo (`financialAccountId` es opcional allí), así que las
+   * cajas quedaban en cero por más facturas que se cobraran.
+   */
+  const { data: accounts = [] } = useQuery({
+    queryKey: ['financial-accounts'],
+    queryFn: cashBanksApi.listAll,
+  })
+  const activeAccounts = accounts.filter(a => a.status === 'ACTIVE')
+
+  const invalidate = () => invalidarVentas(qc)
 
   const mut = useMutation({
     mutationFn: async () => {
@@ -119,7 +133,9 @@ function DraftPaymentModal({ invoice, onClose }: { invoice: SalesInvoiceDto; onC
       }
       await salesInvoiceApi.emit(invoice.id, { paymentForm: 'CASH', creditTermDays: 0, paymentMethod: method })
       const amount = mode === 'full' ? invoice.total : parseFloat(partialAmt)
-      return await salesInvoiceApi.registerPayment(invoice.id, { amount, paymentMethod: method })
+      return await salesInvoiceApi.registerPayment(invoice.id, {
+        amount, paymentMethod: method, financialAccountId: accountId,
+      })
     },
     onSuccess: inv => {
       invalidate()
@@ -141,7 +157,9 @@ function DraftPaymentModal({ invoice, onClose }: { invoice: SalesInvoiceDto; onC
 
   const partialVal = parseFloat(partialAmt) || 0
   const partialValid = partialVal > 0 && partialVal < invoice.total
-  const canSubmit = !mut.isPending && (mode !== 'partial' || partialValid)
+  // A crédito no entra dinero, así que ahí no se pide cuenta.
+  const cuentaLista = mode === 'credit' || accountId !== ''
+  const canSubmit = !mut.isPending && cuentaLista && (mode !== 'partial' || partialValid)
 
   const tabStyle = (active: boolean): React.CSSProperties => ({
     flex: 1, padding: '7px 10px', border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
@@ -213,6 +231,25 @@ function DraftPaymentModal({ invoice, onClose }: { invoice: SalesInvoiceDto; onC
               onChange={v => setMethod(v as InvoicePaymentMethod)}
               options={(Object.keys(METHOD_LABELS) as InvoicePaymentMethod[]).map(m => ({ value: m, label: METHOD_LABELS[m] }))}
             />
+
+            <label style={labelSm}>CUENTA QUE RECIBE *</label>
+            <Select
+              value={accountId}
+              onChange={setAccountId}
+              options={[
+                { value: '', label: 'Seleccionar cuenta…' },
+                ...activeAccounts.map(a => ({
+                  value: a.id,
+                  label: `${a.name} · ${formatCOP(a.currentBalance)}`,
+                })),
+              ]}
+            />
+            {accountId === '' && (
+              <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
+                Elige dónde entra el dinero: sin cuenta el cobro se registra pero
+                el saldo de la caja no se mueve.
+              </div>
+            )}
           </>
         )}
 
@@ -237,14 +274,22 @@ function PaymentModal({ invoice, onClose }: { invoice: SalesInvoiceDto; onClose:
   const [amount, setAmount] = useState(String(invoice.balance))
   const [method, setMethod] = useState<InvoicePaymentMethod>('CASH')
   const [reference, setReference] = useState('')
+  const [accountId, setAccountId] = useState('')
+
+  const { data: accounts = [] } = useQuery({
+    queryKey: ['financial-accounts'],
+    queryFn: cashBanksApi.listAll,
+  })
+  const activeAccounts = accounts.filter(a => a.status === 'ACTIVE')
 
   const payMut = useMutation({
     mutationFn: () => salesInvoiceApi.registerPayment(invoice.id, {
-      amount: parseFloat(amount), paymentMethod: method, reference: reference.trim() || undefined,
+      amount: parseFloat(amount), paymentMethod: method,
+      financialAccountId: accountId,
+      reference: reference.trim() || undefined,
     }),
     onSuccess: inv => {
-      qc.invalidateQueries({ queryKey: ['sales-invoices'] })
-      qc.invalidateQueries({ queryKey: ['sales-orders'] })
+      invalidarVentas(qc)
       toast(inv.status === 'PAID'
         ? `Factura ${inv.invoiceNumber} pagada por completo`
         : `Pago registrado · saldo ${formatCOP(inv.balance)}`, 'success')
@@ -257,7 +302,8 @@ function PaymentModal({ invoice, onClose }: { invoice: SalesInvoiceDto; onClose:
   })
 
   const value = parseFloat(amount)
-  const valid = value > 0 && value <= invoice.balance
+  // Sin cuenta el saldo de la caja no se mueve, así que es obligatoria.
+  const valid = value > 0 && value <= invoice.balance && accountId !== ''
 
   return (
     <div style={overlay} onClick={onClose}>
@@ -280,6 +326,23 @@ function PaymentModal({ invoice, onClose }: { invoice: SalesInvoiceDto; onClose:
           onChange={v => setMethod(v as InvoicePaymentMethod)}
           options={(Object.keys(METHOD_LABELS) as InvoicePaymentMethod[]).map(m => ({ value: m, label: METHOD_LABELS[m] }))}
         />
+        <label style={labelSm}>CUENTA QUE RECIBE *</label>
+        <Select
+          value={accountId}
+          onChange={setAccountId}
+          options={[
+            { value: '', label: 'Seleccionar cuenta…' },
+            ...activeAccounts.map(a => ({
+              value: a.id,
+              label: `${a.name} · ${formatCOP(a.currentBalance)}`,
+            })),
+          ]}
+        />
+        {accountId === '' && (
+          <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: -6, marginBottom: 10 }}>
+            Elige dónde entra el dinero: sin cuenta el saldo de la caja no se mueve.
+          </div>
+        )}
         <label style={labelSm}>REFERENCIA (OPCIONAL)</label>
         <input style={{ ...inputStyle, marginBottom: 16 }} placeholder="ej. TX-12345" value={reference}
           onChange={e => setReference(e.target.value)} />
@@ -291,6 +354,115 @@ function PaymentModal({ invoice, onClose }: { invoice: SalesInvoiceDto; onClose:
         </div>
       </div>
     </div>
+  )
+}
+
+// ─── Facturación electrónica ──────────────────────────────────────────────────
+
+/**
+ * Estado de la factura ante la DIAN.
+ *
+ * Se muestra siempre que haya proveedor configurado, incluso cuando todo va
+ * bien: entre emitir y que la DIAN acepte hay una ventana en la que el
+ * documento aún no es legal, y esconderla haría creer que ya lo es.
+ */
+function ElectronicPanel({ invoiceId, invoiceStatus }: {
+  invoiceId: string
+  invoiceStatus: SalesInvoiceStatus
+}) {
+  const qc = useQueryClient()
+  const { data: e } = useQuery({
+    queryKey: ['einvoicing', invoiceId],
+    queryFn: () => einvoicingApi.status(invoiceId),
+  })
+
+  const aplicar = (dto: ElectronicStatusDto) => {
+    qc.setQueryData(['einvoicing', invoiceId], dto)
+    toast(ELECTRONIC_LABELS[dto.status], dto.status === 'ACCEPTED' ? 'success' : 'error')
+  }
+  const fallo = (err: unknown) =>
+    toast((err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      ?? 'No se pudo contactar al proveedor', 'error')
+
+  const enviar = useMutation({ mutationFn: () => einvoicingApi.submit(invoiceId), onSuccess: aplicar, onError: fallo })
+  const consultar = useMutation({ mutationFn: () => einvoicingApi.refresh(invoiceId), onSuccess: aplicar, onError: fallo })
+
+  // Sin proveedor no hay nada que contar: un panel vacío solo ocupa sitio.
+  if (!e || (!e.enabled && e.status === 'NOT_SENT')) return null
+  // Un borrador todavía no es un documento fiscal.
+  if (invoiceStatus === 'DRAFT') return null
+
+  const trabajando = enviar.isPending || consultar.isPending
+
+  return (
+    <Card>
+      <CardHeader
+        title="Facturación electrónica"
+        action={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 11.5, color: 'var(--muted)' }}>
+              {e.provider.toUpperCase()} · {e.environment}
+            </span>
+            <StatusChip status={ELECTRONIC_CHIP[e.status]} label={ELECTRONIC_LABELS[e.status]} />
+          </div>
+        }
+      />
+      <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {e.cufe && (
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--muted)' }}>CUFE</div>
+            <div style={{ fontSize: 12, fontFamily: 'ui-monospace, monospace', color: 'var(--text-2)', wordBreak: 'break-all' }}>
+              {e.cufe}
+            </div>
+          </div>
+        )}
+
+        {(e.dianMessage || e.lastError) && (
+          <div style={{
+            background: e.status === 'ACCEPTED' ? 'var(--pos-bg)' : 'var(--neg-bg)',
+            color: e.status === 'ACCEPTED' ? 'var(--pos)' : 'var(--neg)',
+            borderRadius: 8, padding: '10px 12px', fontSize: 12.5, lineHeight: 1.6,
+          }}>
+            {e.lastError ?? e.dianMessage}
+            {e.dianCode && <span style={{ opacity: 0.75 }}> · código {e.dianCode}</span>}
+          </div>
+        )}
+
+        <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+          {e.attempts > 0 && <>Intentos: {e.attempts} · </>}
+          {e.acceptedAt ? <>Aceptada {fmtDate(e.acceptedAt, true)}</>
+            : e.submittedAt ? <>Último envío {fmtDate(e.submittedAt, true)}</>
+            : 'Todavía no se ha enviado'}
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {e.pdfUrl && <GhostBtn onClick={() => window.open(e.pdfUrl!, '_blank')}>Ver PDF de la DIAN</GhostBtn>}
+          {e.xmlUrl && <GhostBtn onClick={() => window.open(e.xmlUrl!, '_blank')}>XML firmado</GhostBtn>}
+          {e.status === 'SUBMITTED' && (
+            <PrimaryBtn disabled={trabajando} onClick={() => consultar.mutate()}>
+              {consultar.isPending ? 'Consultando…' : 'Actualizar estado'}
+            </PrimaryBtn>
+          )}
+          {(e.status === 'PENDING' || e.status === 'FAILED' || e.status === 'NOT_SENT') && (
+            <PrimaryBtn disabled={trabajando} onClick={() => enviar.mutate()}>
+              {enviar.isPending ? 'Enviando…' : 'Enviar a la DIAN'}
+            </PrimaryBtn>
+          )}
+          {e.status === 'REJECTED' && (
+            <GhostBtn disabled={trabajando} onClick={() => enviar.mutate()}>
+              Reintentar tras corregir
+            </GhostBtn>
+          )}
+        </div>
+
+        {e.status === 'REJECTED' && (
+          <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+            Un rechazo no se arregla reintentando: corrige lo que señala el mensaje
+            —normalmente datos del cliente o de la resolución— y vuelve a enviar.
+          </div>
+        )}
+      </div>
+    </Card>
   )
 }
 
@@ -373,6 +545,8 @@ function InvoiceDetail({ invoiceId, onBack, onEmit, onPay, onCancel }: {
           </div>
         </div>
       </div>
+
+      <ElectronicPanel invoiceId={inv.id} invoiceStatus={inv.status} />
 
       {/* Líneas */}
       <div style={{ ...box, padding: 0, overflow: 'hidden' }}>

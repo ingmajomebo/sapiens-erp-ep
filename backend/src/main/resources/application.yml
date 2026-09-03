@@ -54,6 +54,29 @@ ai:
   anthropic:
     api-key: ${AI_ANTHROPIC_API_KEY:}
 
+# Facturación electrónica ante la DIAN.
+#
+# El proveedor es intercambiable: `none` apaga la integración, `matias` la
+# enciende. Todo sale del entorno; ninguna credencial vive en el repositorio.
+#
+# Un sistema sin configurar NO factura electrónicamente, a propósito: es
+# preferible a enviar documentos con datos de relleno a nombre de la empresa.
+einvoicing:
+  provider: ${EINVOICING_PROVIDER:none}          # none | matias
+  environment: ${EINVOICING_ENVIRONMENT:sandbox} # sandbox | production
+  token: ${EINVOICING_TOKEN:}
+  base-url: ${EINVOICING_BASE_URL:}              # vacío = la del ambiente
+  timeout-seconds: ${EINVOICING_TIMEOUT_SECONDS:60}
+  # Ciudad y código postal DANE que se envían cuando el cliente no los tiene.
+  default-city-id: ${EINVOICING_DEFAULT_CITY_ID:}
+  default-postal-code: ${EINVOICING_DEFAULT_POSTAL_CODE:}
+  issuer:
+    tax-id: ${EINVOICING_ISSUER_TAX_ID:}
+    resolution-number: ${EINVOICING_ISSUER_RESOLUTION:}
+    prefix: ${EINVOICING_ISSUER_PREFIX:}
+    range-from: ${EINVOICING_ISSUER_RANGE_FROM:}
+    range-to: ${EINVOICING_ISSUER_RANGE_TO:}
+
 logging:
   level:
     com.sapiens.erp: DEBUG
