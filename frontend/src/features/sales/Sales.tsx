@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { invalidarVentas } from '../../api/invalidarVentas'
 import { useAppStore } from '../../store/useAppStore'
 import { translations } from '../../i18n/translations'
 import {
@@ -61,10 +62,7 @@ function OrderDetailModal({ order, onClose }: { order: SalesOrderDto; onClose: (
   const [showCancel, setShowCancel] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
 
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ['sales-orders'] })
-    qc.invalidateQueries({ queryKey: ['sales-invoices'] })
-  }
+  const invalidate = () => invalidarVentas(qc)
 
   const statusMut = useMutation({
     mutationFn: (status: SalesOrderStatus) => salesOrderApi.updateStatus(order.id, status),
@@ -222,7 +220,7 @@ function NewOrderModal({ onClose }: { onClose: () => void }) {
         .map(l => ({ productId: l.productId, quantity: parseFloat(l.quantity) })),
     }),
     onSuccess: order => {
-      qc.invalidateQueries({ queryKey: ['sales-orders'] })
+      invalidarVentas(qc)
       qc.invalidateQueries({ queryKey: ['customers'] })
       toast(`Pedido ${order.orderNumber} creado`, 'success')
       onClose()

@@ -220,7 +220,19 @@ export const salesInvoiceApi = {
     return data
   },
 
-  registerPayment: async (id: string, req: { amount: number; paymentMethod: InvoicePaymentMethod; paidOn?: string; reference?: string; notes?: string }): Promise<SalesInvoiceDto> => {
+  registerPayment: async (id: string, req: {
+    amount: number
+    paymentMethod: InvoicePaymentMethod
+    /*
+     * Cuenta que recibe el dinero. El backend la acepta desde siempre pero
+     * este tipo no la declaraba, así que la interfaz nunca la enviaba: los
+     * recibos nacían sin cuenta y el saldo de las cajas no se movía.
+     */
+    financialAccountId?: string
+    paidOn?: string
+    reference?: string
+    notes?: string
+  }): Promise<SalesInvoiceDto> => {
     const { data } = await client.post(`/sales-invoices/${id}/payments`, req)
     return data
   },

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { invalidarVentas } from '../../api/invalidarVentas'
 import { PrimaryBtn, GhostBtn, Select } from '../../shared/helpers'
 import { toast, toastLoading, toastResolve } from '../../shared/toast'
 import { formatCOP } from '../../shared/currency'
@@ -37,9 +38,8 @@ function useReceiptMutation(onClose: () => void, onSaved?: () => void,
     mutationFn: receivablesApi.createReceipt,
     onMutate: () => ({ toastId: toastLoading('Registrando pago…') }),
     onSuccess: (rc, _vars, ctx) => {
+      invalidarVentas(queryClient)
       queryClient.invalidateQueries({ queryKey: ['receivables'] })
-      queryClient.invalidateQueries({ queryKey: ['sales-invoices'] })
-      queryClient.invalidateQueries({ queryKey: ['sales-invoice-detail'] })
       queryClient.invalidateQueries({ queryKey: ['financial-accounts'] })
       queryClient.invalidateQueries({ queryKey: ['customers'] })
       toastResolve(ctx.toastId,
@@ -344,9 +344,8 @@ export function VoidReceiptModal({ receiptId, receiptNumber, onClose }: {
   const mut = useMutation({
     mutationFn: () => receivablesApi.voidReceipt(receiptId, reason.trim()),
     onSuccess: () => {
+      invalidarVentas(queryClient)
       queryClient.invalidateQueries({ queryKey: ['receivables'] })
-      queryClient.invalidateQueries({ queryKey: ['sales-invoices'] })
-      queryClient.invalidateQueries({ queryKey: ['sales-invoice-detail'] })
       queryClient.invalidateQueries({ queryKey: ['financial-accounts'] })
       toast(`Recibo ${receiptNumber} anulado`, 'success')
       onClose()
