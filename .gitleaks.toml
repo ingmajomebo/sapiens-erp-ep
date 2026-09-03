@@ -1,0 +1,30 @@
+# Configuración de gitleaks para este repositorio.
+#
+# Se parte de las reglas por defecto y solo se añaden excepciones concretas.
+# Un escáner que siempre está en rojo deja de servir: cuando todo el mundo
+# asume que el fallo es falso, la fuga real pasa desapercibida. Por eso cada
+# excepción va acotada a un archivo y explicada.
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+
+  [rules.allowlist]
+  description = """
+  CUFE de ejemplo en las pruebas de facturación electrónica.
+
+  Un CUFE es el hash SHA-384 con el que la DIAN identifica un documento ya
+  emitido: es público —va impreso en la factura y en su código QR— y no da
+  acceso a nada. Estos valores concretos salen del ejemplo de la documentación
+  del proveedor y de una factura del ambiente de pruebas.
+  """
+  paths = [
+    '''backend/src/test/java/com/sapiens/erp/modules/sales/infrastructure/einvoicing/.*\.java''',
+  ]
+  regexTarget = "line"
+  regexes = [
+    '''XmlDocumentKey''',
+    '''cufe''',
+  ]
