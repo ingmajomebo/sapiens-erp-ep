@@ -137,6 +137,43 @@ El lenguaje ubicuo del negocio (documentación, comentarios) permanece en españ
 | API calls | en `features/<modulo>/api/` |
 | Tipos/DTOs | sufijo `Dto` o `Request/Response` |
 
+### Interfaz del ERP — obligatorio antes de crear una pantalla
+
+**Leer `frontend/src/shared/helpers.tsx` y abrir una pantalla existente** (por
+ejemplo `features/inventory/Inventory.tsx`) ANTES de escribir JSX nuevo. El
+sistema ya tiene su kit; inventar otro produce pantallas que desentonan.
+
+| Necesito | Usar | Nunca |
+|----------|------|-------|
+| Contenedor | `<Card>` / `<CardHeader>` | un `div` con borde propio |
+| Cifra destacada | `<KpiCard>` | maquetar la métrica a mano |
+| Estado | `<StatusChip>` | una píldora con colores propios |
+| Botones | `<PrimaryBtn>` / `<GhostBtn>` | `<button style={...}>` |
+| Desplegable | `<Select>` | `<select>` nativo |
+| Tabla | `tableStyle`, `thStyle`, `tdStyle` | estilos propios |
+| Paginación | `<PaginationFooter>` | paginador propio |
+
+**El título de la página lo pone `Topbar`**, desde `titleKeys`/`subtitleKeys`.
+Repetirlo dentro de la pantalla lo muestra dos veces.
+
+**Colores solo con tokens del tema**, nunca literales ni respaldos inventados:
+`--text`, `--text-2`, `--muted`, `--surface`, `--bg`, `--border`, `--line`,
+`--accent`, `--pos`, `--warn`, `--neg` y sus `-bg`. Escribir `#0a7` o
+`var(--pos, #0a7)` rompe el modo oscuro.
+
+**El contenedor de página** es
+`padding: '24px 26px 40px'`, `display:flex`, `flexDirection:'column'`,
+`gap: 20`, `animation: 'fadeUp 0.25s ease'`.
+
+**Una pantalla nueva se registra en cuatro sitios**: el tipo `Page`
+(`store/useAppStore.ts`), el menú (`shared/Sidebar.tsx`), la ruta (`App.tsx`)
+y las traducciones en los **tres idiomas** (`i18n/translations.ts`: `nav_`,
+`pg_`, `sub_`).
+
+> `docs/wiki/architecture/frontend-structure.md` describe una estructura
+> propuesta que el código NO sigue. Manda `shared/helpers.tsx` y las pantallas
+> existentes.
+
 ---
 
 ## Seguridad
@@ -188,4 +225,7 @@ El directorio `sapiens-erp/docs/wiki/` es la fuente de verdad. Abrir la carpeta 
 - Modificar una migración Flyway ya ejecutada
 - Agregar lógica de negocio a controllers
 - Usar `any` en TypeScript sin justificación explícita
+- Escribir botones, tarjetas o chips propios existiendo los de `shared/helpers.tsx`
+- Poner colores literales (`#0a7`) o respaldos (`var(--pos, #0a7)`) en vez de tokens
+- Repetir el título de la página dentro de la pantalla — lo pone `Topbar`
 - Crear una abstracción para resolver un problema que solo ocurre una vez

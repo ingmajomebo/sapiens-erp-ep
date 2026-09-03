@@ -5,7 +5,16 @@ fecha: 2026-06-21
 
 # Frontend — Estructura React/TypeScript
 
-## Estructura de directorios
+> [!WARNING] Documento de propuesta, no de estado actual
+> La estructura por `components/`, `hooks/` y `types.ts` que se describe abajo
+> **no es la del código**. El ERP usa pantallas planas
+> (`features/inventory/Inventory.tsx`) con las consultas dentro del propio
+> componente.
+>
+> Para construir una pantalla, la fuente de verdad es
+> [[architecture/frontend-ui-kit]] y las pantallas existentes.
+
+## Estructura de directorios (propuesta)
 
 ```
 frontend/src/

@@ -46,7 +46,7 @@ function FormSection({ title, children }: { title: string; children: React.React
   )
 }
 
-function Field({ label, children, note, required, error }: { label: string; children: React.ReactNode; note?: string; required?: boolean; error?: string }) {
+function Field({ label, children, note, hint, required, error }: { label: string; children: React.ReactNode; note?: string; hint?: string; required?: boolean; error?: string }) {
   return (
     <div>
       <label style={{ display: 'block', fontSize: 12.5, fontWeight: 500, color: 'var(--text-2)', marginBottom: 5 }}>
@@ -60,6 +60,10 @@ function Field({ label, children, note, required, error }: { label: string; chil
         <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
           <LockIcon />{note}
         </div>
+      )}
+      {/* Igual que note, pero sin candado: el candado significa "no editable" */}
+      {hint && !error && (
+        <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>{hint}</div>
       )}
     </div>
   )
@@ -81,6 +85,37 @@ const inputStyle: React.CSSProperties = {
 const selectStyle: React.CSSProperties = {
   ...inputStyle,
   cursor: 'pointer',
+}
+
+/** Interruptor de la ficha de producto. Se repite en tres campos booleanos. */
+function ToggleSwitch({ checked, onChange, onLabel, offLabel }: {
+  checked: boolean
+  onChange: (v: boolean) => void
+  onLabel?: string
+  offLabel?: string
+}) {
+  return (
+    <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
+      <div style={{ position: 'relative', width: 36, height: 20 }}>
+        <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)}
+          style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }} />
+        <div style={{
+          width: 36, height: 20, borderRadius: 10,
+          background: checked ? 'var(--accent)' : 'var(--border)',
+          transition: 'background 200ms ease', cursor: 'pointer',
+        }} onClick={() => onChange(!checked)} />
+        <div style={{
+          position: 'absolute', top: 2, left: checked ? 18 : 2, width: 16, height: 16,
+          borderRadius: 8, background: '#fff',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+          transition: 'left 200ms ease',
+        }} />
+      </div>
+      <span style={{ fontSize: 13, color: 'var(--text-2)' }}>
+        {checked ? (onLabel ?? 'Activado') : (offLabel ?? 'Desactivado')}
+      </span>
+    </label>
+  )
 }
 
 // ── Product Form ────────────────────────────────────────────────────────────
@@ -125,7 +160,11 @@ function ProductForm() {
   const [defaultWarehouse, setDefaultWarehouse] = useState('')
   const [minimumStock, setMinimumStock] = useState('')
 
-  // Section 4: Status
+  // Section 4: Transformaciones
+  const [transfInput, setTransfInput] = useState(false)
+  const [transfOutput, setTransfOutput] = useState(false)
+
+  // Section 5: Status
   const [status, setStatus] = useState<ProductStatus>('ACTIVE')
 
   const [showNewCat, setShowNewCat] = useState(false)
@@ -255,6 +294,8 @@ function ProductForm() {
       sku: null,
       barcode: barcode.trim() || null,
       inventoryTrackingEnabled: inventoryTracking,
+      transformationInputEnabled: transfInput,
+      transformationOutputEnabled: transfOutput,
       status,
       imageUrl: imageUrl.trim() || null,
     })
@@ -501,26 +542,7 @@ function ProductForm() {
         </Field>
 
         <Field label="Control de inventario">
-          <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
-            <div style={{ position: 'relative', width: 36, height: 20 }}>
-              <input type="checkbox" checked={inventoryTracking} onChange={(e) => setInventoryTracking(e.target.checked)}
-                style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }} />
-              <div style={{
-                width: 36, height: 20, borderRadius: 10,
-                background: inventoryTracking ? 'var(--accent)' : 'var(--border)',
-                transition: 'background 200ms ease', cursor: 'pointer',
-              }} onClick={() => setInventoryTracking((v) => !v)} />
-              <div style={{
-                position: 'absolute', top: 2, left: inventoryTracking ? 18 : 2, width: 16, height: 16,
-                borderRadius: 8, background: '#fff',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-                transition: 'left 200ms ease',
-              }} />
-            </div>
-            <span style={{ fontSize: 13, color: 'var(--text-2)' }}>
-              {inventoryTracking ? 'Activado' : 'Desactivado'}
-            </span>
-          </label>
+          <ToggleSwitch checked={inventoryTracking} onChange={setInventoryTracking} />
         </Field>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -550,7 +572,25 @@ function ProductForm() {
         </Field>
       </FormSection>
 
-      {/* Section 4: Status */}
+      {/* Section 4: Transformaciones */}
+      <FormSection title="Transformaciones">
+        <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: -4 }}>
+          Marca solo lo que aplique: estas casillas deciden en qué lista aparece el
+          producto dentro de Transformaciones. Un producto puede ser las dos cosas —
+          un filete se obtiene del pescado entero y además se consume para hacer
+          hamburguesas.
+        </div>
+
+        <Field label="Se puede transformar" hint="Materia prima: sale del inventario al confirmar la transformación">
+          <ToggleSwitch checked={transfInput} onChange={setTransfInput} onLabel="Sí" offLabel="No" />
+        </Field>
+
+        <Field label="Se obtiene de una transformación" hint="Producto terminado: entra al inventario al confirmar la transformación">
+          <ToggleSwitch checked={transfOutput} onChange={setTransfOutput} onLabel="Sí" offLabel="No" />
+        </Field>
+      </FormSection>
+
+      {/* Section 5: Status */}
       <FormSection title="Estado del producto">
         <Field label="Estado">
           <div style={{ display: 'flex', gap: 8 }}>

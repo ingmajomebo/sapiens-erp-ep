@@ -1,7 +1,7 @@
 # SAPIENS ERP — Índice Maestro
 
 > **Fuente única de verdad del proyecto.** Mantenido por el LLM. No editar manualmente.
-> Última actualización: 2026-06-21
+> Última actualización: 2026-08-24
 
 ---
 
@@ -15,8 +15,12 @@
 | Qué hace un módulo específico | `modules/<modulo>/module.md` |
 | Reglas de negocio de inventario | [[modules/inventory/business-rules]] |
 | Cómo fluye una compra al inventario | [[architecture/integration-flows]] |
+| Cómo fluye una venta de la tienda al stock | [[architecture/flujo-venta-tienda]] |
+| Probar a mano que una venta funciona | [[guias/validar-venta-completa]] |
+| Por qué no baja el stock al entregar | [[architecture/flujo-venta-tienda]] |
 | Estructura del backend | [[architecture/backend-layers]] |
 | Estructura del frontend | [[architecture/frontend-structure]] |
+| Cómo se construye una pantalla del ERP | [[architecture/frontend-ui-kit]] |
 | Diseño de base de datos | [[architecture/database]] |
 | Seguridad y autenticación | [[architecture/security]] |
 | Por qué se tomó una decisión X | `decisions/adr-NNN-*.md` |
@@ -71,6 +75,7 @@
 - [[modules/sales/entities/customer]] — Cliente
 - [[modules/sales/entities/sale]] — Venta
 - [[modules/sales/entities/pos-session]] — Sesión POS
+- [[modules/sales/facturacion-electronica]] — Facturación electrónica DIAN (proveedor intercambiable)
 
 **Finance**
 - [[modules/finance/entities/cash-register]] — Caja registradora
@@ -86,10 +91,22 @@
 
 - [[architecture/overview]] — Vista de alto nivel del sistema
 - [[architecture/backend-layers]] — Arquitectura en capas del backend
+- [[architecture/frontend-ui-kit]] — Kit de componentes, tokens y pasos para crear una pantalla
 - [[architecture/frontend-structure]] — Estructura React/TypeScript
 - [[architecture/database]] — Diseño de BD y convenciones
 - [[architecture/security]] — Autenticación JWT y control de acceso
 - [[architecture/integration-flows]] — Flujos de integración entre módulos
+- [[architecture/flujo-venta-tienda]] — De la compra en la tienda pública al descuento de inventario (diagrama de secuencia)
+
+---
+
+## Guías
+
+> Documentos para hacer, no para consultar. Escritos para quien usa el sistema,
+> no para quien lo programa.
+
+- [[guias/validar-venta-completa]] — Comprobar paso a paso que una venta recorre
+  bien todo el camino: compra, despacho, factura, cobro y descuento de inventario
 
 ---
 

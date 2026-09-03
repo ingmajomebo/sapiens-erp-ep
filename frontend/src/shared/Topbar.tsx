@@ -4,6 +4,7 @@ import { translations } from '../i18n/translations'
 const titleKeys: Record<Page, keyof typeof translations.en> = {
   dashboard:           'pg_dashboard',
   inventory:           'pg_inventory',
+  transformations:     'pg_transformations',
   purchases:           'pg_purchases',
   sales:               'pg_sales',
   customers:           'pg_customers',
@@ -21,6 +22,7 @@ const titleKeys: Record<Page, keyof typeof translations.en> = {
 const subtitleKeys: Record<Page, keyof typeof translations.en> = {
   dashboard:           'sub_dashboard',
   inventory:           'sub_inventory',
+  transformations:     'sub_transformations',
   purchases:           'sub_purchases',
   sales:               'sub_sales',
   customers:           'sub_customers',

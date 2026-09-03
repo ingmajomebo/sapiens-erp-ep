@@ -6,6 +6,76 @@
 
 ---
 
+## [2026-08-28] ingest | Facturación electrónica DIAN con proveedor intercambiable
+
+- **[[modules/sales/facturacion-electronica]]**: integración con MATIAS API,
+  detrás de una interfaz para que el proveedor no quede amarrado.
+- Configuración por variables de entorno (`EINVOICING_*`); sin configurar, el
+  ERP funciona igual y no radica nada.
+- Migración `V51`: tabla `electronic_invoice_documents`, con el estado ante la
+  DIAN separado del estado de la factura.
+- El envío ocurre DESPUÉS de confirmar la emisión, para no sostener la
+  transacción que descuenta inventario durante una llamada HTTP.
+- Hallazgo: el sistema **no guardaba datos del emisor**. El PDF llevaba
+  `NIT 000.000.000-0` escrito en el código. Ahora salen de `EINVOICING_ISSUER_*`.
+- 29 pruebas: aritmética del documento, mapeo del adquiriente, numeración
+  fiscal, unidades y lectura del veredicto; 5 de ellas contra el sandbox real.
+- Dos fallos que solo aparecieron llamando de verdad: `ErrorMessage.string`
+  llega como texto y no como lista (una factura ACEPTADA se leía como ilegible),
+  y una consulta de estado fallida marcaba como RECHAZADA una factura ya
+  radicada.
+
+## [2026-08-28] decision | Convenciones de interfaz del ERP
+
+- **[[architecture/frontend-ui-kit]]**: fuente de verdad del aspecto del panel,
+  sacada del código (`shared/helpers.tsx`) y no de un diseño previo.
+- Motivo: la pantalla de Transformaciones se construyó con botones, tarjetas y
+  chips propios, y con colores literales como `var(--pos, #0a7)` que rompen el
+  modo oscuro. Además repetía el título que ya pone `Topbar`.
+- **`frontend-structure.md` queda marcado como PROPUESTA**: describe una
+  estructura por `components/` y `hooks/` que el código no sigue, y fue lo que
+  despistó al construir la pantalla.
+- Las reglas se copiaron a `CLAUDE.md` para que apliquen en cada sesión, con
+  tres entradas nuevas en «Lo que NUNCA hacer».
+
+## [2026-08-24] ingest | Guía de validación manual de una venta
+
+- **[[guias/validar-venta-completa]]**: guion de aceptación para que alguien sin
+  conocimientos técnicos verifique el recorrido completo en el ambiente de
+  desarrollo. Seis pasos con casillas, resultado esperado en cada uno y el número
+  a anotar para que la resta de inventario cuadre.
+- Sección **Guías** nueva en el índice: documentos para hacer, no para consultar.
+- Incluye los **defectos conocidos** por escrito (envío que no se factura, falta
+  de botón «Emitir», bodega opcional al ingresar) para que quien pruebe no los
+  reporte como hallazgos nuevos.
+- Los textos de los botones se verificaron contra la interfaz real: el carrito no
+  se abre solo al añadir y el botón dice «Ir a pagar», no «Finalizar compra».
+
+## [2026-08-24] ingest | Flujo de venta tienda → inventario, verificado de punta a punta
+
+- **Diagrama de secuencia** en [[architecture/flujo-venta-tienda]]: compra pública,
+  despacho, factura, emisión y cobro, con las cinco fases y los dos caminos de la
+  emisión (stock suficiente / 422).
+- **El stock NO baja al entregar, baja al EMITIR la factura**
+  (`SalesInvoiceService.emit` → `decrementStockForSale`). Un pedido puede llegar a
+  DELIVERED sin mover una unidad. Es deliberado: el movimiento se ata al documento
+  que respalda la venta, no al estado logístico, para que una anulación tenga
+  contra qué reversarse.
+- **Dos medidas de stock que no coinciden:** la tienda muestra disponibilidad con
+  `calculateCurrentStock` (sin ubicación) y la factura descuenta con
+  `calculateStockAtLocation` (con ubicación). Una entrada sin bodega suma al total
+  y no pertenece a ninguna parte: se vende y luego no se puede facturar.
+- **Caso real:** 7 entradas quedaron sin bodega porque `warehouseId` es opcional en
+  `EntryRequest`. Síntoma: `422 INSUFFICIENT_STOCK_AT_LOCATION ... Available: 0`
+  al cobrar. Reparado con `deploy/reparacion/entradas-sin-bodega.sql`.
+- **Los movimientos no se pueden editar y no avisan:** las reglas
+  `no_update_inventory_movements` / `no_delete_inventory_movements` descartan la
+  operación en silencio (`UPDATE 0`, sin error). Toda corrección va con movimientos
+  compensatorios. Los lotes sí se actualizan: son estado, no historia.
+- **Deuda registrada:** el envío no llega a la factura (se factura por debajo de lo
+  cobrado), no hay botón «Emitir» separado de «Cobrar», y `warehouseId` sigue
+  siendo opcional al ingresar mercancía.
+
 ## [2026-07-06] update | CxC: gate de anulación y modal de pago con toggle
 
 - **Regla 10 (nueva):** anular una factura cuya CxC tiene recibos ACTIVE se rechaza con

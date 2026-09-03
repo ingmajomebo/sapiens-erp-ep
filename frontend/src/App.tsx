@@ -7,6 +7,7 @@ import { Topbar } from './shared/Topbar'
 import { Drawer } from './shared/Drawer'
 import { Dashboard } from './features/dashboard/Dashboard'
 import { Inventory } from './features/inventory/Inventory'
+import { Transformations } from './features/inventory/Transformations'
 import { Purchases } from './features/purchases/Purchases'
 import { Sales } from './features/sales/Sales'
 import { PublicOrderPage } from './features/sales/PublicOrderPage'
@@ -37,6 +38,7 @@ function PageContent() {
   switch (page) {
     case 'dashboard':   return <Dashboard />
     case 'inventory':   return <Inventory />
+    case 'transformations': return <Transformations />
     case 'purchases':   return <Purchases />
     case 'sales':       return <Sales />
     case 'customers':   return <Customers />

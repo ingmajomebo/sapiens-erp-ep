@@ -114,6 +114,7 @@ const navGroups: { labelKey: keyof typeof translations.en; items: NavDef[] }[] =
     labelKey: 'nav_operations',
     items: [
       { key: 'inventory', icon: <BoxIcon /> },
+      { key: 'transformations', icon: <BoxIcon /> },
       { key: 'purchases', icon: <ShoppingCartIcon /> },
       { key: 'sales', icon: <TagIcon /> },
       { key: 'customers', icon: <UsersIcon /> },
@@ -142,6 +143,7 @@ const navGroups: { labelKey: keyof typeof translations.en; items: NavDef[] }[] =
 const navLabelKeys: Record<Page, keyof typeof translations.en> = {
   dashboard:           'nav_dashboard',
   inventory:           'nav_inventory',
+  transformations:     'nav_transformations',
   purchases:           'nav_purchases',
   sales:               'nav_sales',
   customers:           'nav_customers',
