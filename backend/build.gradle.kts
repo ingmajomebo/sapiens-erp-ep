@@ -25,6 +25,14 @@ dependencies {
 	implementation("org.flywaydb:flyway-core")
 	// PDF de facturas y notas crédito (licencia LGPL/MPL)
 	implementation("com.github.librepdf:openpdf:1.3.43")
+
+	// Procesamiento de imágenes de producto: redimensionado y codificación WebP.
+	// Java no trae codificador WebP y el contenedor no tiene cwebp; Scrimage
+	// incluye los binarios que necesita y funciona igual en local y en Docker.
+	implementation("com.sksamuel.scrimage:scrimage-core:4.6.7")
+	implementation("com.sksamuel.scrimage:scrimage-webp:4.6.7")
+	// Orientación EXIF: una foto de celular llega girada y sin esto se guarda así
+	implementation("com.drewnoakes:metadata-extractor:2.21.0")
 	implementation("org.flywaydb:flyway-database-postgresql")
 	implementation("io.jsonwebtoken:jjwt-api:0.12.6")
 	runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")
