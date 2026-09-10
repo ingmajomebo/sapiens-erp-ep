@@ -1,4 +1,5 @@
 import type {
+  BestSellers,
   Catalog,
   CategoryHero,
   CategoryPage,
@@ -16,6 +17,8 @@ import type {
  */
 export interface StoreApi {
   getCatalog(): Promise<Catalog>
+  /** Los grupos que más unidades vendieron, para la portada. */
+  getBestSellers(limit?: number): Promise<BestSellers>
   /** Portadas publicadas, para la navegación. */
   getCategories(): Promise<CategoryHero[]>
   /** Página completa de una categoría: portada, migas y presentaciones. */

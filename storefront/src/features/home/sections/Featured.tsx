@@ -8,17 +8,30 @@ import { ProductCard } from '../../catalog/ProductCard'
 import { storeApi } from '../../../api/storeApi'
 import styles from './Featured.module.css'
 
-/** Los cuatro primeros por webSortOrder. Vienen del catálogo, no del código. */
+/**
+ * Los productos que más se venden, de las facturas reales.
+ *
+ * <p>Antes esta sección se titulaba "lo que más sale esta semana" y en realidad
+ * mostraba los primeros por `webSortOrder`, un campo que alguien ordena a mano.
+ * El texto afirmaba algo que el dato no respaldaba; ahora el orden sale de las
+ * unidades facturadas.
+ *
+ * <p>Cuando todavía no hay ventas suficientes, el backend completa con el orden
+ * de vitrina y avisa cuántos son de verdad. En ese caso el título cambia, en vez
+ * de mentir sobre un producto recién publicado.
+ */
 export function Featured() {
   const trackRef = useRef<HTMLDivElement>(null)
-  const { data: catalog } = useQuery({
-    queryKey: ['catalog'],
-    queryFn: () => storeApi.getCatalog(),
+  const { data } = useQuery({
+    queryKey: ['best-sellers'],
+    queryFn: () => storeApi.getBestSellers(8),
   })
 
-  const featured = [...(catalog?.products ?? [])]
-    .sort((a, b) => a.webSortOrder - b.webSortOrder)
-    .slice(0, 4)
+  const featured = data?.products ?? []
+  const conVentas = data?.withRealSales ?? 0
+  /* Con menos de la mitad respaldada por ventas, llamarlos "los más vendidos"
+     sería propaganda: se anuncia como selección y punto. */
+  const titulo = conVentas >= 4 ? 'Los más vendidos' : 'Nuestra selección'
 
   function scrollByCard(direction: 1 | -1) {
     const track = trackRef.current
@@ -31,7 +44,7 @@ export function Featured() {
     <Section tone="cream" aria-labelledby="destacados-title">
       <Container>
         <div className={styles.head}>
-          <h2 id="destacados-title">Lo que más sale esta semana</h2>
+          <h2 id="destacados-title">{titulo}</h2>
           <Link to="/productos" className={styles.seeAll}>Ver todo →</Link>
         </div>
 

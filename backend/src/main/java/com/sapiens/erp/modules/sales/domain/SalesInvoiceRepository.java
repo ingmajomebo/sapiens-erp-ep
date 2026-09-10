@@ -24,6 +24,33 @@ public interface SalesInvoiceRepository extends JpaRepository<SalesInvoice, UUID
 
     Optional<SalesInvoice> findByIdAndDeletedAtIsNull(UUID id);
 
+    /**
+     * Unidades vendidas por producto, de más a menos, desde una fecha.
+     *
+     * <p>Cuenta sobre FACTURAS, no sobre pedidos: un pedido puede quedarse sin
+     * despachar y no es una venta. Se excluyen los borradores —todavía no son
+     * un documento— y las canceladas, porque una venta anulada no es una venta.
+     *
+     * <p>Suma cantidades y no importes a propósito: lo que le interesa a quien
+     * compra es qué se lleva la gente, y ordenar por dinero pondría arriba lo
+     * caro en vez de lo popular.
+     */
+    @Query("""
+        SELECT l.product.id, SUM(l.quantity)
+        FROM SalesInvoiceLine l
+        WHERE l.invoice.deletedAt IS NULL
+          AND l.deletedAt IS NULL
+          AND l.invoice.status IN (
+                com.sapiens.erp.modules.sales.domain.SalesInvoiceStatus.ISSUED,
+                com.sapiens.erp.modules.sales.domain.SalesInvoiceStatus.PARTIALLY_PAID,
+                com.sapiens.erp.modules.sales.domain.SalesInvoiceStatus.PAID)
+          AND l.invoice.issuedAt >= :desde
+          AND l.product IS NOT NULL
+        GROUP BY l.product.id
+        ORDER BY SUM(l.quantity) DESC
+        """)
+    List<Object[]> findUnitsSoldByProductSince(@Param("desde") Instant desde);
+
     /** Filtros combinables (texto, estados, fechas, cliente, montos, solo vencidas) con paginación. */
     @Query("""
         SELECT i FROM SalesInvoice i

@@ -63,6 +63,20 @@ public final class StorefrontDtos {
 
     public record CatalogResponse(List<CategoryResponse> categories, List<ProductResponse> products) {}
 
+    /**
+     * Los más vendidos de la portada.
+     *
+     * @param withRealSales cuántos de los devueltos tienen ventas de verdad. El
+     *        resto es relleno por orden de vitrina, y la tienda lo necesita
+     *        saber para no titular "los más vendidos" cuando no lo son.
+     * @param windowDays    ventana considerada, en días
+     */
+    public record BestSellersResponse(
+            List<ProductResponse> products,
+            int withRealSales,
+            int windowDays
+    ) {}
+
 
     /* ── Catálogo especializado de categoría ─────────────────────────────── */
 

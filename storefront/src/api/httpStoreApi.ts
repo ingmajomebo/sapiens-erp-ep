@@ -2,6 +2,7 @@ import client from './client'
 import {
   InsufficientStockError,
   OrderNotFoundError,
+  type BestSellers,
   type Catalog,
   type CatalogItem,
   type CategoryHero,
@@ -77,6 +78,13 @@ function absoluteItemImages(item: CatalogItem): CatalogItem {
 export const httpStoreApi: StoreApi = {
   async getCatalog(): Promise<Catalog> {
     const { data } = await client.get<Catalog>('/api/v1/public/catalog')
+    return { ...data, products: data.products.map(absoluteImage) }
+  },
+
+  async getBestSellers(limit = 8): Promise<BestSellers> {
+    const { data } = await client.get<BestSellers>('/api/v1/public/catalog/best-sellers', {
+      params: { limit },
+    })
     return { ...data, products: data.products.map(absoluteImage) }
   },
 

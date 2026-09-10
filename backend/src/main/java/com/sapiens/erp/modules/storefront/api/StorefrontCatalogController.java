@@ -1,5 +1,6 @@
 package com.sapiens.erp.modules.storefront.api;
 
+import com.sapiens.erp.modules.storefront.api.dto.StorefrontDtos.BestSellersResponse;
 import com.sapiens.erp.modules.storefront.api.dto.StorefrontDtos.CatalogResponse;
 import com.sapiens.erp.modules.storefront.api.dto.StorefrontDtos.CategoryHeroResponse;
 import com.sapiens.erp.modules.storefront.api.dto.StorefrontDtos.CategoryPageResponse;
@@ -39,6 +40,19 @@ public class StorefrontCatalogController {
     @GetMapping("/categories/{slug}")
     public ResponseEntity<CategoryPageResponse> getCategoryPage(@PathVariable String slug) {
         return ResponseEntity.ok(categoryPageService.getPage(slug));
+    }
+
+    /**
+     * Los más vendidos. Va antes de /{slug} porque si no, esa ruta capturaría
+     * "best-sellers" y devolvería "producto no encontrado".
+     */
+    @GetMapping("/best-sellers")
+    public ResponseEntity<BestSellersResponse> getBestSellers(
+            @RequestParam(name = "limit", defaultValue = "8") int limit,
+            @RequestParam(name = "days", defaultValue = "90") int days
+    ) {
+        return ResponseEntity.ok(catalogService.getBestSellers(
+                Math.min(Math.max(limit, 1), 24), Math.min(Math.max(days, 1), 365)));
     }
 
     @GetMapping("/{slug}")

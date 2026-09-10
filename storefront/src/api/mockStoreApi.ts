@@ -4,6 +4,7 @@ import {
   InsufficientStockError,
   OrderNotFoundError,
   type Availability,
+  type BestSellers,
   type Catalog,
   type CatalogItem,
   type CategoryHero,
@@ -157,6 +158,16 @@ function mockItems(products: Product[]): CatalogItem[] {
 export const mockStoreApi: StoreApi = {
   async getCatalog(): Promise<Catalog> {
     return delay(MOCK_CATALOG)
+  },
+
+  async getBestSellers(limit = 8): Promise<BestSellers> {
+    // Sin backend no hay ventas que contar: se devuelve el orden de vitrina y
+    // se declara que ninguno tiene ventas reales, que es la verdad.
+    return delay({
+      products: MOCK_CATALOG.products.slice(0, limit),
+      withRealSales: 0,
+      windowDays: 90,
+    })
   },
 
   async getCategories(): Promise<CategoryHero[]> {

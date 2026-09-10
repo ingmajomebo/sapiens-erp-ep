@@ -7,12 +7,16 @@ import com.sapiens.erp.modules.catalog.domain.Product;
 import com.sapiens.erp.modules.inventory.domain.InventoryMovementRepository;
 import com.sapiens.erp.modules.storefront.api.dto.StorefrontDtos.*;
 import com.sapiens.erp.modules.storefront.domain.StorefrontProduct;
+import com.sapiens.erp.modules.sales.domain.SalesInvoiceRepository;
 import com.sapiens.erp.modules.storefront.domain.StorefrontProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.stream.Collectors;
 import java.util.*;
 
 /**
@@ -27,6 +31,7 @@ public class StorefrontCatalogService {
     private final CategoryRepository categoryRepository;
     private final InventoryMovementRepository movementRepository;
     private final ProductGalleryService galleryService;
+    private final SalesInvoiceRepository invoiceRepository;
 
     @Transactional(readOnly = true)
     public CatalogResponse getCatalog() {
@@ -49,6 +54,69 @@ public class StorefrontCatalogService {
                 .toList();
 
         return new CatalogResponse(categories, products);
+    }
+
+    /**
+     * Los grupos que más unidades vendieron, para la portada.
+     *
+     * <p>Sale de las facturas reales, no de un orden escrito a mano. Antes la
+     * portada decía "lo que más sale esta semana" mostrando los primeros por
+     * `sortOrder`: un texto que afirmaba algo que el dato no respaldaba.
+     *
+     * <p>Cuando no hay ventas suficientes —tienda recién abierta, o un producto
+     * nuevo— se completa con el orden de vitrina hasta llenar el carrusel. Un
+     * carrusel con dos tarjetas se ve roto, y esconder la sección entera dejaría
+     * la portada vacía justo cuando más hace falta enseñar producto.
+     *
+     * @param limit cuántos grupos devolver
+     * @param dias  ventana de tiempo que se considera "reciente"
+     */
+    @Transactional(readOnly = true)
+    public BestSellersResponse getBestSellers(int limit, int dias) {
+        Instant desde = Instant.now().minus(Duration.ofDays(dias));
+
+        Map<UUID, BigDecimal> unidadesPorProducto = new HashMap<>();
+        for (Object[] fila : invoiceRepository.findUnitsSoldByProductSince(desde)) {
+            unidadesPorProducto.put((UUID) fila[0], (BigDecimal) fila[1]);
+        }
+
+        List<StorefrontProduct> publicados = storefrontProductRepository
+                .findAllByPublishedTrueAndDeletedAtIsNullOrderBySortOrderAscGroupNameAsc();
+
+        Map<String, List<StorefrontProduct>> porGrupo = new LinkedHashMap<>();
+        for (StorefrontProduct sp : publicados) {
+            porGrupo.computeIfAbsent(sp.getGroupSlug(), k -> new ArrayList<>()).add(sp);
+        }
+
+        // Las ventas se suman POR GRUPO: la tienda vende "Salmón", y que se
+        // haya ido en filete o en posta es la misma preferencia del comprador.
+        Map<String, BigDecimal> unidadesPorGrupo = new HashMap<>();
+        porGrupo.forEach((slug, presentaciones) -> {
+            BigDecimal total = presentaciones.stream()
+                    .map(sp -> unidadesPorProducto.getOrDefault(sp.getProduct().getId(), BigDecimal.ZERO))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            if (total.compareTo(BigDecimal.ZERO) > 0) unidadesPorGrupo.put(slug, total);
+        });
+
+        List<String> ordenados = unidadesPorGrupo.entrySet().stream()
+                .sorted(Map.Entry.<String, BigDecimal>comparingByValue().reversed())
+                .map(Map.Entry::getKey)
+                .limit(limit)
+                .collect(Collectors.toCollection(ArrayList::new));
+
+        int conVentas = ordenados.size();
+
+        // Relleno con el orden de vitrina, sin repetir
+        for (String slug : porGrupo.keySet()) {
+            if (ordenados.size() >= limit) break;
+            if (!ordenados.contains(slug)) ordenados.add(slug);
+        }
+
+        List<ProductResponse> products = ordenados.stream()
+                .map(slug -> toProduct(porGrupo.get(slug)))
+                .toList();
+
+        return new BestSellersResponse(products, conVentas, dias);
     }
 
     /**

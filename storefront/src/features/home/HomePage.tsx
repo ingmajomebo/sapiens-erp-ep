@@ -41,13 +41,15 @@ export function HomePage() {
       </Helmet>
 
       <Hero />
+      {/* El producto va inmediatamente después del banner: en una tienda, lo
+          primero que alguien quiere ver es qué se vende, no quiénes somos. */}
+      <Featured />
       <Pillars />
-      <Trajectory />
       <Categories />
+      <Trajectory />
       <HowItWorks />
       <Packaging />
       <OurCoast />
-      <Featured />
       <FishingQuote />
       <PartnerBrands />
       <Testimonials />

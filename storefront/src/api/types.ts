@@ -59,6 +59,19 @@ export interface GalleryImage {
   alt: string | null
 }
 
+/**
+ * Los más vendidos de la portada.
+ *
+ * `withRealSales` dice cuántos de los devueltos tienen ventas de verdad; el
+ * resto es relleno por orden de vitrina. La portada lo necesita para no
+ * titular "los más vendidos" cuando todavía no lo son.
+ */
+export interface BestSellers {
+  products: Product[]
+  withRealSales: number
+  windowDays: number
+}
+
 export interface Catalog {
   categories: Category[]
   products: Product[]
