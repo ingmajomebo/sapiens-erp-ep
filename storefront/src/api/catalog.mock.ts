@@ -24,6 +24,7 @@ export const PRODUCTS: Product[] = [
     conservation: 'Mantener congelado a -18 °C. Una vez descongelado, consumir dentro de 24 horas y no volver a congelar.',
     imageUrl: '/img/producto-pargo-rojo.jpg',
     imageAlt: 'Filete de pargo rojo fresco sobre hielo',
+    images: [],
     presentations: [
       { id: 'pargo-rojo-filete-500', name: 'Filete 500 g', axisPresentation: 'Filete', axisSize: '500 g', price: 48_900, available: true },
       { id: 'pargo-rojo-entero-1k',  name: 'Entero 1 kg',  axisPresentation: 'Entero', axisSize: '1 kg',  price: 79_900, available: false },
@@ -41,6 +42,7 @@ export const PRODUCTS: Product[] = [
     conservation: 'Mantener congelado a -18 °C. Descongelar en refrigeración, nunca a temperatura ambiente.',
     imageUrl: '/img/producto-corvina.jpg',
     imageAlt: 'Filete de corvina fresca',
+    images: [],
     presentations: [
       { id: 'corvina-filete-500', name: 'Filete 500 g', axisPresentation: 'Filete', axisSize: '500 g', price: 42_900, available: true },
       { id: 'corvina-postas-800', name: 'Postas 800 g', axisPresentation: 'Postas', axisSize: '800 g', price: 58_900, available: true },
@@ -58,6 +60,7 @@ export const PRODUCTS: Product[] = [
     conservation: 'Mantener congelado a -18 °C. Consumir dentro de 24 horas tras descongelar.',
     imageUrl: '/img/producto-camaron-tigre.jpg',
     imageAlt: 'Camarones tigre pelados del Pacífico',
+    images: [],
     presentations: [
       { id: 'camaron-tigre-500', name: 'Pelado 500 g', axisPresentation: 'Pelado', axisSize: '500 g', price: 61_900,  available: true },
       { id: 'camaron-tigre-1k',  name: 'Pelado 1 kg',  axisPresentation: 'Pelado', axisSize: '1 kg',  price: 115_900, available: true },
@@ -75,6 +78,7 @@ export const PRODUCTS: Product[] = [
     conservation: 'Mantener congelado a -18 °C. Cocinar directamente desde congelado para conservar la textura.',
     imageUrl: '/img/producto-cola-langosta.jpg',
     imageAlt: 'Colas de langosta del Pacífico colombiano',
+    images: [],
     presentations: [
       { id: 'cola-langosta-2u', name: '2 unidades', axisPresentation: null, axisSize: '2 unidades', price: 94_900, available: true },
     ],
@@ -91,6 +95,7 @@ export const PRODUCTS: Product[] = [
     conservation: 'Mantener congelado a -18 °C. Descongelar en refrigeración durante la noche.',
     imageUrl: '/img/producto-robalo.jpg',
     imageAlt: 'Filete de róbalo fresco',
+    images: [],
     presentations: [
       { id: 'robalo-filete-500', name: 'Filete 500 g', axisPresentation: 'Filete', axisSize: '500 g', price: 56_900, available: true },
     ],
@@ -107,6 +112,7 @@ export const PRODUCTS: Product[] = [
     conservation: 'Mantener congelado a -18 °C. Para consumo crudo, descongelar en refrigeración y usar el mismo día.',
     imageUrl: '/img/producto-atun.jpg',
     imageAlt: 'Lomo de atún de aleta amarilla',
+    images: [],
     presentations: [
       { id: 'atun-lomo-400', name: 'Lomo 400 g', axisPresentation: 'Lomo', axisSize: '400 g', price: 52_900, available: true },
     ],
@@ -123,6 +129,7 @@ export const PRODUCTS: Product[] = [
     conservation: 'Mantener congelado a -18 °C. No volver a congelar tras descongelar.',
     imageUrl: '/img/producto-sierra.jpg',
     imageAlt: 'Filete de sierra del Pacífico',
+    images: [],
     presentations: [
       { id: 'sierra-filete-500', name: 'Filete 500 g', axisPresentation: 'Filete', axisSize: '500 g', price: 34_900, available: true },
     ],
@@ -139,6 +146,7 @@ export const PRODUCTS: Product[] = [
     conservation: 'Mantener congelado a -18 °C. Descongelar en refrigeración.',
     imageUrl: '/img/producto-bagre-de-mar.jpg',
     imageAlt: 'Postas de bagre de mar',
+    images: [],
     presentations: [
       { id: 'bagre-postas-700', name: 'Postas 700 g', axisPresentation: 'Postas', axisSize: '700 g', price: 36_900, available: true },
     ],
@@ -155,6 +163,7 @@ export const PRODUCTS: Product[] = [
     conservation: 'Mantener congelado a -18 °C. La congelación mejora su terneza.',
     imageUrl: '/img/producto-pulpo.jpg',
     imageAlt: 'Pulpo limpio del Pacífico',
+    images: [],
     presentations: [
       { id: 'pulpo-limpio-800', name: 'Limpio 800 g', axisPresentation: 'Limpio', axisSize: '800 g', price: 72_900, available: true },
     ],
@@ -171,6 +180,7 @@ export const PRODUCTS: Product[] = [
     conservation: 'Mantener congelado a -18 °C. Consumir dentro de 24 horas tras descongelar.',
     imageUrl: '/img/producto-piangua.jpg',
     imageAlt: 'Piangua de manglar de Bahía Málaga',
+    images: [],
     presentations: [
       { id: 'piangua-500', name: '500 g', axisPresentation: null, axisSize: '500 g', price: 28_900, available: false },
     ],
@@ -187,6 +197,7 @@ export const PRODUCTS: Product[] = [
     conservation: 'Conservar en lugar fresco y seco, lejos de la luz directa. No requiere refrigeración.',
     imageUrl: '/img/producto-aceite-de-coco.jpg',
     imageAlt: 'Frasco de aceite de coco virgen del Chocó',
+    images: [],
     presentations: [
       { id: 'aceite-coco-500ml', name: 'Frasco 500 ml', axisPresentation: 'Frasco', axisSize: '500 ml', price: 32_900, available: true },
     ],
@@ -203,6 +214,7 @@ export const PRODUCTS: Product[] = [
     conservation: 'Conservar en lugar fresco y seco, en su frasco bien cerrado.',
     imageUrl: '/img/producto-achiote.jpg',
     imageAlt: 'Frasco de achiote molido del Chocó',
+    images: [],
     presentations: [
       { id: 'achiote-250', name: 'Frasco 250 g', axisPresentation: 'Frasco', axisSize: '250 g', price: 18_900, available: true },
     ],
