@@ -2,6 +2,7 @@ package com.sapiens.erp.modules.storefront.application;
 
 import com.sapiens.erp.modules.catalog.domain.Category;
 import com.sapiens.erp.modules.catalog.domain.CategoryRepository;
+import com.sapiens.erp.modules.catalog.application.ProductGalleryService;
 import com.sapiens.erp.modules.catalog.domain.Product;
 import com.sapiens.erp.modules.inventory.domain.InventoryMovementRepository;
 import com.sapiens.erp.modules.storefront.api.dto.StorefrontDtos.*;
@@ -25,6 +26,7 @@ public class StorefrontCatalogService {
     private final StorefrontProductRepository storefrontProductRepository;
     private final CategoryRepository categoryRepository;
     private final InventoryMovementRepository movementRepository;
+    private final ProductGalleryService galleryService;
 
     @Transactional(readOnly = true)
     public CatalogResponse getCatalog() {
@@ -100,10 +102,40 @@ public class StorefrontCatalogService {
                 head.getConservation(),
                 headProduct.getImageUrl(),
                 head.getGroupName(),
+                galleryOf(ordered),
                 presentations,
                 anyAvailable,
                 head.getSortOrder()
         );
+    }
+
+    /**
+     * Reúne las fotos de TODAS las presentaciones del grupo, no solo de la
+     * primera.
+     *
+     * <p>El motivo es del negocio: "Salmón" es un grupo cuyas presentaciones
+     * son filete, posta y entero. Las fotos del entero describen el mismo
+     * producto y el comprador espera verlas en la misma ficha. Se conserva el
+     * orden de las presentaciones y, dentro de cada una, el de sus imágenes.
+     */
+    private List<GalleryImageResponse> galleryOf(List<StorefrontProduct> ordered) {
+        List<UUID> productIds = ordered.stream().map(sp -> sp.getProduct().getId()).toList();
+        Map<UUID, List<ProductGalleryService.GalleryImage>> byProduct =
+                galleryService.listByProducts(productIds);
+
+        List<GalleryImageResponse> images = new ArrayList<>();
+        Set<String> vistas = new HashSet<>();
+        for (UUID id : productIds) {
+            for (ProductGalleryService.GalleryImage img : byProduct.getOrDefault(id, List.of())) {
+                // Dos presentaciones podrían compartir foto; repetirla en la
+                // galería obligaría al comprador a pasar dos veces por lo mismo.
+                if (vistas.add(img.url())) {
+                    images.add(new GalleryImageResponse(
+                            img.id().toString(), img.role(), img.url(), img.alt()));
+                }
+            }
+        }
+        return images;
     }
 
     private PresentationResponse toPresentation(StorefrontProduct sp) {

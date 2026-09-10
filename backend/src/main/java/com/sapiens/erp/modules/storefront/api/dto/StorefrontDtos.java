@@ -41,9 +41,24 @@ public final class StorefrontDtos {
             String conservation,
             String imageUrl,
             String imageAlt,
+            /**
+             * Galería de la ficha, en orden de presentación. Va aparte de
+             * `imageUrl` a propósito: la foto única sigue alimentando las
+             * tarjetas del catálogo, y un producto sin galería debe seguir
+             * mostrándose igual que antes.
+             */
+            List<GalleryImageResponse> images,
             List<PresentationResponse> presentations,
             boolean available,
             int webSortOrder
+    ) {}
+
+    /** Una foto de la galería, ya resuelta a una URL que el navegador puede pedir. */
+    public record GalleryImageResponse(
+            String id,
+            String role,
+            String url,
+            String alt
     ) {}
 
     public record CatalogResponse(List<CategoryResponse> categories, List<ProductResponse> products) {}

@@ -39,10 +39,24 @@ export interface Product {
   conservation: string
   imageUrl: string
   imageAlt: string
+  /**
+   * Galería de la ficha. Va aparte de `imageUrl` a propósito: la foto única
+   * sigue alimentando las tarjetas del catálogo, y un producto sin galería
+   * debe verse igual que antes.
+   */
+  images: GalleryImage[]
   presentations: Presentation[]
   available: boolean
   /** Orden de aparición en la tienda; los 4 primeros van a destacados. */
   webSortOrder: number
+}
+
+/** Una fotografía de la galería, ya resuelta a una URL pedible. */
+export interface GalleryImage {
+  id: string
+  role: 'PRIMARY' | 'HOVER' | 'GALLERY'
+  url: string
+  alt: string | null
 }
 
 export interface Catalog {

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ProductGallery } from './ProductGallery'
 import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Helmet } from 'react-helmet-async'
@@ -94,11 +95,11 @@ export function ProductPage() {
       <Container>
         <div className={styles.layout}>
           <div className={styles.media}>
-            <img
-              src={product.imageUrl || '/img/producto-pargo-rojo.jpg'}
-              alt={product.imageAlt || product.name}
-              width={1200} height={900}
-              className={styles.image}
+            <ProductGallery
+              key={product.slug}
+              images={product.images ?? []}
+              fallbackUrl={product.imageUrl || '/img/producto-pargo-rojo.jpg'}
+              productName={product.imageAlt || product.name}
             />
           </div>
 

@@ -1,0 +1,127 @@
+.gallery { display: flex; flex-direction: column; gap: 12px; }
+
+/* ── Imagen grande ───────────────────────────────────────────────────────── */
+
+.stage { position: relative; }
+
+.frame {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: var(--product-bg);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  cursor: zoom-in;
+}
+.frameZoomed { cursor: zoom-out; }
+
+.image {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  display: block;
+  /* La ampliación es un escalado del propio archivo, sin pedir otra imagen:
+     el comprador ve el detalle al instante y no se descarga nada más. */
+  transition: transform 420ms cubic-bezier(0.2, 0, 0, 1);
+}
+.frameZoomed .image { transform: scale(1.6); }
+
+.zoomHint {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: 100px;
+  background: var(--caption-veil);
+  color: var(--text-on-aqua);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0;
+  transition: opacity 200ms ease;
+  pointer-events: none;
+}
+.frame:hover .zoomHint,
+.frame:focus-visible .zoomHint { opacity: 1; }
+
+/* ── Flechas ─────────────────────────────────────────────────────────────── */
+
+.arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(250, 248, 244, 0.92);
+  color: var(--text-on-cream);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 200ms ease, background 200ms ease;
+}
+.stage:hover .arrow { opacity: 1; }
+.arrow:focus-visible { opacity: 1; outline: 2px solid var(--pacific-sunset); outline-offset: 2px; }
+.arrow:hover { background: var(--white); }
+.prev { left: 12px; }
+.next { right: 12px; }
+
+.counter {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  padding: 4px 10px;
+  border-radius: 100px;
+  background: var(--caption-veil);
+  color: var(--text-on-aqua);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Miniaturas ──────────────────────────────────────────────────────────── */
+
+.strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(74px, 1fr));
+  gap: 10px;
+}
+
+.thumb {
+  padding: 0;
+  border: 1px solid var(--hairline-on-cream);
+  border-radius: var(--radius-sm);
+  background: var(--product-bg);
+  overflow: hidden;
+  cursor: pointer;
+  /* El borde no cambia de grosor al seleccionar: si lo hiciera, la tira
+     entera se movería un pixel cada vez que se elige una foto. */
+  box-shadow: inset 0 0 0 0 var(--text-on-cream);
+  transition: box-shadow 180ms ease, border-color 180ms ease;
+}
+.thumb img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  display: block;
+  opacity: 0.78;
+  transition: opacity 180ms ease;
+}
+.thumb:hover img { opacity: 1; }
+.thumbActive { border-color: transparent; box-shadow: inset 0 0 0 2px var(--text-on-cream); }
+.thumbActive img { opacity: 1; }
+.thumb:focus-visible { outline: 2px solid var(--pacific-sunset); outline-offset: 2px; }
+
+@media (max-width: 700px) {
+  .strip { grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); }
+  /* En un teléfono no hay cursor que revele las flechas: se dejan siempre. */
+  .arrow { opacity: 1; width: 36px; height: 36px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .image, .arrow, .thumb, .thumb img, .zoomHint { transition: none; }
+}

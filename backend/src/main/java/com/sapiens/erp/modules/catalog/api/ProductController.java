@@ -2,6 +2,8 @@ package com.sapiens.erp.modules.catalog.api;
 
 import com.sapiens.erp.modules.catalog.api.dto.ProductRequest;
 import com.sapiens.erp.modules.catalog.api.dto.ProductResponse;
+import com.sapiens.erp.modules.catalog.application.ProductGalleryService;
+import com.sapiens.erp.modules.catalog.domain.ProductImageRole;
 import com.sapiens.erp.modules.catalog.application.ProductImageService;
 import com.sapiens.erp.modules.catalog.application.ProductService;
 import jakarta.validation.Valid;
@@ -31,6 +33,7 @@ public class ProductController {
 
     private final ProductService productService;
     private final ProductImageService productImageService;
+    private final ProductGalleryService galleryService;
 
     @GetMapping
     public ResponseEntity<Page<ProductResponse>> listAll(
@@ -108,6 +111,60 @@ public class ProductController {
                 .eTag(etag)
                 .cacheControl(CacheControl.maxAge(Duration.ofDays(7)).cachePublic().mustRevalidate())
                 .body(image.content());
+    }
+
+    // ── Galería: varias fotos por producto ────────────────────────────────
+
+    /** Las fotos visibles de un producto, en orden de presentación. */
+    @GetMapping("/{id}/images")
+    public ResponseEntity<List<ProductGalleryService.GalleryImage>> listImages(@PathVariable UUID id) {
+        return ResponseEntity.ok(galleryService.listByProduct(id));
+    }
+
+    /**
+     * Sirve una foto de la galería. La ruta no lleva el id del producto porque
+     * el de la imagen ya la identifica; añadirlo permitiría pedir la foto de un
+     * producto citando otro y daría dos direcciones para el mismo archivo.
+     *
+     * <p>Público, como la foto única: una etiqueta &lt;img&gt; no manda el JWT.
+     */
+    @GetMapping("/images/{imageId}")
+    public ResponseEntity<byte[]> getGalleryImage(
+            @PathVariable UUID imageId,
+            @RequestHeader(name = HttpHeaders.IF_NONE_MATCH, required = false) String ifNoneMatch
+    ) {
+        ProductGalleryService.LoadedBytes image = galleryService.load(imageId);
+        String etag = "\"" + image.version() + "\"";
+
+        if (etag.equals(ifNoneMatch)) {
+            return ResponseEntity.status(HttpStatus.NOT_MODIFIED).eTag(etag).build();
+        }
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(image.contentType()))
+                .eTag(etag)
+                .cacheControl(CacheControl.maxAge(Duration.ofDays(7)).cachePublic().mustRevalidate())
+                .body(image.content());
+    }
+
+    @PostMapping("/{id}/images")
+    @PreAuthorize("hasAuthority('CATALOG_PRODUCT_EDIT')")
+    public ResponseEntity<ProductGalleryService.GalleryImage> uploadGalleryImage(
+            @PathVariable UUID id,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(name = "role", required = false) ProductImageRole role,
+            @RequestParam(name = "alt", required = false) String alt,
+            @RequestParam(name = "order", required = false) Integer order
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(galleryService.upload(id, file, role, alt, order));
+    }
+
+    @DeleteMapping("/images/{imageId}")
+    @PreAuthorize("hasAuthority('CATALOG_PRODUCT_EDIT')")
+    public ResponseEntity<Void> deleteGalleryImage(@PathVariable UUID imageId) {
+        galleryService.delete(imageId);
+        return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/{id}/image")
