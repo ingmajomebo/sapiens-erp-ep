@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import styles from './ProductGallery.module.css'
 
 export interface GalleryImage {
@@ -34,6 +34,15 @@ export function ProductGallery({ images, fallbackUrl, productName }: ProductGall
 
   const [index, setIndex] = useState(0)
   const [zoomed, setZoomed] = useState(false)
+  /**
+   * Punto que se mantiene fijo al ampliar, en porcentaje de la imagen.
+   *
+   * <p>Sin esto, ampliar siempre enseñaba el centro: para mirar la piel de la
+   * cola había que ampliar y no poder llegar. Con el origen bajo el cursor, el
+   * comprador dirige el detalle a donde está mirando.
+   */
+  const [foco, setFoco] = useState({ x: 50, y: 50 })
+  const marcoRef = useRef<HTMLButtonElement>(null)
 
   const current = shots[Math.min(index, shots.length - 1)]
   const alt = current.alt ?? productName
@@ -41,6 +50,31 @@ export function ProductGallery({ images, fallbackUrl, productName }: ProductGall
   function go(delta: number) {
     setIndex(prev => (prev + delta + shots.length) % shots.length)
     setZoomed(false)
+    setFoco({ x: 50, y: 50 })
+  }
+
+  function seguirCursor(e: React.MouseEvent<HTMLButtonElement>) {
+    if (!zoomed) return
+    const caja = marcoRef.current?.getBoundingClientRect()
+    if (!caja) return
+    setFoco({
+      x: ((e.clientX - caja.left) / caja.width) * 100,
+      y: ((e.clientY - caja.top) / caja.height) * 100,
+    })
+  }
+
+  /** Al ampliar con el teclado no hay cursor: se centra. */
+  function alternarZoom(e: React.MouseEvent<HTMLButtonElement>) {
+    if (!zoomed && e.clientX !== 0) {
+      const caja = marcoRef.current?.getBoundingClientRect()
+      if (caja) {
+        setFoco({
+          x: ((e.clientX - caja.left) / caja.width) * 100,
+          y: ((e.clientY - caja.top) / caja.height) * 100,
+        })
+      }
+    }
+    setZoomed(z => !z)
   }
 
   // Las flechas del teclado son lo que espera quien navega sin ratón; sin
@@ -55,9 +89,12 @@ export function ProductGallery({ images, fallbackUrl, productName }: ProductGall
     <div className={styles.gallery} onKeyDown={onKeyDown}>
       <div className={styles.stage}>
         <button
+          ref={marcoRef}
           type="button"
           className={`${styles.frame} ${zoomed ? styles.frameZoomed : ''}`}
-          onClick={() => setZoomed(z => !z)}
+          onClick={alternarZoom}
+          onMouseMove={seguirCursor}
+          onMouseLeave={() => setZoomed(false)}
           aria-label={zoomed ? 'Alejar la fotografía' : 'Ampliar la fotografía'}
         >
           <img
@@ -66,6 +103,7 @@ export function ProductGallery({ images, fallbackUrl, productName }: ProductGall
             width={1200}
             height={900}
             className={styles.image}
+            style={zoomed ? { transformOrigin: `${foco.x}% ${foco.y}%` } : undefined}
             /* La primera se carga de inmediato porque es lo primero que se ve;
                las demás solo si el comprador las pide. */
             loading={index === 0 ? 'eager' : 'lazy'}
