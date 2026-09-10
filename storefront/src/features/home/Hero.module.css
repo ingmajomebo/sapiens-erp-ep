@@ -5,9 +5,9 @@
      a asomar sin scroll: en una tienda, lo primero que hay que ver es producto.
      Sigue siendo un formato panorámico y no una franja, para que el video
      conserve fuerza. */
-  height: 56vh;
-  min-height: 380px;
-  max-height: 560px;
+  height: 58vh;
+  min-height: 420px;
+  max-height: 580px;
   /* El header sticky se superpone: el contenido ya va al tercio inferior */
   margin-top: calc(var(--header-h) * -1);
   display: flex;
@@ -37,7 +37,10 @@
   width: 100%;
   /* Anclado abajo, nunca centrado vertical. La separación baja con la altura:
      los 128 px de antes eran para un hero de pantalla completa. */
-  padding-bottom: 52px;
+  padding-bottom: 44px;
+  /* Deja libre la franja del menú: el contenido se ancla abajo y, si creciera,
+     antes se metía por debajo del encabezado. */
+  padding-top: calc(var(--header-h) + 16px);
 }
 
 .eyebrow { color: var(--text-on-aqua-muted); }
@@ -46,6 +49,11 @@
   margin-top: 12px;
   color: var(--text-on-aqua);
   max-width: 15ch;
+  /* El tamaño de `--fs-hero` estaba calibrado para un banner de pantalla
+     completa. En 56vh, ese titular a tres líneas se sale por arriba y se mete
+     debajo del menú. Aquí baja lo justo para caber, sin dejar de mandar. */
+  font-size: clamp(2.1rem, 4.2vw, 3.5rem);
+  line-height: 1.06;
 }
 
 .subtitle {
