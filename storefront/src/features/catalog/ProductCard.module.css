@@ -2,13 +2,44 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  border: 1px solid var(--hairline-on-cream);
+  /* El borde se aclara al ganar sombra: con los dos al mismo peso, la tarjeta
+     se ve recortada con tijera en vez de apoyada. */
+  border: 1px solid color-mix(in srgb, var(--hairline-on-cream) 55%, transparent);
   border-radius: var(--radius-sm);
   overflow: hidden;
-  background: var(--cream);
+  background: var(--white);
+  box-shadow: var(--shadow-card);
+  /* Solo se animan transform y box-shadow: son las dos propiedades que el
+     navegador puede mover sin rehacer el diseño de la página. */
+  transition: box-shadow 260ms cubic-bezier(0.2, 0, 0, 1),
+              transform 260ms cubic-bezier(0.2, 0, 0, 1);
 }
-.media { position: relative; background: var(--product-bg); }
-.image { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; display: block; }
+.card:hover {
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-3px);
+}
+/* Al llegar por teclado el foco vive dentro de la tarjeta, así que se realza
+   el conjunto: si no, no se sabe en qué producto se está. */
+.card:focus-within {
+  box-shadow: var(--shadow-card-hover);
+}
+
+.media { position: relative; background: var(--product-bg); overflow: hidden; }
+.image {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  display: block;
+  transition: transform 520ms cubic-bezier(0.2, 0, 0, 1);
+}
+/* Un acercamiento apenas perceptible. Más que esto y el producto se deforma. */
+.card:hover .image { transform: scale(1.035); }
+
+@media (prefers-reduced-motion: reduce) {
+  .card, .image { transition: none; }
+  .card:hover { transform: none; }
+  .card:hover .image { transform: none; }
+}
 .soldOutVeil { position: absolute; inset: 0; background: var(--soldout-veil); }
 .soldOutTag {
   position: absolute;

@@ -2,6 +2,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '../../shared/components/Button'
 import { formatPrice } from '../../shared/format'
 import { useCartStore } from '../../store/useCartStore'
+import { fotoProducto, fotoProductoSrcSet } from '../../shared/imagenProducto'
 import type { Product } from '../../api/types'
 import styles from './ProductCard.module.css'
 
@@ -31,10 +32,15 @@ export function ProductCard({ product }: { product: Product }) {
     <article className={styles.card}>
       <Link to={`/productos/${product.slug}`} className={styles.media} tabIndex={-1} aria-hidden="true">
         <img
-          src={product.imageUrl}
+          src={fotoProducto(product.imageUrl, 400)}
+          srcSet={fotoProductoSrcSet(product.imageUrl)}
+          /* La tarjeta ocupa una columna de la rejilla; así el navegador sabe
+             cuánto espacio tendrá antes de decidir qué archivo bajar. */
+          sizes="(max-width: 640px) 50vw, (max-width: 1100px) 33vw, 300px"
           alt={product.imageAlt}
           width={1000} height={1250}
           loading="lazy"
+          decoding="async"
           className={styles.image}
         />
         {soldOut && (

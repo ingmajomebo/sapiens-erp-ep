@@ -48,12 +48,12 @@
 .title {
   margin-top: 12px;
   color: var(--text-on-aqua);
-  max-width: 15ch;
-  /* El tamaño de `--fs-hero` estaba calibrado para un banner de pantalla
-     completa. En 56vh, ese titular a tres líneas se sale por arriba y se mete
-     debajo del menú. Aquí baja lo justo para caber, sin dejar de mandar. */
-  font-size: clamp(2.1rem, 4.2vw, 3.5rem);
-  line-height: 1.06;
+  max-width: 19ch;
+  /* `--fs-hero` se calibró para un banner de pantalla completa. Con 58vh y un
+     titular de una sola frase, este tamaño llena sin desbordar. Se mantiene
+     acotado por vw para que en pantallas anchas no crezca sin control. */
+  font-size: clamp(2.3rem, 4vw, 4rem);
+  line-height: 1.08;
 }
 
 .subtitle {

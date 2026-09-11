@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Container } from '../../shared/components/Container'
 import { ButtonLink } from '../../shared/components/Button'
 import { Eyebrow } from '../../shared/components/Eyebrow'
@@ -13,14 +14,39 @@ const ANCHOR_ITEMS = ['Pesca artesanal', 'Cadena de frío', 'Trazabilidad por lo
 export function Hero() {
   const reducedMotion = useReducedMotion()
 
+  /**
+   * El video se pide DESPUÉS de que la página termine de cargar.
+   *
+   * <p>Pesa 1,6 MB y empezaba a bajar a la vez que las fotos de producto,
+   * quitándoles ancho de banda: la portada pintaba en un segundo y las
+   * tarjetas seguían apareciendo de a una hasta el sexto. Como el póster es el
+   * primer fotograma, el cambio no se nota; lo que sí se nota es que el
+   * producto llega antes.
+   */
+  const [mostrarVideo, setMostrarVideo] = useState(
+    // Si el componente monta con la página ya cargada —una navegación interna
+    // de vuelta a la portada— no hay nada que esperar.
+    () => typeof document !== 'undefined' && document.readyState === 'complete',
+  )
+
+  useEffect(() => {
+    if (reducedMotion || mostrarVideo) return
+    const alCargar = () => setMostrarVideo(true)
+    window.addEventListener('load', alCargar)
+    return () => window.removeEventListener('load', alCargar)
+  }, [reducedMotion, mostrarVideo])
+
   return (
     <section className={styles.hero} aria-labelledby="hero-title">
-      {reducedMotion ? (
+      {reducedMotion || !mostrarVideo ? (
         <img
           src={POSTER}
           alt="Pescador artesanal remando en canoa al amanecer en el Pacífico colombiano"
           width={1920}
           height={1080}
+          /* Es lo primero y lo más grande que se ve: se pide con prioridad y
+             sin diferir, al contrario que el resto de imágenes. */
+          fetchPriority="high"
           className={styles.media}
         />
       ) : (
@@ -46,13 +72,15 @@ export function Hero() {
           </Eyebrow>
         </div>
 
+        {/* Una sola línea, como la de una tienda que se presenta de un golpe.
+            El detalle —de dónde sale y quién lo pesca— va debajo y en pequeño:
+            quien quiera saberlo lo lee, y quien no, ya entendió la promesa. */}
         <h1 id="hero-title" className={`${styles.title} ${styles.reveal} ${styles.d2}`}>
-          Del mar de nuestra gente,<br />directo a tu mesa.
+          El mejor pescado, seleccionado y llevado a tu mesa.
         </h1>
 
         <p className={`${styles.subtitle} ${styles.reveal} ${styles.d3}`}>
-          Pescado y mariscos capturados por pescadores artesanales del Chocó.
-          Empacados el mismo día que salen del agua.
+          Pescado y mariscos capturados por pescadores artesanales.
         </p>
 
         <div className={`${styles.actions} ${styles.reveal} ${styles.d4}`}>

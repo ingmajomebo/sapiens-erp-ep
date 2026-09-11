@@ -57,6 +57,16 @@
   /* Borde de las cajas del selector de presentación */
   --option-border: rgba(0, 29, 40, 0.25);
 
+  /* Sombras.
+     Se tiñen con el azul profundo de la marca en vez de negro puro: sobre el
+     fondo crema, el negro ensucia y se ve como una mancha gris. Van en dos
+     capas —una de contacto muy corta y otra difusa— porque una sola sombra
+     grande parece un halo pegado, no un objeto apoyado. */
+  --shadow-card: 0 1px 2px rgba(0, 29, 40, 0.06),
+                 0 8px 20px -6px rgba(0, 29, 40, 0.10);
+  --shadow-card-hover: 0 2px 4px rgba(0, 29, 40, 0.08),
+                       0 18px 36px -10px rgba(0, 29, 40, 0.18);
+
   /* Bloque de garantía: Sunlight Charm al 40% */
   --guarantee-bg: rgba(233, 216, 165, 0.4);
 
