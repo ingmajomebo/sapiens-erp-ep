@@ -25,11 +25,14 @@
   display: flex;
   flex-direction: column;
   flex: 1;
-  /* Medido contra la tarjeta real a 1440 px: su cuerpo mide 235 px. Estas
-     alturas y separaciones suman lo mismo, de modo que al llegar los datos la
-     página no cambia de alto. Cuando cambie el diseño de la tarjeta, hay que
-     volver a medir: un esqueleto desfasado reintroduce el salto. */
   gap: 12px;
+  /* Medido contra la tarjeta real: su cuerpo ocupa 235 px con el nombre en una
+     línea. Se fija como mínimo en vez de perseguirlo bloque a bloque, porque
+     así un cambio de tipografía no vuelve a descuadrarlo en silencio. Si el
+     nombre del producto ocupa dos líneas, la tarjeta real será más alta y
+     quedará un salto pequeño: es el caso raro, y perseguirlo exigiría saber el
+     nombre antes de tenerlo. */
+  min-height: 235px;
 }
 
 .line {
