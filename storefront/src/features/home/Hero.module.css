@@ -48,7 +48,10 @@
 .title {
   margin-top: 12px;
   color: var(--text-on-aqua);
-  max-width: 19ch;
+  max-width: 26ch;
+  /* Reparte las palabras entre las líneas en vez de llenar la primera y dejar
+     "mesa." sola abajo. */
+  text-wrap: balance;
   /* `--fs-hero` se calibró para un banner de pantalla completa. Con 58vh y un
      titular de una sola frase, este tamaño llena sin desbordar. Se mantiene
      acotado por vw para que en pantallas anchas no crezca sin control. */
