@@ -25,7 +25,11 @@
   display: flex;
   flex-direction: column;
   flex: 1;
-  gap: 10px;
+  /* Medido contra la tarjeta real a 1440 px: su cuerpo mide 235 px. Estas
+     alturas y separaciones suman lo mismo, de modo que al llegar los datos la
+     página no cambia de alto. Cuando cambie el diseño de la tarjeta, hay que
+     volver a medir: un esqueleto desfasado reintroduce el salto. */
+  gap: 12px;
 }
 
 .line {
@@ -33,15 +37,15 @@
   border-radius: 4px;
   background: color-mix(in srgb, var(--deep-aqua) 9%, transparent);
 }
-.origin       { width: 38%; height: 9px; }
-.name         { width: 62%; height: 17px; margin-top: 2px; }
-.presentation { width: 46%; height: 12px; }
-.price        { width: 34%; height: 16px; margin-top: auto; }
+.origin       { width: 38%; height: 11px; margin-top: 2px; }
+.name         { width: 62%; height: 22px; }
+.presentation { width: 46%; height: 14px; }
+.price        { width: 34%; height: 20px; margin-top: auto; }
 
 .button {
   display: block;
-  height: 44px;
-  margin-top: 14px;
+  height: 46px;
+  margin-top: 16px;
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--deep-aqua) 7%, transparent);
 }
