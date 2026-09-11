@@ -5,6 +5,7 @@ import { Container } from '../../../shared/components/Container'
 import { Section } from '../../../shared/components/Section'
 import { NextIcon, PrevIcon } from '../../../shared/components/ui-icons'
 import { ProductCard } from '../../catalog/ProductCard'
+import { ProductCardSkeleton } from '../../catalog/ProductCardSkeleton'
 import { storeApi } from '../../../api/storeApi'
 import styles from './Featured.module.css'
 
@@ -22,7 +23,7 @@ import styles from './Featured.module.css'
  */
 export function Featured() {
   const trackRef = useRef<HTMLDivElement>(null)
-  const { data } = useQuery({
+  const { data, isPending } = useQuery({
     queryKey: ['best-sellers'],
     queryFn: () => storeApi.getBestSellers(8),
   })
@@ -48,13 +49,26 @@ export function Featured() {
           <Link to="/productos" className={styles.seeAll}>Ver todo →</Link>
         </div>
 
+        {isPending && (
+          <span className="sr-only" role="status" aria-live="polite">Cargando productos…</span>
+        )}
+
         <div className={styles.viewport}>
           <div className={styles.track} ref={trackRef}>
-            {featured.map(product => (
-              <div key={product.slug} className={styles.item}>
-                <ProductCard product={product} />
-              </div>
-            ))}
+            {/* El esqueleto va en el MISMO envoltorio que la tarjeta real: si
+                midiera distinto, al llegar los datos el carrusel daría un salto
+                y habríamos cambiado el problema de sitio en vez de quitarlo. */}
+            {isPending
+              ? Array.from({ length: 4 }, (_, i) => (
+                <div key={`esqueleto-${i}`} className={styles.item}>
+                  <ProductCardSkeleton />
+                </div>
+              ))
+              : featured.map(product => (
+                <div key={product.slug} className={styles.item}>
+                  <ProductCard product={product} />
+                </div>
+              ))}
           </div>
         </div>
 

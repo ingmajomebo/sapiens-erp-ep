@@ -1,0 +1,75 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border: 1px solid color-mix(in srgb, var(--hairline-on-cream) 55%, transparent);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--white);
+  box-shadow: var(--shadow-card);
+}
+
+/* El brillo recorre la tarjeta entera, no cada bloque por separado: así se lee
+   como un objeto cargando y no como cinco cosas parpadeando a destiempo. */
+.card > * { position: relative; }
+
+.media {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  background: var(--product-bg);
+  overflow: hidden;
+}
+
+.body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 10px;
+}
+
+.line {
+  display: block;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--deep-aqua) 9%, transparent);
+}
+.origin       { width: 38%; height: 9px; }
+.name         { width: 62%; height: 17px; margin-top: 2px; }
+.presentation { width: 46%; height: 12px; }
+.price        { width: 34%; height: 16px; margin-top: auto; }
+
+.button {
+  display: block;
+  height: 44px;
+  margin-top: 14px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--deep-aqua) 7%, transparent);
+}
+
+/* Barrido de luz. Va sobre la tarjeta con un pseudoelemento para no añadir
+   nodos, y se recorta con overflow:hidden de .card. */
+.card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 70%
+  );
+  transform: translateX(-100%);
+  animation: barrido 1.4s ease-in-out infinite;
+  pointer-events: none;
+}
+.card { position: relative; }
+
+@keyframes barrido {
+  100% { transform: translateX(100%); }
+}
+
+/* Sin animación, el esqueleto sigue siendo útil: reserva el sitio. Lo que se
+   retira es el parpadeo, que para algunas personas es un problema real. */
+@media (prefers-reduced-motion: reduce) {
+  .card::after { animation: none; display: none; }
+}

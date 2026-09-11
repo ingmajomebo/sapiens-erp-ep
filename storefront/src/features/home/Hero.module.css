@@ -10,8 +10,14 @@
   max-height: 580px;
   /* El header sticky se superpone: el contenido ya va al tercio inferior */
   margin-top: calc(var(--header-h) * -1);
+  /* Columna en flujo normal, no una franja flotando encima del contenido.
+     Antes `.anchor` iba en absoluto y el botón quedaba por debajo de ella: su
+     borde superior cruzaba justo por encima de "Ver productos". Con los dos
+     apilados, el solape es imposible por construcción, y la franja puede
+     crecer a dos líneas en pantallas angostas sin tapar nada. */
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
+  justify-content: flex-end;
   overflow: hidden;
   background: var(--deep-aqua);
   color: var(--text-on-aqua);
@@ -35,9 +41,9 @@
 .content {
   position: relative;
   width: 100%;
-  /* Anclado abajo, nunca centrado vertical. La separación baja con la altura:
-     los 128 px de antes eran para un hero de pantalla completa. */
-  padding-bottom: 44px;
+  /* La separación con la franja de abajo. Ya no hay que reservar su altura:
+     la franja ocupa su propio sitio. */
+  padding-bottom: 26px;
   /* Deja libre la franja del menú: el contenido se ancla abajo y, si creciera,
      antes se metía por debajo del encabezado. */
   padding-top: calc(var(--header-h) + 16px);
@@ -52,11 +58,11 @@
   /* Reparte las palabras entre las líneas en vez de llenar la primera y dejar
      "mesa." sola abajo. */
   text-wrap: balance;
-  /* `--fs-hero` se calibró para un banner de pantalla completa. Con 58vh y un
-     titular de una sola frase, este tamaño llena sin desbordar. Se mantiene
-     acotado por vw para que en pantallas anchas no crezca sin control. */
-  font-size: clamp(2.3rem, 4vw, 4rem);
-  line-height: 1.08;
+  /* `--fs-hero` se calibró para un banner de pantalla completa: a 1920 px daba
+     64 px y el titular se comía la escena. Este rango llega a 48 px en
+     pantallas anchas, una proporción de tienda y no de portada editorial. */
+  font-size: clamp(2rem, 2.9vw, 3rem);
+  line-height: 1.1;
 }
 
 .subtitle {
@@ -85,10 +91,7 @@
 
 /* Ancla inferior sobre borde hairline */
 .anchor {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  position: relative;
   border-top: 1px solid var(--hairline-on-aqua);
 }
 .anchorInner {
